@@ -4,7 +4,8 @@ DRAM 報價走勢圖
 本地 Dash 版（app.py）與靜態版（build_static.py）都呼叫 build_figure()，
 確保兩邊圖表永遠一致。
 
-圖表設定沿用原 Database_dashboard/app.py 的 update_dram() callback。
+圖表本身不設 title、圖例固定置於下方 —— 標題由外層的 HTML 標頭負責。
+圖例放在圖表上方時會與 Plotly 右上角工具列重疊，窄螢幕換行後更會壓到標題。
 """
 import pandas as pd
 import plotly.express as px
@@ -31,16 +32,19 @@ def build_figure(df: pd.DataFrame, dark: bool = False) -> go.Figure:
 
     fig = px.line(
         df, x="price_date", y="avg_price", color="item",
-        title="DRAM 現貨報價 — 盤平均（USD）",
-        labels={"price_date": "日期", "avg_price": "盤平均 (USD)", "item": "型號"},
+        labels={"price_date": "", "avg_price": "盤平均 (USD)", "item": "型號"},
         markers=True,
         template=tmpl,
     )
+    fig.update_traces(marker=dict(size=4), line=dict(width=2))
     fig.update_layout(
         hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        # 圖例一律置於圖表下方：放在上方時會與 Plotly 右上角的工具列重疊，
+        # 窄螢幕上換行成多列後更會壓到標題。
+        legend=dict(orientation="h", yanchor="top", y=-0.14,
+                    xanchor="left", x=0, title_text=""),
         paper_bgcolor=bg,
         plot_bgcolor=bg,
-        margin=dict(l=60, r=30, t=90, b=50),
+        margin=dict(l=60, r=30, t=50, b=130),
     )
     return fig

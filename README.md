@@ -33,7 +33,12 @@ python build_static.py   # 重新產生 docs/index.html
 python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 ```
 
-`export_from_sqlite.py` 是初始化用的一次性工具，從本機 AI Cowork 的 `cowork.db` 匯出資料；一般使用不會用到。
+`export_from_sqlite.py`（匯出初始資料）與 `make_icons.py`（產生圖示）都是一次性工具，一般使用不會用到。
+
+## 加入 iPhone / Android 主畫面
+
+用 Safari 或 Chrome 開啟上方網址 → 分享選單 →「加入主畫面」。
+圖示會顯示 DRAM 模組與上升折線，名稱為「DRAM 報價」，開啟後為獨立視窗（無瀏覽器網址列）。
 
 ---
 
@@ -43,11 +48,13 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 |------|------|
 | `dram_data.py` | 讀寫 `data/dram_prices.csv`，以 `(item, price_date)` 去重 |
 | `chart.py` | `build_figure(df, dark)` — 唯一的圖表定義來源 |
+| `docs/` | 發佈目錄：`index.html`（產生）+ 圖示與 `manifest.webmanifest`（靜態） |
 | `scraper.py` | TrendForce DRAM Spot Price 爬蟲 |
 | `update_data.py` | 爬蟲 → 合併 CSV → 重建靜態頁 |
 | `build_static.py` | 產生 `docs/index.html` |
 | `app.py` | 本地 Dash 版 |
 | `export_from_sqlite.py` | 自本機 SQLite 匯出初始 CSV |
+| `make_icons.py` | 產生 `docs/` 底下的網站圖示（需 Pillow） |
 
 ## 資料格式
 

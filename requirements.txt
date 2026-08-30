@@ -9,3 +9,6 @@ dash-bootstrap-components>=2.0
 # TrendForce 爬蟲（scraper.py）
 curl_cffi>=0.15
 beautifulsoup4>=4.13
+
+# 選用：只有重新產生網站圖示（make_icons.py）時才需要
+# pillow>=10

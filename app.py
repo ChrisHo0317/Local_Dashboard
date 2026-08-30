@@ -33,7 +33,8 @@ def _header() -> dbc.Row:
                 [
                     html.H4("DRAM 現貨報價趨勢", className="mb-1"),
                     html.Small(
-                        f"資料來源：TrendForce　最後報價日：{updated or '無資料'}",
+                        f"資料來源：TrendForce　·　單位：USD（盤平均）　·　"
+                        f"最後報價日：{updated or '無資料'}",
                         id="subtitle", className="text-muted",
                     ),
                 ],
