@@ -1,0 +1,40 @@
+name: Update DRAM prices
+
+on:
+  schedule:
+    # 每日 UTC 01:00 ≈ 台灣時間 09:00
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        # 更新流程只需要爬蟲與繪圖，不需要 dash / dash-bootstrap-components
+        run: pip install pandas plotly curl_cffi beautifulsoup4
+
+      - name: Fetch latest prices and rebuild page
+        run: python update_data.py
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- data/dram_prices.csv docs/index.html; then
+            echo "無變更，略過 commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/dram_prices.csv docs/index.html
+          git commit -m "chore: 更新 DRAM 報價 ($(date -u +%Y-%m-%d))"
+          git push
