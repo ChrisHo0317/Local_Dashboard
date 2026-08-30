@@ -32,14 +32,7 @@ def _header() -> dbc.Row:
         [
             dbc.Col(
                 [
-                    html.H4(
-                        [
-                            "DRAM 現貨報價趨勢",
-                            html.Small(__version__, className="text-muted ms-2",
-                                       style={"fontSize": "13px", "fontWeight": "400"}),
-                        ],
-                        className="mb-1",
-                    ),
+                    html.H4("DRAM 現貨報價趨勢", className="mb-1"),
                     html.Small(
                         f"資料來源：TrendForce　·　單位：USD（盤平均）　·　"
                         f"最後報價日：{updated or '無資料'}",
@@ -49,8 +42,13 @@ def _header() -> dbc.Row:
                 md=8,
             ),
             dbc.Col(
-                dbc.Switch(id="dark-toggle", label="深色模式", value=False,
-                           className="mt-2 text-end"),
+                [
+                    # 版本號置於右上角，與靜態版一致
+                    html.Div(__version__, className="text-muted text-end",
+                             style={"fontSize": "12px"}),
+                    dbc.Switch(id="dark-toggle", label="深色模式", value=False,
+                               className="mt-1 text-end"),
+                ],
                 md=4,
             ),
         ],
