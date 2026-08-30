@@ -91,7 +91,7 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 ## 版本
 
-目前 **v0.1.000**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
+目前 **v0.1.001**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
 
 格式 `vMAJOR.MINOR.PATCH`（PATCH 補零至三位）：修 bug 或調版面遞增 PATCH、新增功能遞增 MINOR、架構改版遞增 MAJOR。改 `version.py` 後重跑 `build_static.py` 即可。
 

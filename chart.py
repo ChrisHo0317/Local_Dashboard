@@ -19,6 +19,18 @@ import plotly.graph_objects as go
 DARK_BG = "#1e2130"
 LIGHT_BG = "white"
 
+# rangeselector 的顏色必須逐項指定：Plotly 對它有一組硬編碼預設值
+# （bgcolor '#eee' 配深色文字），plotly_dark 樣板並不會覆寫，
+# 因此深色模式下若不指定就會是淺灰底配淺色字，幾乎看不見。
+_SELECTOR_STYLE = {
+    False: dict(bgcolor="#f1f3f5", activecolor="#ced4da",
+                bordercolor="#ced4da", font=dict(color="#212529", size=11)),
+    True:  dict(bgcolor="#2a2f45", activecolor="#454d70",
+                bordercolor="#4a5170", font=dict(color="#e8e8e8", size=11)),
+}
+
+_SLIDER_BORDER = {False: "#ced4da", True: "#4a5170"}
+
 
 def theme_colors(dark: bool) -> tuple[str, str]:
     """回傳 (plotly template 名稱, 背景色)。"""
@@ -50,11 +62,20 @@ def build_figure(df: pd.DataFrame, dark: bool = False,
         markers=True,
         template=tmpl,
     )
-    fig.update_traces(marker=dict(size=4), line=dict(width=2))
+    # cliponaxis=False：x 軸右端貼齊最後一筆資料後，最末端的點才不會被切一半
+    fig.update_traces(marker=dict(size=4), line=dict(width=2), cliponaxis=False)
+
+    first = df["price_date"].min()
+    last = df["price_date"].max()
 
     # 圖表下方的時間軸縮圖：拖曳兩端可縮放，上方主圖同步顯示選取區間
     fig.update_xaxes(
-        rangeslider=dict(visible=True, thickness=0.10),
+        # 明確指定範圍，右端貼齊最後一筆報價。留給 autorange 的話右邊會多出一段
+        # 留白，而 rangeselector 的「1月」是以目前範圍右端往回算，
+        # 那段留白會讓最新資料無法對齊右邊界。
+        range=[first, last],
+        rangeslider=dict(visible=True, thickness=0.10,
+                         bgcolor=bg, bordercolor=_SLIDER_BORDER[dark], borderwidth=1),
         rangeselector=dict(
             buttons=[
                 dict(count=1, label="1月", step="month", stepmode="backward"),
@@ -62,8 +83,8 @@ def build_figure(df: pd.DataFrame, dark: bool = False,
                 dict(count=6, label="6月", step="month", stepmode="backward"),
                 dict(step="all", label="全部"),
             ],
-            font=dict(size=11),
             x=0, xanchor="left", y=1.06, yanchor="bottom",
+            **_SELECTOR_STYLE[dark],
         ),
     )
 
