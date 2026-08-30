@@ -17,6 +17,7 @@ import plotly.io as pio
 
 from chart import build_figure
 from dram_data import BASE_DIR, latest_date, load_dram
+from version import __version__
 
 DOCS_DIR = BASE_DIR / "docs"
 OUTPUT = DOCS_DIR / "index.html"
@@ -64,6 +65,7 @@ TPL = """<!doctype html>
   #chart { width: 100%; height: 600px; }
   footer { margin-top: 16px; font-size: 12px; color: var(--muted); line-height: 1.7; }
   footer a { color: inherit; }
+  .ver { font-variant-numeric: tabular-nums; opacity: .8; }
   @media (max-width: 820px) {
     .wrap { padding-left: 12px; padding-right: 12px; }
     h1 { font-size: 18px; }
@@ -87,7 +89,7 @@ TPL = """<!doctype html>
   <footer>
     共 __ROWS__ 筆報價，__ITEMS__ 種型號，區間 __RANGE__。<br>
     圖表由 <a href="https://github.com/ChrisHo0317/Local_Dashboard">Local_Dashboard</a> 每日自動更新　·　
-    頁面產生時間：__BUILT__
+    頁面產生時間：__BUILT__　·　<span class="ver">__VERSION__</span>
   </footer>
 </div>
 
@@ -169,6 +171,7 @@ def build() -> Path:
            .replace("__ITEMS__", str(items))
            .replace("__RANGE__", date_range)
            .replace("__BUILT__", built)
+           .replace("__VERSION__", __version__)
     )
 
     DOCS_DIR.mkdir(parents=True, exist_ok=True)

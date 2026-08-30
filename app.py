@@ -15,6 +15,7 @@ from dash import Input, Output, dcc, html
 
 from chart import DARK_BG, LIGHT_BG, build_figure
 from dram_data import latest_date, load_dram
+from version import __version__
 
 app = dash.Dash(
     __name__,
@@ -31,7 +32,14 @@ def _header() -> dbc.Row:
         [
             dbc.Col(
                 [
-                    html.H4("DRAM 現貨報價趨勢", className="mb-1"),
+                    html.H4(
+                        [
+                            "DRAM 現貨報價趨勢",
+                            html.Small(__version__, className="text-muted ms-2",
+                                       style={"fontSize": "13px", "fontWeight": "400"}),
+                        ],
+                        className="mb-1",
+                    ),
                     html.Small(
                         f"資料來源：TrendForce　·　單位：USD（盤平均）　·　"
                         f"最後報價日：{updated or '無資料'}",

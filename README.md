@@ -55,6 +55,7 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `app.py` | 本地 Dash 版 |
 | `export_from_sqlite.py` | 自本機 SQLite 匯出初始 CSV |
 | `make_icons.py` | 產生 `docs/` 底下的網站圖示（需 Pillow） |
+| `version.py` | 版本號，顯示於頁尾與本地 Dash 標頭 |
 
 ## 資料格式
 
@@ -78,6 +79,16 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 - **Settings → Pages** → Source: `Deploy from a branch` → `main` / `/docs`
 - **Settings → Actions → General → Workflow permissions** → `Read and write permissions`
+
+---
+
+## 版本
+
+目前 **v0.0.001**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
+
+格式 `vMAJOR.MINOR.PATCH`（PATCH 補零至三位）：修 bug 或調版面遞增 PATCH、新增功能遞增 MINOR、架構改版遞增 MAJOR。改 `version.py` 後重跑 `build_static.py` 即可。
+
+每日自動更新報價**不算**版本變更，workflow 不會動到 `version.py`。
 
 ---
 
