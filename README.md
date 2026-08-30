@@ -15,7 +15,14 @@ GitHub Pages 只能託管靜態檔案，無法執行 Dash 的伺服器端 callba
 | 本地 Dash | `app.py` | 在自己電腦跑，`http://localhost:8051` |
 | 靜態頁面 | `build_static.py` → `docs/index.html` | GitHub Pages 對外瀏覽 |
 
-靜態版把淺色 / 深色兩份圖表 JSON 內嵌進頁面，由前端 `Plotly.react` 切換。hover、點 legend 隱藏型號、框選縮放等 Plotly 原生互動都保留。
+靜態版把淺色 / 深色兩份圖表 JSON 內嵌進頁面，由前端 `Plotly.react` 切換。hover、框選縮放等 Plotly 原生互動都保留。
+
+## 圖表操作
+
+- **時間軸縮圖**：圖表下方的橫向縮圖顯示完整區間，拖曳兩端可縮放，主圖同步顯示選取範圍。
+- **快速區間**：左上角 `1月` / `3月` / `6月` / `全部` 按鈕。
+- **型號開關**：圖表下方的色點按鈕點開後列出全部 9 個型號，可逐項顯示 / 隱藏，另有「全部顯示 / 全部隱藏」。
+  靜態版用這個自製圖例取代 Plotly 內建的那一份 —— 9 個型號橫排在手機上會佔掉大半畫面。
 
 ---
 
@@ -84,7 +91,7 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 ## 版本
 
-目前 **v0.0.001**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
+目前 **v0.1.000**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
 
 格式 `vMAJOR.MINOR.PATCH`（PATCH 補零至三位）：修 bug 或調版面遞增 PATCH、新增功能遞增 MINOR、架構改版遞增 MAJOR。改 `version.py` 後重跑 `build_static.py` 即可。
 
