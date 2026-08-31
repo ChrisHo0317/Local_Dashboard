@@ -91,7 +91,10 @@ TPL = """<!doctype html>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<!-- plotly.js 版本必須對應 plotly.py（6.7 → 3.5）：
+     plotly.py 6.x 以 base64 二進位陣列輸出資料，2.x 的 plotly.js 畫得出線，
+     但無法用它做 hover 的點位查找，指標標籤會完全不出現。 -->
+<script src="https://cdn.plot.ly/plotly-3.5.0.min.js" charset="utf-8"></script>
 <style>
   :root {
     --bg:#fff; --fg:#212529; --muted:#6c757d; --border:#dee2e6; --hover:rgba(0,0,0,.05);
@@ -118,7 +121,8 @@ TPL = """<!doctype html>
          white-space:nowrap; padding-top:3px; }
   button { font-family:inherit; color:var(--fg); background:transparent;
            border:1px solid var(--border); border-radius:6px; cursor:pointer; }
-  #chart { width:100%; height:600px; }
+  /* pan-y：垂直滑動仍由瀏覽器捲動頁面，水平與雙指手勢交給下方的 touch 處理 */
+  #chart { width:100%; height:600px; touch-action:pan-y; }
 
   /* 收合式圖例 */
   .legend-bar { margin-top:10px; }
@@ -268,6 +272,9 @@ function layoutFor(fig, mobile) {
   if (!mobile) return L;
   L.margin = {l: 46, r: 14, t: 54, b: 34};
   L.yaxis  = Object.assign({}, L.yaxis, {title: {text: ''}});
+  // 關掉 Plotly 自己的拖曳（預設是單指框選縮放），改由下方的 touch 處理接手：
+  // 單指移動指標、雙指縮放時間軸
+  L.dragmode = false;
   return L;
 }
 
@@ -280,7 +287,10 @@ function render() {
   Plotly.react('chart', data, layoutFor(fig, mobile), {
     responsive: true,
     displaylogo: false,
-    displayModeBar: !mobile   // 手機隱藏工具列，改用原生手勢與下方時間軸縮圖
+    displayModeBar: !mobile,  // 手機隱藏工具列，改用原生手勢與下方時間軸縮圖
+    // 觸控裝置上 Plotly 會把單次輕觸判成雙擊而重設縮放，直接關掉；
+    // 要回到全區間改用左上角的「全部」按鈕。
+    doubleClick: mobile ? false : 'reset+autosize'
   });
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
   document.getElementById('toggle').setAttribute('aria-checked', String(dark));
@@ -382,6 +392,87 @@ legBtn.addEventListener('click', function () {
   panel.hidden = open;
 });
 
+// ── 觸控手勢 ───────────────────────────────────────────────
+// 單指：移動垂直指標線，顯示該時間點各型號的數據（不縮放、不平移）
+// 雙指：以兩指中心為錨點縮放時間軸
+// 桌機滑鼠不受影響，仍是 Plotly 預設的框選縮放。
+function initTouch() {
+  if (!window.matchMedia('(pointer: coarse)').matches) return;
+
+  var gd = document.getElementById('chart');
+  var pinch = null;
+  var MIN_SPAN = 3 * 864e5;   // 最小可縮到 3 天，再窄就看不出東西了
+
+  function xAxis() { return gd._fullLayout && gd._fullLayout.xaxis; }
+  function plotLeft() { return gd.getBoundingClientRect().left + xAxis()._offset; }
+
+  // 資料實際涵蓋的範圍，用來擋住縮放到空白區
+  function fullExtent() {
+    var xa = xAxis(), lo = Infinity, hi = -Infinity;
+    (gd.data || []).forEach(function (t) {
+      if (!t.x || !t.x.length) return;
+      lo = Math.min(lo, xa.d2l(t.x[0]));
+      hi = Math.max(hi, xa.d2l(t.x[t.x.length - 1]));
+    });
+    return (lo < hi) ? [lo, hi] : null;
+  }
+
+  function showIndicator(touch) {
+    var xa = xAxis();
+    if (!xa) return;
+    var px = touch.clientX - plotLeft();
+    if (px < 0 || px > xa._length) return;
+    Plotly.Fx.hover(gd, {xval: xa.p2d(px)}, 'xy');
+  }
+
+  function dist(e) {
+    var dx = e.touches[0].clientX - e.touches[1].clientX;
+    var dy = e.touches[0].clientY - e.touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy) || 1;
+  }
+
+  gd.addEventListener('touchstart', function (e) {
+    var xa = xAxis();
+    if (!xa) return;
+    if (e.touches.length === 2) {
+      Plotly.Fx.unhover(gd);
+      pinch = {
+        d: dist(e),
+        cx: (e.touches[0].clientX + e.touches[1].clientX) / 2 - plotLeft(),
+        r0: xa.d2l(xa.range[0]),
+        r1: xa.d2l(xa.range[1]),
+        len: xa._length
+      };
+    } else if (e.touches.length === 1) {
+      pinch = null;
+      showIndicator(e.touches[0]);
+    }
+  }, {passive: true});
+
+  gd.addEventListener('touchmove', function (e) {
+    if (e.touches.length === 2 && pinch) {
+      if (e.cancelable) e.preventDefault();
+      var scale = pinch.d / dist(e);
+      var frac = Math.min(1, Math.max(0, pinch.cx / pinch.len));
+      var anchor = pinch.r0 + (pinch.r1 - pinch.r0) * frac;
+      var lo = anchor - (anchor - pinch.r0) * scale;
+      var hi = anchor + (pinch.r1 - anchor) * scale;
+
+      var ext = fullExtent();
+      if (ext) { lo = Math.max(lo, ext[0]); hi = Math.min(hi, ext[1]); }
+      if (hi - lo < MIN_SPAN) return;
+      Plotly.relayout(gd, {'xaxis.range': [lo, hi]});
+    } else if (e.touches.length === 1 && !pinch) {
+      if (e.cancelable) e.preventDefault();
+      showIndicator(e.touches[0]);
+    }
+  }, {passive: false});
+
+  gd.addEventListener('touchend', function (e) {
+    if (e.touches.length < 2) pinch = null;
+  }, {passive: true});
+}
+
 // ── 主題 ───────────────────────────────────────────────────
 try {
   var saved = localStorage.getItem('dram-theme');
@@ -392,6 +483,7 @@ try {
 syncLegend();
 render();
 selectTab('dram', false);
+initTouch();
 
 document.getElementById('toggle').addEventListener('click', function () {
   dark = !dark;

@@ -30,6 +30,7 @@ _SELECTOR_STYLE = {
 }
 
 _SLIDER_BORDER = {False: "#ced4da", True: "#4a5170"}
+_SPIKE_COLOR = {False: "#868e96", True: "#7a8296"}
 
 
 def theme_colors(dark: bool) -> tuple[str, str]:
@@ -56,14 +57,39 @@ def build_figure(df: pd.DataFrame, dark: bool = False,
             template=tmpl, paper_bgcolor=bg, plot_bgcolor=bg,
         )
 
+    # 補齊成「所有日期 × 所有型號」，缺的填 NaN，讓各型號共用同一組 x 座標，
+    # 指標標籤才會依同一個日期對齊。搭配 connectgaps=True，線本身仍然連續，
+    # 不會因為某型號偶爾缺一天就斷開。
+    # 注意：補 NaN 並不會讓停更的型號從指標標籤消失 —— hoverdistance=-1 之下
+    # Plotly 仍會往回找到它最後一個有值的點，所以標籤才需要逐列標日期。
+    wide = df.pivot_table(index="price_date", columns="item",
+                          values="avg_price", aggfunc="last").sort_index()
+    # pivot 會把型號重排成字母序，px 依序指派顏色，等於整組換色。
+    # 還原成原始資料的出現順序，配色才不會因為這次補齊而變動。
+    wide = wide.reindex(columns=df["item"].drop_duplicates().tolist())
+    grid = wide.reset_index().melt(id_vars="price_date",
+                                   var_name="item", value_name="avg_price")
+
     fig = px.line(
-        df, x="price_date", y="avg_price", color="item",
+        grid, x="price_date", y="avg_price", color="item",
         labels={"price_date": "", "avg_price": "盤平均 (USD)", "item": "型號"},
         markers=True,
         template=tmpl,
+        # 補齊後點數超過 px 的 1000 點門檻，預設會自動改用 WebGL 的 scattergl，
+        # 那個 trace 型別不支援 cliponaxis、hover 行為也不同。點數不多，固定用 SVG。
+        render_mode="svg",
     )
-    # cliponaxis=False：x 軸右端貼齊最後一筆資料後，最末端的點才不會被切一半
-    fig.update_traces(marker=dict(size=4), line=dict(width=2), cliponaxis=False)
+    fig.update_traces(
+        marker=dict(size=4), line=dict(width=2),
+        # cliponaxis=False：x 軸右端貼齊最後一筆資料後，最末端的點才不會被切一半
+        cliponaxis=False,
+        connectgaps=True,
+        # 指標標籤每列格式：「型號 : 日期 值」。
+        # 帶上該點自己的日期是必要的 —— hoverdistance=-1 之下，早已停更的型號
+        # （如 DDR4 16Gb (1Gx16)3200 只到 2025-11-12）仍會被列出它最後一筆舊價，
+        # 標上日期才不會被誤讀成當日報價。
+        hovertemplate="%{x|%m/%d}　%{y:.3f}<extra>%{fullData.name}</extra>",
+    )
 
     first = df["price_date"].min()
     last = df["price_date"].max()
@@ -74,6 +100,9 @@ def build_figure(df: pd.DataFrame, dark: bool = False,
         # 留白，而 rangeselector 的「1月」是以目前範圍右端往回算，
         # 那段留白會讓最新資料無法對齊右邊界。
         range=[first, last],
+        # 垂直指標線：手機上以單指點按移動，spikesnap="data" 讓它對齊實際資料點
+        showspikes=True, spikemode="across", spikesnap="data",
+        spikethickness=1, spikedash="dot", spikecolor=_SPIKE_COLOR[dark],
         rangeslider=dict(visible=True, thickness=0.10,
                          bgcolor=bg, bordercolor=_SLIDER_BORDER[dark], borderwidth=1),
         rangeselector=dict(
@@ -90,6 +119,12 @@ def build_figure(df: pd.DataFrame, dark: bool = False,
 
     fig.update_layout(
         hovermode="x unified",
+        # hoverdistance 預設 20（px）會連垂直方向一起算，游標不夠靠近線就整組被濾掉，
+        # 造成指標標籤完全不出現。-1 = 不限距離，手指點在任何高度都會列出該時間點的資料。
+        # （改用有限值無法解決停更型號的問題：手機上整段 x 範圍才約 330px，
+        #   停更點的距離比任何合理門檻都小，反而會因垂直距離誤刪正常的型號。）
+        hoverdistance=-1,
+        spikedistance=-1,
         showlegend=showlegend,
         # 圖例置於圖表下方：放在上方會與 Plotly 右上角工具列重疊，
         # 窄螢幕換行成多列後更會蓋到標題。
