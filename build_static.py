@@ -24,8 +24,9 @@ from pathlib import Path
 import plotly.io as pio
 
 from bond_data import CSV_PATH as BOND_CSV, latest_date as bond_latest, load_bonds
-from chart import build_bond_figure, build_figure, series_colors
+from chart import build_bond_figure, build_figure, build_gold_figure, series_colors
 from dram_data import BASE_DIR, CSV_PATH as DRAM_CSV, latest_date as dram_latest, load_dram
+from gold_data import CSV_PATH as GOLD_CSV, latest_date as gold_latest, load_gold
 from version import __version__
 
 DOCS_DIR = BASE_DIR / "docs"
@@ -66,6 +67,23 @@ PANELS = [
         "icon": '<line x1="19" y1="5" x2="5" y2="19"/>'
                 '<circle cx="6.6" cy="6.6" r="2.4"/>'
                 '<circle cx="17.4" cy="17.4" r="2.4"/>',
+    },
+    {
+        "id": "gold",
+        "tab": "黃金",
+        "title": "國際金價",
+        "meta": "資料來源：Yahoo Finance　·　單位：USD／盎司（COMEX 近月期貨）",
+        "item_label": "商品",
+        "source_name": "Yahoo Finance",
+        "source_url": "https://finance.yahoo.com/quote/GC%3DF/",
+        "csv": GOLD_CSV,
+        "load": load_gold,
+        "figure": build_gold_figure,
+        "latest": gold_latest,
+        # 金幣堆疊圖示
+        "icon": '<ellipse cx="12" cy="6.4" rx="7" ry="3"/>'
+                '<path d="M5 6.4v5c0 1.66 3.13 3 7 3s7-1.34 7-3v-5"/>'
+                '<path d="M5 11.4v5c0 1.66 3.13 3 7 3s7-1.34 7-3v-5"/>',
     },
 ]
 
@@ -273,6 +291,12 @@ TPL = """<!doctype html>
     .chart { height:520px; }
     .legend-list { grid-template-columns:1fr; }
     .card { max-width:none; }
+    /* 分頁變多後，窄螢幕要縮小按鈕才不會超出畫面 */
+    .tab { width:76px; }
+  }
+  @media (max-width:400px) {
+    .tab { width:72px; font-size:10px; }
+    .tab svg { width:20px; height:20px; }
   }
   @media (prefers-reduced-motion: reduce) {
     .tab-pill, .knob, .switch, .chev { transition:none; }

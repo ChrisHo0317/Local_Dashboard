@@ -1,6 +1,6 @@
 # Local_Dashboard — 市場走勢
 
-DRAM 現貨報價與美國公債殖利率的歷史走勢圖，資料每日自動更新。
+DRAM 現貨報價、美國公債殖利率與國際金價的歷史走勢圖，資料每日自動更新。
 
 **線上瀏覽：** https://chrisho0317.github.io/Local_Dashboard/
 
@@ -25,6 +25,7 @@ GitHub Pages 只能託管靜態檔案，無法執行 Dash 的伺服器端 callba
 |------|------|
 | DRAM | DRAM 現貨報價（TrendForce）|
 | 美債殖利率 | 美國公債 1／2／5／10／20／30 年期殖利率（MoneyDJ）|
+| 黃金 | 國際金價 COMEX 近月期貨，USD／盎司（Yahoo Finance）|
 | 設定 | 外觀（深色模式）、各資料集資訊、關於 |
 
 要新增圖表分頁，在 `build_static.py` 的 `PANELS` 加一筆即可 —— 標籤列、分頁、圖例、設定頁的資料卡片都會跟著生成，滑動指示器依按鈕實際位置計算，不需要改任何數值。
@@ -73,6 +74,8 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `dram_data.py` | 讀寫 `data/dram_prices.csv`，以 `(item, price_date)` 去重 |
 | `bond_data.py` | 讀寫 `data/bond_yields.csv`，同時是年期定義的唯一來源 |
 | `bond_scraper.py` | MoneyDJ 殖利率爬蟲（可帶區間取歷史）|
+| `gold_data.py` | 讀寫 `data/gold_prices.csv` |
+| `gold_scraper.py` | Yahoo Finance 金價爬蟲 |
 | `chart.py` | `build_figure()` / `build_bond_figure()` — 唯一的圖表定義來源 |
 | `docs/` | 發佈目錄：`index.html`（產生）+ 圖示與 `manifest.webmanifest`（靜態） |
 | `scraper.py` | TrendForce DRAM 現貨報價爬蟲（僅提供當日快照）|
@@ -101,6 +104,14 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `price_date` | 日期 `YYYY-MM-DD` |
 | `yield_pct` | 殖利率（%）|
 
+`data/gold_prices.csv`
+
+| 欄位 | 說明 |
+|------|------|
+| `item` | 商品，目前只有 `COMEX 黃金期貨` |
+| `price_date` | 日期 `YYYY-MM-DD` |
+| `price_usd` | 收盤價（USD／盎司）|
+
 ---
 
 ## 自動更新
@@ -126,4 +137,15 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 ---
 
-資料來源：[TrendForce 集邦科技](https://www.trendforce.com.tw/price/dram/dram_spot)　·　[MoneyDJ 債券](https://www.moneydj.com/bond/defaultBD.xdjhtm)
+資料來源：[TrendForce 集邦科技](https://www.trendforce.com.tw/price/dram/dram_spot)　·　[MoneyDJ 債券](https://www.moneydj.com/bond/defaultBD.xdjhtm)　·　[Yahoo Finance](https://finance.yahoo.com/quote/GC%3DF/)
+
+---
+
+## 關於金價的資料來源
+
+原本指定的來源是 truney.com，但該站有 Cloudflare 人機驗證，連真實 Chrome 都會停在
+「正在執行安全驗證」而逾時，無法用於自動更新。同樣被擋的還有 Stooq（JS proof-of-work）
+與台灣銀行黃金存摺頁（JS 渲染）。
+
+最後改用 Yahoo Finance 的 `GC=F`（COMEX 黃金近月期貨），單位為 USD／盎司。
+這是連續合約，Yahoo 會自動接續換月，適合看長期趨勢；若要嚴格的單一合約價格則不適用。

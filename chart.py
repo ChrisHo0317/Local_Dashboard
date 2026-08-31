@@ -6,6 +6,7 @@
 
     build_figure()       DRAM 現貨報價（USD）
     build_bond_figure()  美國公債殖利率（%）
+    build_gold_figure()  國際金價（USD / 盎司）
 
 圖表本身不設 title —— 標題由外層的 HTML 標頭負責。
 
@@ -166,3 +167,9 @@ def build_bond_figure(df: pd.DataFrame, dark: bool = False,
                       showlegend: bool = True) -> go.Figure:
     """美國公債殖利率走勢圖（欄位 item / price_date / yield_pct）。"""
     return _line_figure(df, "yield_pct", "殖利率 (%)", "%{y:.2f}%", dark, showlegend)
+
+
+def build_gold_figure(df: pd.DataFrame, dark: bool = False,
+                      showlegend: bool = True) -> go.Figure:
+    """國際金價走勢圖（欄位 item / price_date / price_usd）。"""
+    return _line_figure(df, "price_usd", "USD / 盎司", "%{y:,.1f}", dark, showlegend)
