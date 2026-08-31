@@ -128,7 +128,7 @@
       <h1>DRAM 現貨報價趨勢</h1>
       <div class="meta">資料來源：TrendForce　·　單位：USD（盤平均）<br>最後報價日：2026-08-31</div>
     </div>
-    <span class="ver">v0.3.000</span>
+    <span class="ver">v0.3.001</span>
   </header>
 
   <section id="panel-dram" class="panel" role="tabpanel">
@@ -173,8 +173,8 @@
 
     <div class="card">
       <div class="card-h">關於</div>
-      <div class="row"><span>版本</span><b>v0.3.000</b></div>
-      <div class="row"><span>頁面產生時間</span><b>2026-08-31 19:42 (UTC+8)</b></div>
+      <div class="row"><span>版本</span><b>v0.3.001</b></div>
+      <div class="row"><span>頁面產生時間</span><b>2026-08-31 19:51 (UTC+8)</b></div>
       <div class="row"><span>原始碼</span>
         <a href="https://github.com/ChrisHo0317/Local_Dashboard"
            target="_blank" rel="noopener">GitHub</a></div>
@@ -334,20 +334,40 @@ legBtn.addEventListener('click', function () {
 });
 
 // ── 觸控手勢 ───────────────────────────────────────────────
-// 單指：移動垂直指標線，顯示該時間點各型號的數據（不縮放、不平移）
-// 雙指：以兩指中心為錨點縮放時間軸
-// 桌機滑鼠不受影響，仍是 Plotly 預設的框選縮放。
+// 單指：按下當下就顯示垂直指標線與該時間點的資料，按住拖曳可移動；
+//       指標已顯示時再輕點一下（沒有拖動）就收起。
+// 雙指：以兩指中心為錨點縮放時間軸。
+//
+// 繪圖區內的觸控事件會在捕獲階段被攔下（stopPropagation），不讓 Plotly 自己的
+// 拖曳／點按處理接手 —— 否則指標會變成放開手指才出現，輕點也會被判成雙擊而重設縮放。
+// 落在時間軸縮圖與區間按鈕上的觸控則放行，那些仍由 Plotly 自己處理。
+// 桌機滑鼠完全不受影響。
 function initTouch() {
   if (!window.matchMedia('(pointer: coarse)').matches) return;
 
   var gd = document.getElementById('chart');
-  var pinch = null;
-  var MIN_SPAN = 3 * 864e5;   // 最小可縮到 3 天，再窄就看不出東西了
+  var pinch = null;      // 雙指縮放的起始狀態
+  var shown = false;     // 指標目前是否顯示中
+  var wasShown = false;  // 這次觸控開始時指標是否已顯示
+  var moved = false;     // 這次觸控有沒有拖動（用來區分輕點與拖曳）
+  var taken = false;     // 這次觸控是否由我們接管
+  var sx = 0, sy = 0;
+  var TAP_SLOP = 6;      // 位移小於這個距離視為輕點
+  var MIN_SPAN = 3 * 864e5;
 
   function xAxis() { return gd._fullLayout && gd._fullLayout.xaxis; }
   function plotLeft() { return gd.getBoundingClientRect().left + xAxis()._offset; }
 
-  // 資料實際涵蓋的範圍，用來擋住縮放到空白區
+  // 只接管主繪圖區內的觸控；縮圖與按鈕留給 Plotly
+  function inPlot(t) {
+    var fl = gd._fullLayout;
+    if (!fl || !fl.xaxis || !fl.yaxis) return false;
+    var r = gd.getBoundingClientRect();
+    var px = t.clientX - r.left, py = t.clientY - r.top;
+    return px >= fl.xaxis._offset && px <= fl.xaxis._offset + fl.xaxis._length &&
+           py >= fl.yaxis._offset && py <= fl.yaxis._offset + fl.yaxis._length;
+  }
+
   function fullExtent() {
     var xa = xAxis(), lo = Infinity, hi = -Infinity;
     (gd.data || []).forEach(function (t) {
@@ -358,12 +378,18 @@ function initTouch() {
     return (lo < hi) ? [lo, hi] : null;
   }
 
-  function showIndicator(touch) {
+  function showAt(touch) {
     var xa = xAxis();
     if (!xa) return;
     var px = touch.clientX - plotLeft();
-    if (px < 0 || px > xa._length) return;
-    Plotly.Fx.hover(gd, {xval: xa.p2d(px)}, 'xy');
+    px = Math.min(Math.max(px, 0), xa._length);
+    Plotly.Fx.hover(gd, {xval: xa.p2l(px)}, 'xy');
+    shown = true;
+  }
+
+  function hide() {
+    Plotly.Fx.unhover(gd);
+    shown = false;
   }
 
   function dist(e) {
@@ -375,8 +401,12 @@ function initTouch() {
   gd.addEventListener('touchstart', function (e) {
     var xa = xAxis();
     if (!xa) return;
+
     if (e.touches.length === 2) {
-      Plotly.Fx.unhover(gd);
+      if (!inPlot(e.touches[0]) && !inPlot(e.touches[1])) return;
+      e.stopPropagation();
+      taken = true;
+      hide();
       pinch = {
         d: dist(e),
         cx: (e.touches[0].clientX + e.touches[1].clientX) / 2 - plotLeft(),
@@ -384,34 +414,53 @@ function initTouch() {
         r1: xa.d2l(xa.range[1]),
         len: xa._length
       };
-    } else if (e.touches.length === 1) {
-      pinch = null;
-      showIndicator(e.touches[0]);
+      return;
     }
-  }, {passive: true});
+
+    if (e.touches.length !== 1 || !inPlot(e.touches[0])) { taken = false; return; }
+    e.stopPropagation();
+    taken = true;
+    pinch = null;
+    wasShown = shown;
+    moved = false;
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+    showAt(e.touches[0]);          // 按下當下就顯示，不等放開
+  }, {capture: true, passive: true});
 
   gd.addEventListener('touchmove', function (e) {
-    if (e.touches.length === 2 && pinch) {
+    if (pinch && e.touches.length === 2) {
+      e.stopPropagation();
       if (e.cancelable) e.preventDefault();
       var scale = pinch.d / dist(e);
       var frac = Math.min(1, Math.max(0, pinch.cx / pinch.len));
       var anchor = pinch.r0 + (pinch.r1 - pinch.r0) * frac;
       var lo = anchor - (anchor - pinch.r0) * scale;
       var hi = anchor + (pinch.r1 - anchor) * scale;
-
       var ext = fullExtent();
       if (ext) { lo = Math.max(lo, ext[0]); hi = Math.min(hi, ext[1]); }
       if (hi - lo < MIN_SPAN) return;
       Plotly.relayout(gd, {'xaxis.range': [lo, hi]});
-    } else if (e.touches.length === 1 && !pinch) {
-      if (e.cancelable) e.preventDefault();
-      showIndicator(e.touches[0]);
+      return;
     }
-  }, {passive: false});
+
+    if (!taken || pinch || e.touches.length !== 1) return;
+    var t = e.touches[0];
+    if (Math.abs(t.clientX - sx) > TAP_SLOP || Math.abs(t.clientY - sy) > TAP_SLOP) moved = true;
+    e.stopPropagation();
+    if (e.cancelable) e.preventDefault();
+    showAt(t);
+  }, {capture: true, passive: false});
 
   gd.addEventListener('touchend', function (e) {
-    if (e.touches.length < 2) pinch = null;
-  }, {passive: true});
+    if (!taken) return;
+    if (e.touches.length > 0) return;      // 還有手指按著
+    e.stopPropagation();
+    if (pinch) { pinch = null; taken = false; return; }
+    // 原本就顯示著，而且這次只是輕點沒拖動 → 收起指標
+    if (wasShown && !moved) hide();
+    taken = false;
+  }, {capture: true, passive: true});
 }
 
 // ── 主題 ───────────────────────────────────────────────────
