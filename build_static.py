@@ -117,8 +117,16 @@ TPL = """<!doctype html>
            justify-content:space-between; margin-bottom:14px; }
   h1 { font-size:20px; margin:0 0 4px; font-weight:600; }
   .meta { font-size:13px; color:var(--muted); line-height:1.6; }
+  .head-right { display:flex; align-items:center; gap:8px; padding-top:1px; }
   .ver { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums;
-         white-space:nowrap; padding-top:3px; }
+         white-space:nowrap; }
+  .iconbtn { display:inline-flex; align-items:center; justify-content:center;
+             width:32px; height:32px; padding:0; border-radius:8px; color:var(--muted);
+             -webkit-tap-highlight-color:transparent; }
+  .iconbtn:hover { color:var(--fg); border-color:var(--muted); }
+  .iconbtn svg { width:17px; height:17px; }
+  .iconbtn.spin svg { animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
   button { font-family:inherit; color:var(--fg); background:transparent;
            border:1px solid var(--border); border-radius:6px; cursor:pointer; }
   /* pan-y：垂直滑動仍由瀏覽器捲動頁面，水平與雙指手勢交給下方的 touch 處理 */
@@ -201,7 +209,16 @@ TPL = """<!doctype html>
       <h1>DRAM 現貨報價趨勢</h1>
       <div class="meta">資料來源：TrendForce　·　單位：USD（盤平均）<br>最後報價日：__LATEST__</div>
     </div>
-    <span class="ver">__VERSION__</span>
+    <div class="head-right">
+      <button id="reload" class="iconbtn" type="button" title="重新載入" aria-label="重新載入">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="23 4 23 10 17 10"/>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+      </button>
+      <span class="ver">__VERSION__</span>
+    </div>
   </header>
 
   <section id="panel-dram" class="panel" role="tabpanel">
@@ -521,6 +538,15 @@ function initTouch() {
     taken = false;
   }, {capture: true, passive: true});
 }
+
+// ── 重新載入 ───────────────────────────────────────────────
+// GitHub Pages 的 CDN 會把頁面快取約 10 分鐘，單純 location.reload() 常常
+// 拿回同一份舊的。改成帶時間戳重新導向，強制取得最新版；用 replace 避免
+// 在瀏覽記錄裡堆一堆條目。
+document.getElementById('reload').addEventListener('click', function () {
+  this.classList.add('spin');
+  location.replace(location.pathname + '?r=' + Date.now());
+});
 
 // ── 主題 ───────────────────────────────────────────────────
 try {
