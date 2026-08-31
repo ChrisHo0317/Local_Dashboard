@@ -1,6 +1,6 @@
-# Local_Dashboard — DRAM 現貨報價走勢
+# Local_Dashboard — 市場走勢
 
-TrendForce DRAM 現貨報價的歷史走勢圖，資料每日自動更新。
+DRAM 現貨報價與美國公債殖利率的歷史走勢圖，資料每日自動更新。
 
 **線上瀏覽：** https://chrisho0317.github.io/Local_Dashboard/
 
@@ -23,10 +23,11 @@ GitHub Pages 只能託管靜態檔案，無法執行 Dash 的伺服器端 callba
 
 | 分頁 | 內容 |
 |------|------|
-| DRAM | 走勢圖 + 收合式型號圖例 |
-| 設定 | 外觀（深色模式）、資料資訊、關於 |
+| DRAM | DRAM 現貨報價（TrendForce）|
+| 美債殖利率 | 美國公債 1／2／5／10／20／30 年期殖利率（MoneyDJ）|
+| 設定 | 外觀（深色模式）、各資料集資訊、關於 |
 
-要新增分頁，在 `build_static.py` 的 `TABS` 加一筆（id / label / SVG path），並在 `TPL` 補上對應的 `<section id="panel-{id}">`。滑動指示器依按鈕實際位置計算，不需要改任何數值。
+要新增圖表分頁，在 `build_static.py` 的 `PANELS` 加一筆即可 —— 標籤列、分頁、圖例、設定頁的資料卡片都會跟著生成，滑動指示器依按鈕實際位置計算，不需要改任何數值。
 
 版本號顯示於標頭右上角。
 
@@ -70,9 +71,11 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | 檔案 | 用途 |
 |------|------|
 | `dram_data.py` | 讀寫 `data/dram_prices.csv`，以 `(item, price_date)` 去重 |
-| `chart.py` | `build_figure(df, dark)` — 唯一的圖表定義來源 |
+| `bond_data.py` | 讀寫 `data/bond_yields.csv`，同時是年期定義的唯一來源 |
+| `bond_scraper.py` | MoneyDJ 殖利率爬蟲（可帶區間取歷史）|
+| `chart.py` | `build_figure()` / `build_bond_figure()` — 唯一的圖表定義來源 |
 | `docs/` | 發佈目錄：`index.html`（產生）+ 圖示與 `manifest.webmanifest`（靜態） |
-| `scraper.py` | TrendForce DRAM Spot Price 爬蟲 |
+| `scraper.py` | TrendForce DRAM 現貨報價爬蟲（僅提供當日快照）|
 | `update_data.py` | 爬蟲 → 合併 CSV → 重建靜態頁 |
 | `build_static.py` | 產生 `docs/index.html` |
 | `app.py` | 本地 Dash 版 |
@@ -89,6 +92,14 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `item` | 型號，如 `DDR5 16Gb (2Gx8) 4800/5600` |
 | `price_date` | 報價日期 `YYYY-MM-DD` |
 | `avg_price` | 盤平均（USD） |
+
+`data/bond_yields.csv`
+
+| 欄位 | 說明 |
+|------|------|
+| `item` | 年期，如 `10年期` |
+| `price_date` | 日期 `YYYY-MM-DD` |
+| `yield_pct` | 殖利率（%）|
 
 ---
 
@@ -115,4 +126,4 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 ---
 
-資料來源：[TrendForce 集邦科技](https://www.trendforce.com.tw/price/dram/dram_spot)
+資料來源：[TrendForce 集邦科技](https://www.trendforce.com.tw/price/dram/dram_spot)　·　[MoneyDJ 債券](https://www.moneydj.com/bond/defaultBD.xdjhtm)
