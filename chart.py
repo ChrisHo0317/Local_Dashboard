@@ -103,6 +103,16 @@ def build_figure(df: pd.DataFrame, dark: bool = False,
         # 垂直指標線：手機上以單指點按移動，spikesnap="data" 讓它對齊實際資料點
         showspikes=True, spikemode="across", spikesnap="data",
         spikethickness=1, spikedash="dot", spikecolor=_SPIKE_COLOR[dark],
+        # 月份一律用數字，不要 Jan/Feb。依縮放程度自動換格式：
+        # 放到日的層級顯示 月/日，月的層級顯示 年/月，再拉遠只顯示年份。
+        tickformatstops=[
+            dict(dtickrange=[None, 604800000], value="%m/%d"),      # 一週以內
+            dict(dtickrange=[604800000, "M1"], value="%m/%d"),      # 週～月
+            dict(dtickrange=["M1", "M12"], value="%Y/%m"),          # 月～年
+            dict(dtickrange=["M12", None], value="%Y"),             # 一年以上
+        ],
+        # 指標標籤標頭的日期格式（原本是 "May 4, 2026"）
+        hoverformat="%Y/%m/%d",
         rangeslider=dict(visible=True, thickness=0.10,
                          bgcolor=bg, bordercolor=_SLIDER_BORDER[dark], borderwidth=1),
         rangeselector=dict(
