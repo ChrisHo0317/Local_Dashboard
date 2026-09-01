@@ -381,8 +381,16 @@ TPL = """<!doctype html>
   .w-date { font-size:11px; color:var(--muted); line-height:1.3; }
   .w-time { font-variant-numeric:tabular-nums; line-height:1.3; }
   /* 分組標題（F1 用兩行：賽事 + 地點/日期）*/
+  .grp-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .grp-main { font-size:12px; font-weight:600; color:var(--fg); }
   .grp-sub { font-size:11px; font-weight:400; color:var(--muted); margin-top:1px; }
+  .grp-chev { font-size:10px; color:var(--muted); transition:transform .15s; flex:none; }
+  /* 可摺疊的分組：整列可點，收合時只留標題 */
+  .cal-day.collapsible .cal-day-row th { cursor:pointer; user-select:none;
+                                        -webkit-tap-highlight-color:transparent; }
+  .cal-day.collapsible .cal-day-row th[aria-expanded="false"] .grp-chev {
+    transform:rotate(-90deg); }
+  .cal-day.collapsed .cal-row, .cal-day.collapsed .cal-now { display:none; }
   /* 日期釘在表頭下方，捲到下一天才換掉 */
   .cal-day-row th { position:sticky; top:calc(var(--head-h,0px) + var(--thead-h,0px));
                     z-index:2; font-size:12px; font-weight:600; color:var(--fg);
@@ -1010,7 +1018,8 @@ function initCalendarTable(table) {
       var allPast = rowDays.length > 0 && rowDays.every(function (x) { return x < iso; });
       d.classList.toggle('today', hasToday);
       d.classList.toggle('past', allPast);
-      var head = d.querySelector('.cal-day-row th');
+      // 有分組標題內層時把「今天」掛在標題文字後面，不要掛在 flex 容器外
+      var head = d.querySelector('.grp-main') || d.querySelector('.cal-day-row th');
       var tag = head.querySelector('.cal-today-tag');
       if (hasToday && !tag) {
         tag = document.createElement('span');
@@ -1051,7 +1060,7 @@ function initCalendarTable(table) {
     var now = Date.now();
 
     for (var i = 0; i < days.length; i++) {
-      if (days[i].hidden) continue;
+      if (days[i].hidden || days[i].classList.contains('collapsed')) continue;
       var rows = Array.prototype.slice.call(days[i].querySelectorAll('.cal-row'))
                       .filter(function (r) { return !r.hidden; });
       for (var j = 0; j < rows.length; j++) {
@@ -1096,6 +1105,40 @@ function initCalendarTable(table) {
       refresh();
     });
   });
+
+  // ── 可摺疊的分組（F1 賽程用）──────────────────────────
+  // 預設只展開「進行中或下一場」那一組，整季 20 幾站才不會一次全部攤開。
+  var collapsible = days.filter(function (d) { return d.classList.contains('collapsible'); });
+  if (collapsible.length) {
+    collapsible.forEach(function (d) {
+      var th = d.querySelector('.cal-day-row th');
+      function toggle() {
+        var open = d.classList.toggle('collapsed') === false;
+        th.setAttribute('aria-expanded', String(open));
+        placeNow();
+        syncSticky();
+      }
+      th.addEventListener('click', toggle);
+      th.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      });
+    });
+
+    var now = Date.now();
+    var target = null;
+    for (var gi = 0; gi < collapsible.length && !target; gi++) {
+      var rs = collapsible[gi].querySelectorAll('.cal-row');
+      for (var ri = 0; ri < rs.length; ri++) {
+        if (Number(rs[ri].dataset.ts) > now) { target = collapsible[gi]; break; }
+      }
+    }
+    if (!target) target = collapsible[collapsible.length - 1];   // 賽季已結束就開最後一站
+    collapsible.forEach(function (d) {
+      var open = (d === target);
+      d.classList.toggle('collapsed', !open);
+      d.querySelector('.cal-day-row th').setAttribute('aria-expanded', String(open));
+    });
+  }
 
   refresh();
   setInterval(refresh, 30000);   // 每半分鐘更新時鐘與標示線位置

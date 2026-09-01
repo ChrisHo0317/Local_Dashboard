@@ -137,9 +137,15 @@ def _schedule_html(df: pd.DataFrame) -> str:
             span += f" – {last_day.month}/{last_day.day:02d}"
 
         rows = [
-            '        <tr class="cal-day-row"><th colspan="3" scope="rowgroup">\n'
-            f'          <div class="grp-main">R{escape(rnd)}　{escape(race)}</div>\n'
-            f'          <div class="grp-sub">{escape(location)} · {span}</div>\n'
+            '        <tr class="cal-day-row"><th colspan="3" scope="rowgroup"'
+            ' role="button" tabindex="0" aria-expanded="true">\n'
+            '          <div class="grp-head">\n'
+            '            <div>\n'
+            f'              <div class="grp-main">R{escape(rnd)}　{escape(race)}</div>\n'
+            f'              <div class="grp-sub">{escape(location)} · {span}</div>\n'
+            '            </div>\n'
+            '            <span class="grp-chev">&#9660;</span>\n'
+            '          </div>\n'
             '        </th></tr>'
         ]
         for _, e in group.iterrows():
@@ -163,7 +169,7 @@ def _schedule_html(df: pd.DataFrame) -> str:
 
         # data-date 給「已過去」判斷用：整站最後一個場次的日期
         bodies.append(
-            f'      <tbody class="cal-day" data-date="{last_day.isoformat()}">\n'
+            f'      <tbody class="cal-day collapsible" data-date="{last_day.isoformat()}">\n'
             + "\n".join(rows) + "\n      </tbody>"
         )
 
