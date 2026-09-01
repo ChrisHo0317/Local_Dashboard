@@ -172,3 +172,145 @@ class F1CalendarScraper:
                     out[key] = value
                     break
         return out
+
+
+# ─────────────────────────────────────────────────────────────
+# 車手／車隊積分榜（f1-boxbox.com）
+# ─────────────────────────────────────────────────────────────
+STANDINGS_URL = "https://f1-boxbox.com/zh-tw/formula-1/{year}/standings"
+
+# 站上的中文名簡繁混雜（「阿蘭·普羅斯特」是正體、「乔治·拉塞尔」是簡體），
+# 用 OpenCC 統一轉成台灣正體。沒裝 opencc 時就原樣保留。
+try:
+    from opencc import OpenCC
+    _CC = OpenCC("s2twp")
+except Exception:                                   # pragma: no cover
+    _CC = None
+
+
+def _num(value) -> str:
+    """來源對「0 勝／0 頒獎台」的車手直接省略該欄位，沒有就是 0。"""
+    try:
+        return str(int(value))
+    except (TypeError, ValueError):
+        return "0"
+
+
+def _to_tw(text: str) -> str:
+    if not text or _CC is None:
+        return text
+    try:
+        return _CC.convert(text)
+    except Exception:
+        return text
+
+
+class F1StandingsScraper:
+    """
+    抓 f1-boxbox.com 的車手與車隊積分榜。
+
+    頁面的 RSC payload 裡有結構化的 driverStandings / constructorStandings
+    （名次、積分、勝場、頒獎台、名次升降），但名字是英文；
+    中文名則在渲染後的 HTML 連結文字裡：
+
+        <a href="/zh-tw/formula-1/drivers/kimi-antonelli">基米·安托內利</a>
+        <a href="/zh-tw/formula-1/teams/mercedes">梅賽德斯</a>
+
+    兩邊以 id 對起來，就能得到「中文名 + 完整數據」。
+    """
+
+    def __init__(self, logger: logging.Logger | None = None):
+        self.logger = logger or logging.getLogger("F1StandingsScraper")
+
+    def fetch_standings(self, year: int) -> list[dict]:
+        """
+        回傳: [{"kind","position","name","name_en","team","points","wins","podiums","gained"}, ...]
+        kind 為 driver 或 constructor。失敗則回傳空串列。
+        """
+        try:
+            session = cffi_requests.Session(impersonate="chrome124")
+            resp = session.get(
+                STANDINGS_URL.format(year=year),
+                headers={"Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8"},
+                timeout=40,
+            )
+            resp.raise_for_status()
+        except Exception as e:
+            self.logger.error(f"f1-boxbox 頁面讀取失敗: {e}")
+            return []
+
+        html = resp.text
+        raw = html.replace('\\"', '"')
+
+        drivers = self._grab_array(raw, "driverStandings")
+        teams = self._grab_array(raw, "constructorStandings")
+        if not drivers and not teams:
+            self.logger.error("f1-boxbox：找不到積分榜資料（頁面可能改版）")
+            return []
+
+        driver_zh = self._link_names(html, "drivers")
+        team_zh = self._link_names(html, "teams")
+
+        rows = []
+        for d in drivers:
+            rows.append({
+                "kind": "driver",
+                "position": str(d.get("positionText") or d.get("positionDisplayOrder", "")),
+                "name": driver_zh.get(d.get("id", ""), "") or d.get("name", ""),
+                "name_en": d.get("name", ""),
+                "team": team_zh.get(d.get("constructorId", ""), "") or d.get("constructorName", ""),
+                "points": _num(d.get("points")),
+                "wins": _num(d.get("wins")),
+                "podiums": _num(d.get("podiums")),
+                "gained": _num(d.get("positionsGained")),
+            })
+        for t in teams:
+            rows.append({
+                "kind": "constructor",
+                "position": str(t.get("positionText") or t.get("positionDisplayOrder", "")),
+                "name": team_zh.get(t.get("id", ""), "") or t.get("name", ""),
+                "name_en": t.get("name", ""),
+                "team": "",
+                "points": _num(t.get("points")),
+                "wins": _num(t.get("wins")),
+                "podiums": _num(t.get("podiums")),
+                "gained": _num(t.get("positionsGained")),
+            })
+
+        self.logger.info(
+            f"f1-boxbox：{year} 年 {len(drivers)} 位車手、{len(teams)} 支車隊"
+        )
+        return rows
+
+    def _grab_array(self, raw: str, key: str) -> list[dict]:
+        m = re.search('"' + key + '"' + r'\s*:\s*\[', raw)
+        if not m:
+            return []
+        start = raw.index("[", m.end() - 1)
+        depth, i = 0, start
+        while i < len(raw):
+            if raw[i] == "[":
+                depth += 1
+            elif raw[i] == "]":
+                depth -= 1
+                if depth == 0:
+                    break
+            i += 1
+        else:
+            return []
+        try:
+            return json.loads(raw[start:i + 1])
+        except ValueError as e:
+            self.logger.error(f"f1-boxbox：{key} 解析失敗 {e}")
+            return []
+
+    @staticmethod
+    def _link_names(html: str, section: str) -> dict:
+        """從 <a href=".../drivers/<id>">中文名</a> 取出 id → 中文名。"""
+        out = {}
+        pattern = r'href="/[^"]*/' + section + r'/([a-z0-9-]+)"[^>]*>([^<]{1,30})</a>'
+        for m in re.finditer(pattern, html):
+            name = m.group(2).strip()
+            if name and any("一" <= c <= "鿿" for c in name):
+                out.setdefault(m.group(1), _to_tw(name))
+        return out

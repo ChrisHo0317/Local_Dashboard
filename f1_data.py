@@ -81,3 +81,48 @@ def merge_schedule(rows: list[dict]) -> int:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     incoming.to_csv(CSV_PATH, index=False, encoding="utf-8")
     return len(incoming)
+
+
+# ── 積分榜 ───────────────────────────────────────────────────
+STANDINGS_CSV = DATA_DIR / "f1_standings.csv"
+STANDINGS_COLUMNS = ["kind", "position", "name", "name_en", "team",
+                     "points", "wins", "podiums", "gained"]
+
+
+def load_standings() -> pd.DataFrame:
+    """讀取積分榜 CSV。檔案不存在時回傳空 DataFrame。"""
+    if not STANDINGS_CSV.exists():
+        return pd.DataFrame(columns=STANDINGS_COLUMNS)
+    df = pd.read_csv(STANDINGS_CSV, dtype=str).fillna("")
+    if df.empty:
+        return pd.DataFrame(columns=STANDINGS_COLUMNS)
+    df["_pos"] = pd.to_numeric(df["position"], errors="coerce").fillna(999)
+    return df.sort_values(["kind", "_pos"]).reset_index(drop=True)
+
+
+def merge_standings(rows: list[dict]) -> int:
+    """
+    寫入積分榜，回傳「有異動」時的筆數。
+
+    積分榜每站之後都會變，舊快照沒有保留意義，一律以最新抓到的為準。
+    """
+    if not rows:
+        return 0
+    incoming = pd.DataFrame(rows, columns=STANDINGS_COLUMNS).astype(str).fillna("")
+    if incoming.empty:
+        return 0
+
+    if STANDINGS_CSV.exists():
+        existing = pd.read_csv(STANDINGS_CSV, dtype=str).fillna("")
+        existing = existing.reindex(columns=STANDINGS_COLUMNS)
+        if existing.equals(incoming):
+            return 0
+
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    incoming.to_csv(STANDINGS_CSV, index=False, encoding="utf-8")
+    return len(incoming)
+
+
+def load_all() -> dict:
+    """F1 分頁需要的全部資料（賽程 + 積分榜）。"""
+    return {"schedule": load_schedule(), "standings": load_standings()}

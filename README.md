@@ -27,7 +27,7 @@ GitHub Pages 只能託管靜態檔案，無法執行 Dash 的伺服器端 callba
 | 美債殖利率 | 美國公債 1／2／5／10／20／30 年期殖利率（MoneyDJ）|
 | 黃金 | 國際金價 COMEX 近月期貨，USD／盎司（Yahoo Finance）|
 | 行事曆 | 財經事件行事曆，中文化、表格呈現（ForexFactory）|
-| F1 | F1 賽季賽程表，依大獎賽分組、繁體中文（F1 Calendar）|
+| F1 | 賽程（依大獎賽分組）／車手積分榜／車隊積分榜三個二階分頁（F1 Calendar、f1-boxbox）|
 | 設定 | 外觀（深色模式）、各資料集資訊與顯示開關、關於 |
 
 要新增圖表分頁，在 `build_static.py` 的 `PANELS` 加一筆即可 —— 標籤列、分頁、圖例、設定頁的資料卡片都會跟著生成，滑動指示器依按鈕實際位置計算，不需要改任何數值。
@@ -86,8 +86,8 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `calendar_i18n.py` | 事件名稱／國別／影響程度的中文化 |
 | `calendar_render.py` | 行事曆分頁的 HTML 產生 |
 | `f1_data.py` | 讀寫 `data/f1_schedule.csv` |
-| `f1_scraper.py` | f1calendar.com 賽程爬蟲 |
-| `f1_render.py` | F1 分頁的 HTML 產生（沿用行事曆的表格樣式）|
+| `f1_scraper.py` | f1calendar.com 賽程爬蟲 + f1-boxbox 積分榜爬蟲 |
+| `f1_render.py` | F1 分頁的 HTML 產生：二階分頁 + 賽程表 + 積分榜 |
 | `chart.py` | `build_figure()` / `build_bond_figure()` — 唯一的圖表定義來源 |
 | `docs/` | 發佈目錄：`index.html`（產生）+ 圖示與 `manifest.webmanifest`（靜態） |
 | `scraper.py` | TrendForce DRAM 現貨報價爬蟲（僅提供當日快照）|
@@ -214,3 +214,21 @@ f1calendar.com 站上的表格只顯示「6 Mar 01:30」這種沒有年份、也
 
 版面依「大獎賽」分組（一個賽事週末一組），不是依日期 —— 練習賽、排位賽、正賽本來就是
 同一個週末的事，照日期拆開反而看不出整體。組標題顯示輪次、賽事、地點與日期區間。
+
+## 關於 F1 積分榜
+
+來源 https://f1-boxbox.com/zh-tw/formula-1/2026/standings
+
+頁面的 RSC payload 裡有結構化的 `driverStandings` / `constructorStandings`
+（名次、積分、勝場、頒獎台、名次升降），但名字是英文；中文名在渲染後的 HTML
+連結文字裡（`<a href=".../drivers/kimi-antonelli">基米·安托內利</a>`），
+兩邊以 id 對起來就能得到「中文名 + 完整數據」。
+
+兩個要注意的地方：
+
+- 站上的中文名**簡繁混雜**（「阿蘭·普羅斯特」是正體、「乔治·拉塞尔」是簡體），
+  用 OpenCC 的 `s2twp` 統一轉成台灣正體。沒裝 opencc 時原樣保留。
+- 來源對「0 勝／0 頒獎台」的車手**直接省略該欄位**（23 位裡有 15 位），
+  沒有就是 0，不能當成缺值。
+
+積分榜每站之後都會變，舊快照沒有保留意義，一律以最新抓到的為準。

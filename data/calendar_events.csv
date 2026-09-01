@@ -51,6 +51,7 @@ event_time,country,title,impact,forecast,previous
 2026-09-01T10:15:00-04:00,USD,Omdia Total Vehicle Sales,Low,16.3M,16.3M
 2026-09-01T10:51:00-04:00,NZD,GDT Price Index,Low,,2.3%
 2026-09-01T11:15:00-04:00,All,G20 Meetings,Low,,
+2026-09-01T11:25:00-04:00,NZD,GDT Price Index,Low,,2.3%
 2026-09-01T16:30:00-04:00,USD,API Weekly Statistical Bulletin,Low,,
 2026-09-01T18:45:00-04:00,NZD,Building Consents m/m,Low,,-3.6%
 2026-09-01T19:50:00-04:00,JPY,Monetary Base y/y,Low,-13.5%,-13.8%
@@ -67,7 +68,7 @@ event_time,country,title,impact,forecast,previous
 2026-09-02T09:45:00-04:00,CAD,Overnight Rate,High,2.25%,2.25%
 2026-09-02T10:00:00-04:00,USD,Factory Orders m/m,Low,0.7%,-0.3%
 2026-09-02T10:30:00-04:00,CAD,BOC Press Conference,High,,
-2026-09-02T10:30:00-04:00,USD,Crude Oil Inventories,Low,,0.1M
+2026-09-02T10:30:00-04:00,USD,Crude Oil Inventories,Low,0.0M,0.1M
 2026-09-02T14:00:00-04:00,USD,Beige Book,Low,,
 2026-09-02T16:10:00-04:00,NZD,RBNZ Gov Breman Speaks,Medium,,
 2026-09-02T18:45:00-04:00,NZD,Overseas Trade Index q/q,Low,-2.2%,-2.0%

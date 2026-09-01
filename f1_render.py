@@ -1,15 +1,16 @@
 """
-把 F1 賽程轉成靜態 HTML（表格）
+把 F1 賽程與積分榜轉成靜態 HTML
 
-依「大獎賽」分組，一個賽事週末一組 —— 練習賽、排位賽、正賽本來就是同一個
-週末的事，照日期拆開反而看不出整體。組標題顯示輪次、賽事、地點與日期區間，
-每一列則是單一場次。
+分頁內再分三個二階分頁：
+    賽程  依大獎賽分組的場次表（一個賽事週末一組）
+    車手  車手積分榜
+    車隊  車隊積分榜
 
-沿用財經行事曆那一套 class（cal-table / cal-day / cal-row …），
-樣式與「今天」標記、現在時間標示線、篩選都能直接共用。
+賽程沿用財經行事曆那一套 class（cal-table / cal-day / cal-row …），
+樣式與「今天」標記、現在時間標示線、篩選都能直接共用；
+積分榜用另一組 class（rank-table），沒有時間概念。
 
 時間換算成台北時間（UTC+8，固定位移，不依賴系統的 tz 資料庫）。
-賽事與場次名稱來源本身就是繁體中文，不需要另外翻譯。
 """
 from datetime import datetime, timedelta, timezone
 from html import escape
@@ -26,6 +27,16 @@ PAST_DAYS = 7
 WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"]
 
 RANK_CLASS = {3: "i-high", 2: "i-mid", 1: "i-low"}
+
+# (id, 標籤, 頁面標題, 說明)。切換子分頁時頁面標頭會跟著換。
+SUBTABS = [
+    ("sched", "賽程", "F1 賽程表",
+     "資料來源：F1 Calendar　·　時間為台北時間（UTC+8）"),
+    ("drivers", "車手", "F1 車手積分榜",
+     "資料來源：f1-boxbox　·　名次升降為與上一站比較"),
+    ("teams", "車隊", "F1 車隊積分榜",
+     "資料來源：f1-boxbox　·　名次升降為與上一站比較"),
+]
 
 
 def _local(ts: pd.Timestamp) -> datetime:
@@ -46,37 +57,52 @@ def window(df: pd.DataFrame) -> pd.DataFrame:
     return df[keep]
 
 
-def stats(df: pd.DataFrame) -> dict:
+def stats(data: dict) -> dict:
     """設定分頁用的摘要。"""
+    df = data.get("schedule", pd.DataFrame())
+    standings = data.get("standings", pd.DataFrame())
     if df.empty or "_ts" not in df:
-        return {"rows": 0, "range": "無資料", "shown": 0, "latest": "無資料", "races": 0}
+        return {"rows": 0, "range": "無資料", "shown": 0, "latest": "無資料",
+                "races": 0, "drivers": 0}
     first = _local(df["_ts"].min()).strftime("%Y-%m-%d")
     last = _local(df["_ts"].max()).strftime("%Y-%m-%d")
     return {
         "rows": len(df),
         "races": df["race"].nunique(),
+        "drivers": int((standings["kind"] == "driver").sum()) if not standings.empty else 0,
         "range": f"{first} ～ {last}",
         "shown": len(window(df)),
         "latest": last,
     }
 
 
-def panel_html(df: pd.DataFrame) -> str:
-    """產生 F1 分頁的內容（不含 <section> 外框）。"""
+def _subtabs_html() -> str:
+    btns = []
+    for i, (sid, label, title, meta) in enumerate(SUBTABS):
+        btns.append(
+            f'      <button type="button" class="subtab" data-sub="{sid}"'
+            f' data-title="{escape(title)}" data-meta="{escape(meta)}"'
+            f' aria-selected="{"true" if i == 0 else "false"}">{label}</button>'
+        )
+    return ('  <div class="subtabs" role="tablist" aria-label="F1 子分頁">\n'
+            + "\n".join(btns) + "\n  </div>")
+
+
+def _schedule_html(df: pd.DataFrame) -> str:
     head = (
-        '  <div class="cal-bar">\n'
-        '    <div class="cal-filter" role="group" aria-label="場次篩選">\n'
-        '      <button type="button" class="chip" data-min="0" aria-pressed="true">全部</button>\n'
-        '      <button type="button" class="chip" data-min="2" aria-pressed="false">排位＋正賽</button>\n'
-        '      <button type="button" class="chip" data-min="3" aria-pressed="false">僅正賽</button>\n'
-        '    </div>\n'
-        '    <div class="cal-clock" aria-live="off">—</div>\n'
-        '  </div>'
+        '    <div class="cal-bar">\n'
+        '      <div class="cal-filter" role="group" aria-label="場次篩選">\n'
+        '        <button type="button" class="chip" data-min="0" aria-pressed="true">全部</button>\n'
+        '        <button type="button" class="chip" data-min="2" aria-pressed="false">排位＋正賽</button>\n'
+        '        <button type="button" class="chip" data-min="3" aria-pressed="false">僅正賽</button>\n'
+        '      </div>\n'
+        '      <div class="cal-clock" aria-live="off">—</div>\n'
+        '    </div>'
     )
 
     view = window(df)
     if view.empty:
-        return head + '\n  <p class="cal-empty">本季賽程已結束或尚未公布。</p>'
+        return head + '\n    <p class="cal-empty">本季賽程已結束或尚未公布。</p>'
 
     bodies = []
     # 依輪次排序（round 是字串，要轉數字），同一站的場次照時間排
@@ -94,10 +120,10 @@ def panel_html(df: pd.DataFrame) -> str:
             span += f" – {last_day.month}/{last_day.day:02d}"
 
         rows = [
-            '      <tr class="cal-day-row"><th colspan="3" scope="rowgroup">\n'
-            f'        <div class="grp-main">R{escape(rnd)}　{escape(race)}</div>\n'
-            f'        <div class="grp-sub">{escape(location)} · {span}</div>\n'
-            '      </th></tr>'
+            '        <tr class="cal-day-row"><th colspan="3" scope="rowgroup">\n'
+            f'          <div class="grp-main">R{escape(rnd)}　{escape(race)}</div>\n'
+            f'          <div class="grp-sub">{escape(location)} · {span}</div>\n'
+            '        </th></tr>'
         ]
         for _, e in group.iterrows():
             local = _local(e["_ts"])
@@ -105,32 +131,97 @@ def panel_html(df: pd.DataFrame) -> str:
             day = f"{local.month}/{local.day:02d}（{WEEKDAYS[local.weekday()]}）"
 
             rows.append(
-                f'      <tr class="cal-row" data-impact="{rank}"'
+                f'        <tr class="cal-row" data-impact="{rank}"'
                 f' data-ts="{int(e["_ts"].timestamp() * 1000)}"'
                 f' data-day="{local.strftime("%Y-%m-%d")}">\n'
-                f'        <td class="cal-when">\n'
-                f'          <div class="w-date">{day}</div>\n'
-                f'          <div class="w-time">{local.strftime("%H:%M")}</div>\n'
-                f'        </td>\n'
-                f'        <td class="cal-imp"><span class="dot {RANK_CLASS.get(rank, "i-low")}"'
+                f'          <td class="cal-when">\n'
+                f'            <div class="w-date">{day}</div>\n'
+                f'            <div class="w-time">{local.strftime("%H:%M")}</div>\n'
+                f'          </td>\n'
+                f'          <td class="cal-imp"><span class="dot {RANK_CLASS.get(rank, "i-low")}"'
                 f' title="{escape(e["session"])}"></span></td>\n'
-                f'        <td class="cal-ev"><div class="cal-title">{escape(e["session"])}</div></td>\n'
-                f'      </tr>'
+                f'          <td class="cal-ev"><div class="cal-title">{escape(e["session"])}</div></td>\n'
+                f'        </tr>'
             )
 
         # data-date 給「已過去」判斷用：整站最後一個場次的日期
         bodies.append(
-            f'    <tbody class="cal-day" data-date="{last_day.isoformat()}">\n'
-            + "\n".join(rows) + "\n    </tbody>"
+            f'      <tbody class="cal-day" data-date="{last_day.isoformat()}">\n'
+            + "\n".join(rows) + "\n      </tbody>"
         )
 
     table = (
-        '  <table class="cal-table">\n'
-        '    <thead>\n'
-        '      <tr><th class="cal-when">日期時間</th>'
+        '    <table class="cal-table">\n'
+        '      <thead>\n'
+        '        <tr><th class="cal-when">日期時間</th>'
         '<th class="cal-imp"><span class="sr">場次類型</span></th>'
         '<th class="cal-ev">場次</th></tr>\n'
-        '    </thead>\n'
-        + "\n".join(bodies) + "\n  </table>"
+        '      </thead>\n'
+        + "\n".join(bodies) + "\n    </table>"
     )
     return head + "\n" + table
+
+
+def _gained_html(value: str) -> str:
+    """名次升降：正數往上、負數往下、0 不顯示。"""
+    try:
+        n = int(float(value))
+    except (TypeError, ValueError):
+        return ""
+    if n > 0:
+        return f'<span class="gain up">▲{n}</span>'
+    if n < 0:
+        return f'<span class="gain down">▼{abs(n)}</span>'
+    return ""
+
+
+def _standings_html(df: pd.DataFrame, kind: str, name_header: str) -> str:
+    part = df[df["kind"] == kind] if not df.empty else df
+    if part.empty:
+        return '    <p class="cal-empty">尚無積分榜資料。</p>'
+
+    rows = []
+    for _, e in part.iterrows():
+        sub = (f'<div class="cal-sub">{escape(e["team"])}</div>'
+               if kind == "driver" and e["team"] else "")
+        rows.append(
+            '      <tr>\n'
+            f'        <td class="rk-pos">{escape(e["position"])}{_gained_html(e["gained"])}</td>\n'
+            f'        <td class="rk-name">\n'
+            f'          <div class="cal-title">{escape(e["name"])}</div>\n'
+            f'          {sub}\n'
+            f'        </td>\n'
+            f'        <td class="rk-pts">{escape(e["points"])}</td>\n'
+            f'        <td class="rk-num">{escape(e["wins"])}</td>\n'
+            f'        <td class="rk-num">{escape(e["podiums"])}</td>\n'
+            '      </tr>'
+        )
+
+    return (
+        '    <table class="rank-table">\n'
+        '      <thead>\n'
+        f'        <tr><th class="rk-pos">名次</th><th class="rk-name">{name_header}</th>'
+        '<th class="rk-pts">積分</th><th class="rk-num">勝場</th>'
+        '<th class="rk-num">頒獎台</th></tr>\n'
+        '      </thead>\n'
+        '      <tbody>\n'
+        + "\n".join(rows) + "\n      </tbody>\n    </table>"
+    )
+
+
+def panel_html(data: dict) -> str:
+    """產生 F1 分頁的內容（不含 <section> 外框）。"""
+    schedule = data.get("schedule", pd.DataFrame())
+    standings = data.get("standings", pd.DataFrame())
+
+    panels = [
+        ('sched', _schedule_html(schedule)),
+        ('drivers', _standings_html(standings, "driver", "車手")),
+        ('teams', _standings_html(standings, "constructor", "車隊")),
+    ]
+    body = []
+    for i, (sid, content) in enumerate(panels):
+        hidden = "" if i == 0 else " hidden"
+        body.append(f'  <div class="subpanel" data-sub="{sid}"{hidden}>\n{content}\n  </div>')
+
+    return _subtabs_html() + "\n" + "\n".join(body)

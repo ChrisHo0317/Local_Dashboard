@@ -34,7 +34,7 @@ from calendar_data import CSV_PATH as CAL_CSV, load_events
 from calendar_render import panel_html as cal_panel_html, stats as cal_stats
 from chart import build_bond_figure, build_figure, build_gold_figure, series_colors
 from dram_data import BASE_DIR, CSV_PATH as DRAM_CSV, latest_date as dram_latest, load_dram
-from f1_data import CSV_PATH as F1_CSV, latest_date as f1_latest, load_schedule
+from f1_data import CSV_PATH as F1_CSV, load_all as load_f1_all
 from f1_render import panel_html as f1_panel_html, stats as f1_stats
 from gold_data import CSV_PATH as GOLD_CSV, latest_date as gold_latest, load_gold
 from version import __version__
@@ -125,7 +125,7 @@ PANELS = [
         "source_name": "F1 Calendar",
         "source_url": "https://f1calendar.com/zh-HK",
         "csv": F1_CSV,
-        "load": load_schedule,
+        "load": load_f1_all,
         "render": f1_panel_html,
         "stats": f1_stats,
         # 方格旗圖示
@@ -401,6 +401,29 @@ TPL = """<!doctype html>
   .cal-now .now-tag { font-size:11px; font-weight:600; color:#fff; background:#e03131;
                       border-radius:999px; padding:1px 8px; font-variant-numeric:tabular-nums; }
   .cal-empty { color:var(--muted); font-size:13px; }
+
+  /* 二階分頁 */
+  .subtabs { display:flex; gap:6px; margin-bottom:14px; }
+  .subtab { font-size:13px; padding:7px 16px; border-radius:999px; color:var(--muted); }
+  .subtab[aria-selected="true"] { background:var(--pill); color:var(--fg); border-color:transparent;
+                                  font-weight:600; }
+
+  /* 積分榜 */
+  .rank-table { width:100%; border-collapse:separate; border-spacing:0;
+                table-layout:fixed; font-size:13px; }
+  .rank-table th, .rank-table td { text-align:left; vertical-align:top; padding:10px 4px; }
+  .rank-table thead th { position:sticky; top:var(--head-h,0px); z-index:3; background:var(--bg);
+                         font-size:11px; font-weight:600; color:var(--muted);
+                         box-shadow:inset 0 -1px 0 var(--border); padding:6px 4px; }
+  .rank-table tbody td { box-shadow:inset 0 -1px 0 var(--border); }
+  .rank-table .rk-pos  { width:52px; font-variant-numeric:tabular-nums; color:var(--muted); }
+  .rank-table .rk-pts  { width:50px; text-align:right; font-variant-numeric:tabular-nums;
+                         font-weight:600; }
+  .rank-table .rk-num  { width:44px; text-align:right; font-size:12px; color:var(--muted);
+                         font-variant-numeric:tabular-nums; }
+  .gain { font-size:10px; margin-left:3px; }
+  .gain.up { color:#2f9e44; }
+  .gain.down { color:#e03131; }
 
   /* 底部標籤列 */
   /* 分頁再增加時標籤列會塞不下，允許橫向捲動當保險（塞得下時不會出現捲軸）*/
@@ -730,6 +753,10 @@ function selectTab(name, animate) {
   var h = HEAD[name];
   document.getElementById('page-title').textContent = h.title;
   document.getElementById('page-meta').innerHTML = h.meta;
+  // 有二階分頁的話，回到主分頁時重設回第一個子分頁
+  var panel = document.getElementById('panel-' + name);
+  var firstSub = panel ? panel.querySelector('.subtab') : null;
+  if (firstSub && firstSub.getAttribute('aria-selected') !== 'true') firstSub.click();
   // 圖表第一次顯示（或主題變更後首次顯示）才真正繪製；
   // 已畫過的只要重新丈量寬度即可。
   var c = CHARTS[name];
@@ -1060,6 +1087,24 @@ function initCalendarTable(table) {
 
 Array.prototype.slice.call(document.querySelectorAll('.cal-table'))
   .forEach(initCalendarTable);
+
+// ── 二階分頁（目前只有 F1 用）───────────────────────────────
+Array.prototype.slice.call(document.querySelectorAll('.subtabs')).forEach(function (bar) {
+  var panel = bar.closest('.panel');
+  var tabs = Array.prototype.slice.call(bar.querySelectorAll('.subtab'));
+  var subs = Array.prototype.slice.call(panel.querySelectorAll('.subpanel'));
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      tabs.forEach(function (x) { x.setAttribute('aria-selected', String(x === t)); });
+      subs.forEach(function (p) { p.hidden = (p.dataset.sub !== t.dataset.sub); });
+      if (t.dataset.title) {
+        document.getElementById('page-title').textContent = t.dataset.title;
+        document.getElementById('page-meta').innerHTML = t.dataset.meta || '';
+      }
+      syncSticky();   // 內容換了，黏著層高度要重量
+    });
+  });
+});
 
 // ── 重新載入 ───────────────────────────────────────────────
 // GitHub Pages 的 CDN 會把頁面快取約 10 分鐘，單純 location.reload() 常常
