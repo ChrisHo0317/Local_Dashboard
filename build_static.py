@@ -193,7 +193,11 @@ def _settings_cards(stats: dict) -> str:
             middle = (f'      <div class="row"><span>資料筆數</span><b>{s["rows"]} 筆</b></div>\n'
                       f'      <div class="row"><span>{p["item_label"]}數</span><b>{s["items"]} 項</b></div>')
         cards.append(f'''    <div class="card">
-      <div class="card-h">{p["title"]}　資料</div>
+      <div class="card-h">
+        <span>{p["title"]}　資料</span>
+        <button class="switch sw-sm" type="button" role="switch" data-panel="{p["id"]}"
+                aria-checked="true" aria-label="顯示{p["tab"]}分頁"><span class="knob"></span></button>
+      </div>
       <div class="row"><span>最後更新日</span><b>{s["latest"]}</b></div>
 {middle}
       <div class="row"><span>涵蓋區間</span><b>{s["range"]}</b></div>
@@ -299,8 +303,13 @@ TPL = """<!doctype html>
   /* 設定分頁 */
   .card { border:1px solid var(--border); border-radius:10px; background:var(--card);
           padding:4px 14px; margin-bottom:14px; max-width:560px; }
-  .card-h { font-size:12px; font-weight:600; letter-spacing:.06em; color:var(--muted);
-            padding:12px 0 6px; }
+  .card-h { display:flex; align-items:center; justify-content:space-between; gap:12px;
+            font-size:12px; font-weight:600; letter-spacing:.06em; color:var(--muted);
+            padding:11px 0 7px; }
+  /* 分頁顯示開關放在卡片右上角，比外觀那顆小一點，才不會喧賓奪主 */
+  .switch.sw-sm { width:38px; height:22px; }
+  .switch.sw-sm .knob { width:16px; height:16px; }
+  .switch.sw-sm[aria-checked="true"] .knob { transform:translateX(16px); }
   .row { display:flex; align-items:center; justify-content:space-between; gap:16px;
          padding:11px 0; border-top:1px solid var(--border); font-size:14px; }
   .row b { font-weight:500; font-variant-numeric:tabular-nums; }
@@ -455,6 +464,7 @@ __SETTINGS_CARDS__
 // 各嵌一份會讓頁面體積直接翻倍。
 const CHARTS = __CHARTS__;
 const HEAD   = __HEAD__;           // 各分頁的標題與說明
+const PANEL_IDS = __PANEL_IDS__;   // 可切換顯示的分頁（設定分頁不可關）
 const MOBILE_Q = window.matchMedia('(max-width: 820px)');
 
 let dark = false;
@@ -647,6 +657,47 @@ tabs.forEach(function (t) {
 window.addEventListener('resize', function () {
   var cur = tabs.filter(function (t) { return t.getAttribute('aria-selected') === 'true'; })[0];
   if (cur) movePill(cur, false);
+});
+
+// ── 分頁顯示切換（設定分頁裡每張卡片右上角的開關）───────────
+var VIS_KEY = 'dash-visible';
+var visible = {};
+try { visible = JSON.parse(localStorage.getItem(VIS_KEY)) || {}; } catch (e) { visible = {}; }
+
+function isVisible(id) { return visible[id] !== false; }   // 預設全開
+
+// reselect：由開關觸發時要處理「正在看的分頁被關掉」
+function applyVisibility(reselect) {
+  PANEL_IDS.forEach(function (id) {
+    var on = isVisible(id);
+    var tab = document.querySelector('.tab[data-tab="' + id + '"]');
+    if (tab) tab.hidden = !on;
+    var sw = document.querySelector('.switch[data-panel="' + id + '"]');
+    if (sw) sw.setAttribute('aria-checked', String(on));
+    if (!on) {
+      var panel = document.getElementById('panel-' + id);
+      if (panel) panel.hidden = true;
+    }
+  });
+
+  if (!reselect) return;
+
+  var cur = tabs.filter(function (t) { return t.getAttribute('aria-selected') === 'true'; })[0];
+  if (!cur || cur.hidden) {
+    var next = tabs.filter(function (t) { return !t.hidden; })[0];
+    if (next) selectTab(next.dataset.tab, false);
+  } else {
+    movePill(cur, false);   // 分頁數變了，指示器要重新定位
+  }
+}
+
+document.querySelectorAll('.switch[data-panel]').forEach(function (sw) {
+  sw.addEventListener('click', function () {
+    var id = sw.dataset.panel;
+    visible[id] = !isVisible(id);
+    try { localStorage.setItem(VIS_KEY, JSON.stringify(visible)); } catch (e) {}
+    applyVisibility(true);
+  });
 });
 
 // ── 觸控手勢 ───────────────────────────────────────────────
@@ -923,7 +974,9 @@ try {
 
 document.querySelectorAll('.legend-bar').forEach(buildLegend);
 applyTheme();
-selectTab(Object.keys(CHARTS)[0], false);   // 只會畫出第一張圖
+applyVisibility(false);
+var firstTab = tabs.filter(function (t) { return !t.hidden; })[0];
+selectTab(firstTab ? firstTab.dataset.tab : 'settings', false);   // 只會畫出這一張圖
 syncSticky();
 Object.keys(CHARTS).forEach(function (k) {
   initTouch(document.getElementById('chart-' + k));
@@ -1004,6 +1057,7 @@ def build() -> Path:
            .replace("__TABBAR__", _tabbar_html())
            .replace("__CHARTS__", json.dumps(charts, ensure_ascii=False, separators=(",", ":")))
            .replace("__HEAD__", json.dumps(head, ensure_ascii=False))
+           .replace("__PANEL_IDS__", json.dumps([p["id"] for p in PANELS]))
            .replace("__TITLE0__", first["title"])
            .replace("__META0__", f'{first["meta"]}<br>最後更新日：{stats[first["id"]]["latest"]}')
            .replace("__BUILT__", built)
