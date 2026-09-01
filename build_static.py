@@ -5,14 +5,20 @@
 hover、框選縮放、時間軸縮圖等 Plotly 原生互動全部保留。
 
 版面由底部懸浮式標籤列切換（切換時指示器會滑動）：
-  DRAM       DRAM 現貨報價（TrendForce）
-  美債殖利率  美國公債各年期殖利率（MoneyDJ）
-  設定       外觀、各資料集資訊、關於
+  DRAM    DRAM 現貨報價（TrendForce）
+  美債    美國公債各年期殖利率（MoneyDJ）
+  黃金    國際金價（Yahoo Finance）
+  行事曆  財經事件行事曆（ForexFactory）
+  設定    外觀、各資料集資訊、關於
 
 圖例不使用 Plotly 內建的那一份（項目一多在手機上會佔掉大半畫面），
 改成一顆顯示各色圓點的小按鈕，點開才列出全部項目，可逐項開關。
 
-要新增圖表分頁：在 PANELS 加一筆即可，標籤列、分頁、圖例、設定頁的資料卡片
+分頁分兩種（PANELS 的 kind）：
+  chart     留一個空殼由前端 Plotly 繪製
+  calendar  在這裡直接產生 HTML（由 calendar_render 負責）
+
+要新增分頁：在 PANELS 加一筆即可，標籤列、分頁、圖例、設定頁的資料卡片
 都會跟著生成。
 
     python build_static.py
@@ -24,6 +30,8 @@ from pathlib import Path
 import plotly.io as pio
 
 from bond_data import CSV_PATH as BOND_CSV, latest_date as bond_latest, load_bonds
+from calendar_data import CSV_PATH as CAL_CSV, load_events
+from calendar_render import panel_html as cal_panel_html, stats as cal_stats
 from chart import build_bond_figure, build_figure, build_gold_figure, series_colors
 from dram_data import BASE_DIR, CSV_PATH as DRAM_CSV, latest_date as dram_latest, load_dram
 from gold_data import CSV_PATH as GOLD_CSV, latest_date as gold_latest, load_gold
@@ -36,6 +44,7 @@ OUTPUT = DOCS_DIR / "index.html"
 PANELS = [
     {
         "id": "dram",
+        "kind": "chart",
         "tab": "DRAM",
         "title": "DRAM 現貨報價趨勢",
         "meta": "資料來源：TrendForce　·　單位：USD（盤平均）",
@@ -53,7 +62,8 @@ PANELS = [
     },
     {
         "id": "bond",
-        "tab": "美債殖利率",
+        "kind": "chart",
+        "tab": "美債",
         "title": "美國公債殖利率",
         "meta": "資料來源：MoneyDJ　·　單位：%（各年期）",
         "item_label": "年期",
@@ -70,6 +80,7 @@ PANELS = [
     },
     {
         "id": "gold",
+        "kind": "chart",
         "tab": "黃金",
         "title": "國際金價",
         "meta": "資料來源：Yahoo Finance　·　單位：USD／盎司（COMEX 近月期貨）",
@@ -85,7 +96,25 @@ PANELS = [
                 '<path d="M5 6.4v5c0 1.66 3.13 3 7 3s7-1.34 7-3v-5"/>'
                 '<path d="M5 11.4v5c0 1.66 3.13 3 7 3s7-1.34 7-3v-5"/>',
     },
+    {
+        "id": "calendar",
+        "kind": "calendar",
+        "tab": "行事曆",
+        "title": "財經行事曆",
+        "meta": "資料來源：ForexFactory　·　時間為台北時間（UTC+8）",
+        "source_name": "ForexFactory",
+        "source_url": "https://www.forexfactory.com/calendar",
+        "csv": CAL_CSV,
+        "load": load_events,
+        # 月曆圖示
+        "icon": '<rect x="3" y="4.5" width="18" height="16" rx="2.5"/>'
+                '<line x1="3" y1="9.5" x2="21" y2="9.5"/>'
+                '<line x1="8" y1="2.5" x2="8" y2="6.5"/>'
+                '<line x1="16" y1="2.5" x2="16" y2="6.5"/>',
+    },
 ]
+
+CHART_PANELS = [p for p in PANELS if p.get("kind", "chart") == "chart"]
 
 # 齒輪圖示（設定分頁）
 SETTINGS_ICON = (
@@ -121,14 +150,19 @@ def _tabbar_html() -> str:
             + "\n".join(btns) + "\n  </nav>")
 
 
-def _chart_panels_html() -> str:
+def _panels_html(cal_df) -> str:
+    """各分頁的內容。圖表分頁留空殼由 JS 繪製，行事曆分頁在此直接產生 HTML。"""
     out = []
     for i, p in enumerate(PANELS):
+        hidden = "" if i == 0 else " hidden"
+        if p.get("kind", "chart") == "calendar":
+            body = cal_panel_html(cal_df)
+        else:
+            body = (f'    <div class="chart" id="chart-{p["id"]}"></div>\n'
+                    f'    <div class="legend-bar" data-chart="{p["id"]}"></div>')
         out.append(
-            f'  <section id="panel-{p["id"]}" class="panel" role="tabpanel"'
-            f'{"" if i == 0 else " hidden"}>\n'
-            f'    <div class="chart" id="chart-{p["id"]}"></div>\n'
-            f'    <div class="legend-bar" data-chart="{p["id"]}"></div>\n'
+            f'  <section id="panel-{p["id"]}" class="panel" role="tabpanel"{hidden}>\n'
+            f'{body}\n'
             f'  </section>'
         )
     return "\n\n".join(out)
@@ -152,11 +186,16 @@ def _settings_cards(stats: dict) -> str:
     cards = []
     for p in PANELS:
         s = stats[p["id"]]
+        if p.get("kind", "chart") == "calendar":
+            middle = (f'      <div class="row"><span>事件筆數</span><b>{s["rows"]} 筆</b></div>\n'
+                      f'      <div class="row"><span>本頁顯示</span><b>{s["shown"]} 筆</b></div>')
+        else:
+            middle = (f'      <div class="row"><span>資料筆數</span><b>{s["rows"]} 筆</b></div>\n'
+                      f'      <div class="row"><span>{p["item_label"]}數</span><b>{s["items"]} 項</b></div>')
         cards.append(f'''    <div class="card">
-      <div class="card-h">{p["tab"]}　資料</div>
+      <div class="card-h">{p["title"]}　資料</div>
       <div class="row"><span>最後更新日</span><b>{s["latest"]}</b></div>
-      <div class="row"><span>資料筆數</span><b>{s["rows"]} 筆</b></div>
-      <div class="row"><span>{p["item_label"]}數</span><b>{s["items"]} 項</b></div>
+{middle}
       <div class="row"><span>涵蓋區間</span><b>{s["range"]}</b></div>
       <div class="row"><span>資料來源</span>
         <a href="{p["source_url"]}" target="_blank" rel="noopener">{p["source_name"]}</a></div>
@@ -200,6 +239,9 @@ TPL = """<!doctype html>
     --pill:rgba(255,255,255,.13); --tab-fg:#9aa0ac; --accent:#4dd4ac;
   }
   * { box-sizing:border-box; }
+  /* hidden 屬性的 UA 預設樣式會被元素自己的 display 規則蓋掉
+     （例如 .cal-row 是 display:flex），這裡統一補強 */
+  [hidden] { display:none !important; }
   body { margin:0; background:var(--bg); color:var(--fg);
          font-family:-apple-system,"Segoe UI","Microsoft JhengHei",sans-serif;
          transition:background .2s,color .2s; -webkit-text-size-adjust:100%; }
@@ -264,6 +306,34 @@ TPL = """<!doctype html>
           background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.35); transition:transform .2s; }
   .switch[aria-checked="true"] .knob { transform:translateX(20px); }
 
+  /* 行事曆 */
+  .cal-filter { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .chip { font-size:12px; padding:6px 14px; border-radius:999px; color:var(--muted); }
+  .chip[aria-pressed="true"] { background:var(--pill); color:var(--fg); border-color:transparent; }
+  .cal-day { margin-bottom:16px; }
+  .cal-day.past { opacity:.6; }
+  .cal-day-h { font-size:13px; font-weight:600; padding:6px 0; margin-bottom:2px;
+               border-bottom:1px solid var(--border); position:sticky; top:0;
+               background:var(--bg); z-index:1; }
+  .cal-day.today .cal-day-h { color:var(--accent); }
+  .cal-today-tag { font-size:11px; font-weight:500; margin-left:6px;
+                   padding:1px 7px; border-radius:999px; background:var(--accent); color:#fff; }
+  .cal-row { display:flex; align-items:flex-start; gap:9px; padding:9px 2px;
+             border-bottom:1px solid var(--border); font-size:13px; }
+  .cal-row:last-child { border-bottom:0; }
+  .cal-time { flex:none; width:40px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .dot { flex:none; width:8px; height:8px; border-radius:50%; margin-top:5px; }
+  .i-high { background:#e8590c; }
+  .i-mid  { background:#f08c00; }
+  .i-low  { background:#adb5bd; }
+  .i-hol  { background:#4dabf7; }
+  .cal-main { flex:1 1 auto; min-width:0; }
+  .cal-title { line-height:1.45; }
+  .cal-sub { font-size:11px; color:var(--muted); margin-top:1px; }
+  .cal-nums { flex:none; text-align:right; font-size:11px; color:var(--muted);
+              display:flex; flex-direction:column; gap:2px; font-variant-numeric:tabular-nums; }
+  .cal-empty { color:var(--muted); font-size:13px; }
+
   /* 底部標籤列 */
   .tabbar { position:fixed; left:50%; bottom:calc(16px + env(safe-area-inset-bottom));
             transform:translateX(-50%); display:flex; gap:2px; padding:6px;
@@ -272,7 +342,7 @@ TPL = """<!doctype html>
             -webkit-backdrop-filter:blur(16px) saturate(1.6);
             box-shadow:0 6px 26px rgba(0,0,0,.18); z-index:50; }
   .tab { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center;
-         gap:3px; width:88px; padding:8px 0 6px; border:0; background:transparent;
+         gap:3px; width:82px; padding:8px 0 6px; border:0; background:transparent;
          border-radius:999px; font-size:11px; font-weight:600; letter-spacing:.03em;
          color:var(--tab-fg); transition:color .22s; -webkit-tap-highlight-color:transparent;
          white-space:nowrap; }
@@ -292,10 +362,10 @@ TPL = """<!doctype html>
     .legend-list { grid-template-columns:1fr; }
     .card { max-width:none; }
     /* 分頁變多後，窄螢幕要縮小按鈕才不會超出畫面 */
-    .tab { width:76px; }
+    .tab { width:68px; }
   }
   @media (max-width:400px) {
-    .tab { width:72px; font-size:10px; }
+    .tab { width:62px; font-size:10px; letter-spacing:0; }
     .tab svg { width:20px; height:20px; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -668,6 +738,49 @@ function initTouch(gd) {
     });
 }
 
+// ── 行事曆：影響程度篩選、標出今天 ─────────────────────────
+// 「今天」在瀏覽器端判斷，而不是產生頁面時寫死 —— 頁面會被快取，
+// 隔天再開就會標錯日子。
+(function () {
+  var days = Array.prototype.slice.call(document.querySelectorAll('.cal-day'));
+  if (!days.length) return;
+
+  var now = new Date();
+  var iso = now.getFullYear() + '-' +
+            String(now.getMonth() + 1).padStart(2, '0') + '-' +
+            String(now.getDate()).padStart(2, '0');
+  days.forEach(function (d) {
+    if (d.dataset.date === iso) {
+      d.classList.add('today');
+      var tag = document.createElement('span');
+      tag.className = 'cal-today-tag';
+      tag.textContent = '今天';
+      d.querySelector('.cal-day-h').appendChild(tag);
+    } else if (d.dataset.date < iso) {
+      d.classList.add('past');
+    }
+  });
+
+  var chips = Array.prototype.slice.call(document.querySelectorAll('.cal-filter .chip'));
+  function apply(min) {
+    days.forEach(function (d) {
+      var shown = 0;
+      Array.prototype.slice.call(d.querySelectorAll('.cal-row')).forEach(function (row) {
+        var on = Number(row.dataset.impact) >= min;
+        row.hidden = !on;
+        if (on) shown++;
+      });
+      d.hidden = (shown === 0);
+    });
+  }
+  chips.forEach(function (c) {
+    c.addEventListener('click', function () {
+      chips.forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); });
+      apply(Number(c.dataset.min));
+    });
+  });
+})();
+
 // ── 重新載入 ───────────────────────────────────────────────
 // GitHub Pages 的 CDN 會把頁面快取約 10 分鐘，單純 location.reload() 常常
 // 拿回同一份舊的。改成帶時間戳重新導向，強制取得最新版；用 replace 避免
@@ -715,7 +828,18 @@ def build() -> Path:
     stats = {}
     head = {}
 
+    cal_df = None
+
     for p in PANELS:
+        if p.get("kind", "chart") == "calendar":
+            cal_df = p["load"]()
+            stats[p["id"]] = cal_stats(cal_df)
+            head[p["id"]] = {
+                "title": p["title"],
+                "meta": f'{p["meta"]}<br>最後更新日：{stats[p["id"]]["latest"]}',
+            }
+            continue
+
         df = p["load"]()
         fig_light = p["figure"](df, dark=False, showlegend=False)
         fig_dark = p["figure"](df, dark=True, showlegend=False)
@@ -750,7 +874,7 @@ def build() -> Path:
     first = PANELS[0]
 
     html = (
-        TPL.replace("__CHART_PANELS__", _chart_panels_html())
+        TPL.replace("__CHART_PANELS__", _panels_html(cal_df))
            .replace("__SETTINGS_CARDS__", _settings_cards(stats))
            .replace("__TABBAR__", _tabbar_html())
            .replace("__CHARTS__", json.dumps(charts, ensure_ascii=False, separators=(",", ":")))

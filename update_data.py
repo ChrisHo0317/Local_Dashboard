@@ -15,6 +15,8 @@ from datetime import date, timedelta
 import build_static
 from bond_data import CSV_PATH as BOND_CSV, merge_yields
 from bond_scraper import MoneyDJBondScraper
+from calendar_data import CSV_PATH as CAL_CSV, merge_events
+from calendar_scraper import ForexFactoryCalendarScraper
 from dram_data import CSV_PATH as DRAM_CSV, merge_prices
 from gold_data import CSV_PATH as GOLD_CSV, merge_prices as merge_gold
 from gold_scraper import YahooGoldScraper
@@ -78,8 +80,19 @@ def update_gold() -> int:
     return added
 
 
+def update_calendar() -> int:
+    """財經行事曆：ForexFactory 只提供「本週」一個 feed，逐週累積。"""
+    rows = ForexFactoryCalendarScraper(logger=log).fetch_events()
+    if not rows:
+        log.warning("行事曆：未取得任何事件（ForexFactory 可能限流），本次不更新")
+        return 0
+    added = merge_events(rows)
+    log.info(f"行事曆：抓取 {len(rows)} 筆，新增 {added} 筆至 {CAL_CSV.name}")
+    return added
+
+
 def main() -> int:
-    added = update_dram() + update_bonds() + update_gold()
+    added = update_dram() + update_bonds() + update_gold() + update_calendar()
 
     if added == 0:
         log.info("無新資料，略過重建 HTML")

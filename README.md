@@ -1,6 +1,6 @@
 # Local_Dashboard — 市場走勢
 
-DRAM 現貨報價、美國公債殖利率與國際金價的歷史走勢圖，資料每日自動更新。
+DRAM 現貨報價、美國公債殖利率、國際金價的歷史走勢圖，以及中文化的財經行事曆，資料每日自動更新。
 
 **線上瀏覽：** https://chrisho0317.github.io/Local_Dashboard/
 
@@ -26,6 +26,7 @@ GitHub Pages 只能託管靜態檔案，無法執行 Dash 的伺服器端 callba
 | DRAM | DRAM 現貨報價（TrendForce）|
 | 美債殖利率 | 美國公債 1／2／5／10／20／30 年期殖利率（MoneyDJ）|
 | 黃金 | 國際金價 COMEX 近月期貨，USD／盎司（Yahoo Finance）|
+| 行事曆 | 財經事件行事曆，中文化（ForexFactory）|
 | 設定 | 外觀（深色模式）、各資料集資訊、關於 |
 
 要新增圖表分頁，在 `build_static.py` 的 `PANELS` 加一筆即可 —— 標籤列、分頁、圖例、設定頁的資料卡片都會跟著生成，滑動指示器依按鈕實際位置計算，不需要改任何數值。
@@ -76,6 +77,10 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `bond_scraper.py` | MoneyDJ 殖利率爬蟲（可帶區間取歷史）|
 | `gold_data.py` | 讀寫 `data/gold_prices.csv` |
 | `gold_scraper.py` | Yahoo Finance 金價爬蟲 |
+| `calendar_data.py` | 讀寫 `data/calendar_events.csv` |
+| `calendar_scraper.py` | ForexFactory 行事曆爬蟲（官方 JSON feed）|
+| `calendar_i18n.py` | 事件名稱／國別／影響程度的中文化 |
+| `calendar_render.py` | 行事曆分頁的 HTML 產生 |
 | `chart.py` | `build_figure()` / `build_bond_figure()` — 唯一的圖表定義來源 |
 | `docs/` | 發佈目錄：`index.html`（產生）+ 圖示與 `manifest.webmanifest`（靜態） |
 | `scraper.py` | TrendForce DRAM 現貨報價爬蟲（僅提供當日快照）|
@@ -112,6 +117,16 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `price_date` | 日期 `YYYY-MM-DD` |
 | `price_usd` | 收盤價（USD／盎司）|
 
+`data/calendar_events.csv`
+
+| 欄位 | 說明 |
+|------|------|
+| `event_time` | 事件時間，ISO 8601 含時區（來源為紐約時間）|
+| `country` | 貨幣／地區代碼 |
+| `title` | 英文原名（中文於產生頁面時翻譯，不寫進 CSV）|
+| `impact` | High / Medium / Low / Holiday |
+| `forecast` / `previous` | 市場預估值與前值 |
+
 ---
 
 ## 自動更新
@@ -137,7 +152,7 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 ---
 
-資料來源：[TrendForce 集邦科技](https://www.trendforce.com.tw/price/dram/dram_spot)　·　[MoneyDJ 債券](https://www.moneydj.com/bond/defaultBD.xdjhtm)　·　[Yahoo Finance](https://finance.yahoo.com/quote/GC%3DF/)
+資料來源：[TrendForce 集邦科技](https://www.trendforce.com.tw/price/dram/dram_spot)　·　[MoneyDJ 債券](https://www.moneydj.com/bond/defaultBD.xdjhtm)　·　[Yahoo Finance](https://finance.yahoo.com/quote/GC%3DF/)　·　[ForexFactory](https://www.forexfactory.com/calendar)
 
 ---
 
@@ -149,3 +164,19 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 最後改用 Yahoo Finance 的 `GC=F`（COMEX 黃金近月期貨），單位為 USD／盎司。
 這是連續合約，Yahoo 會自動接續換月，適合看長期趨勢；若要嚴格的單一合約價格則不適用。
+
+## 關於行事曆
+
+forexfactory.com 本站有 Cloudflare，直接抓會 403，但官方另外提供 JSON feed
+（`nfs.faireconomy.media/ff_calendar_thisweek.json`）可以正常取得。
+
+兩個限制要知道：
+
+- **只有「本週」一個 feed**，nextweek／lastweek／thismonth 都是 404。所以看得到的
+  未來事件僅限本週剩下的日子，歷史則靠每天執行逐週累積。
+- **有速率限制**，短時間連抓會回 HTTP 429。每次執行只抓一次，遇到 429 就跳過本次更新。
+
+中文化不使用翻譯 API，改用 `calendar_i18n.py` 的「完整名稱對照表 + 組字規則」：
+事件名稱組合性很強（`German Prelim CPI m/m` = 國別前綴 + 修飾語 + 核心指標 + 週期後綴），
+拆解後查表即可。查不到的核心詞會保留英文 —— 寧可顯示英文，也不要猜錯財經名詞。
+CSV 只存英文原名，改了對照表重跑 `build_static.py` 就會全部更新，不必重抓資料。
