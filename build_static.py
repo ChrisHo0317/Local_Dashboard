@@ -307,31 +307,46 @@ TPL = """<!doctype html>
   .switch[aria-checked="true"] .knob { transform:translateX(20px); }
 
   /* 行事曆 */
-  .cal-filter { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .cal-bar { display:flex; align-items:center; justify-content:space-between;
+             gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  .cal-filter { display:flex; gap:8px; flex-wrap:wrap; }
   .chip { font-size:12px; padding:6px 14px; border-radius:999px; color:var(--muted); }
   .chip[aria-pressed="true"] { background:var(--pill); color:var(--fg); border-color:transparent; }
-  .cal-day { margin-bottom:16px; }
+  .cal-clock { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums;
+               white-space:nowrap; }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+
+  .cal-table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:13px; }
+  .cal-table th, .cal-table td { text-align:left; vertical-align:top; padding:9px 4px; }
+  .cal-table thead th { position:sticky; top:0; z-index:2; background:var(--bg);
+                        font-size:11px; font-weight:600; color:var(--muted);
+                        border-bottom:1px solid var(--border); padding:6px 4px; }
+  .cal-table .cal-time { width:46px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .cal-table .cal-imp  { width:18px; }
+  .cal-table .cal-num  { width:56px; text-align:right; font-size:11px; color:var(--muted);
+                         font-variant-numeric:tabular-nums; word-break:break-all; }
+  .cal-day-row th { font-size:12px; font-weight:600; color:var(--fg);
+                    background:var(--card); border-top:1px solid var(--border);
+                    border-bottom:1px solid var(--border); padding:6px 4px; }
   .cal-day.past { opacity:.6; }
-  .cal-day-h { font-size:13px; font-weight:600; padding:6px 0; margin-bottom:2px;
-               border-bottom:1px solid var(--border); position:sticky; top:0;
-               background:var(--bg); z-index:1; }
-  .cal-day.today .cal-day-h { color:var(--accent); }
-  .cal-today-tag { font-size:11px; font-weight:500; margin-left:6px;
-                   padding:1px 7px; border-radius:999px; background:var(--accent); color:#fff; }
-  .cal-row { display:flex; align-items:flex-start; gap:9px; padding:9px 2px;
-             border-bottom:1px solid var(--border); font-size:13px; }
-  .cal-row:last-child { border-bottom:0; }
-  .cal-time { flex:none; width:40px; color:var(--muted); font-variant-numeric:tabular-nums; }
-  .dot { flex:none; width:8px; height:8px; border-radius:50%; margin-top:5px; }
+  .cal-day.today .cal-day-row th { color:var(--accent); }
+  .cal-today-tag { font-size:11px; font-weight:500; margin-left:6px; padding:1px 7px;
+                   border-radius:999px; background:var(--accent); color:#fff; }
+  .cal-row td { border-bottom:1px solid var(--border); }
+  .dot { display:block; width:8px; height:8px; border-radius:50%; margin-top:5px; }
   .i-high { background:#e8590c; }
   .i-mid  { background:#f08c00; }
   .i-low  { background:#adb5bd; }
   .i-hol  { background:#4dabf7; }
-  .cal-main { flex:1 1 auto; min-width:0; }
   .cal-title { line-height:1.45; }
   .cal-sub { font-size:11px; color:var(--muted); margin-top:1px; }
-  .cal-nums { flex:none; text-align:right; font-size:11px; color:var(--muted);
-              display:flex; flex-direction:column; gap:2px; font-variant-numeric:tabular-nums; }
+
+  /* 現在時間標示線 */
+  .cal-now td { padding:0; }
+  .cal-now .now-line { display:flex; align-items:center; gap:8px; padding:3px 4px;
+                       border-top:2px solid #e03131; }
+  .cal-now .now-tag { font-size:11px; font-weight:600; color:#fff; background:#e03131;
+                      border-radius:999px; padding:1px 8px; font-variant-numeric:tabular-nums; }
   .cal-empty { color:var(--muted); font-size:13px; }
 
   /* 底部標籤列 */
@@ -738,47 +753,116 @@ function initTouch(gd) {
     });
 }
 
-// ── 行事曆：影響程度篩選、標出今天 ─────────────────────────
-// 「今天」在瀏覽器端判斷，而不是產生頁面時寫死 —— 頁面會被快取，
-// 隔天再開就會標錯日子。
+// ── 行事曆：影響程度篩選、標出今天、現在時間標示 ───────────
+// 所有跟「現在」有關的東西都在瀏覽器端算，不在產生頁面時寫死 ——
+// 頁面會被 CDN 快取，寫死的話隔天再開就會標錯。
 (function () {
-  var days = Array.prototype.slice.call(document.querySelectorAll('.cal-day'));
-  if (!days.length) return;
+  var table = document.querySelector('.cal-table');
+  if (!table) return;
 
-  var now = new Date();
-  var iso = now.getFullYear() + '-' +
-            String(now.getMonth() + 1).padStart(2, '0') + '-' +
-            String(now.getDate()).padStart(2, '0');
-  days.forEach(function (d) {
-    if (d.dataset.date === iso) {
-      d.classList.add('today');
+  var days = Array.prototype.slice.call(table.querySelectorAll('.cal-day'));
+  var clock = document.getElementById('cal-clock');
+  var minImpact = 0;
+
+  // 台北時間（UTC+8）：不論使用者裝置在哪個時區，顯示都與表格一致
+  function taipei() {
+    return new Date(Date.now() + (8 * 60 + new Date().getTimezoneOffset()) * 60000);
+  }
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function markDays() {
+    var t = taipei();
+    var iso = t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
+    days.forEach(function (d) {
+      d.classList.toggle('today', d.dataset.date === iso);
+      d.classList.toggle('past', d.dataset.date < iso);
+      var head = d.querySelector('.cal-day-row th');
+      var tag = head.querySelector('.cal-today-tag');
+      if (d.dataset.date === iso && !tag) {
+        tag = document.createElement('span');
+        tag.className = 'cal-today-tag';
+        tag.textContent = '今天';
+        head.appendChild(tag);
+      } else if (d.dataset.date !== iso && tag) {
+        tag.remove();
+      }
+    });
+    return iso;
+  }
+
+  var nowRow = null;
+  function buildNowRow(text) {
+    if (!nowRow) {
+      nowRow = document.createElement('tr');
+      nowRow.className = 'cal-now';
+      var td = document.createElement('td');
+      td.colSpan = 5;
+      var line = document.createElement('div');
+      line.className = 'now-line';
       var tag = document.createElement('span');
-      tag.className = 'cal-today-tag';
-      tag.textContent = '今天';
-      d.querySelector('.cal-day-h').appendChild(tag);
-    } else if (d.dataset.date < iso) {
-      d.classList.add('past');
+      tag.className = 'now-tag';
+      line.appendChild(tag);
+      td.appendChild(line);
+      nowRow.appendChild(td);
+      nowRow._tag = tag;
     }
-  });
+    nowRow._tag.textContent = text;
+    return nowRow;
+  }
 
-  var chips = Array.prototype.slice.call(document.querySelectorAll('.cal-filter .chip'));
-  function apply(min) {
+  // 把標示線插到今天「已過去」與「還沒到」的事件之間
+  function placeNow(iso) {
+    var today = days.filter(function (d) { return d.dataset.date === iso; })[0];
+    if (!today) { if (nowRow) nowRow.remove(); return; }
+
+    var t = taipei();
+    var row = buildNowRow(pad(t.getHours()) + ':' + pad(t.getMinutes()));
+    var now = Date.now();
+    var rows = Array.prototype.slice.call(today.querySelectorAll('.cal-row'))
+                    .filter(function (r) { return !r.hidden; });
+
+    var next = null;
+    for (var i = 0; i < rows.length; i++) {
+      if (Number(rows[i].dataset.ts) > now) { next = rows[i]; break; }
+    }
+    if (next) { today.insertBefore(row, next); }
+    else { today.appendChild(row); }
+  }
+
+  function applyFilter() {
     days.forEach(function (d) {
       var shown = 0;
-      Array.prototype.slice.call(d.querySelectorAll('.cal-row')).forEach(function (row) {
-        var on = Number(row.dataset.impact) >= min;
-        row.hidden = !on;
+      Array.prototype.slice.call(d.querySelectorAll('.cal-row')).forEach(function (r) {
+        var on = Number(r.dataset.impact) >= minImpact;
+        r.hidden = !on;
         if (on) shown++;
       });
       d.hidden = (shown === 0);
     });
   }
-  chips.forEach(function (c) {
-    c.addEventListener('click', function () {
-      chips.forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); });
-      apply(Number(c.dataset.min));
+
+  function refresh() {
+    var iso = markDays();
+    applyFilter();
+    placeNow(iso);
+    var t = taipei();
+    clock.textContent = '現在 ' + (t.getMonth() + 1) + '/' + pad(t.getDate()) + ' ' +
+                        pad(t.getHours()) + ':' + pad(t.getMinutes()) + '（UTC+8）';
+  }
+
+  Array.prototype.slice.call(document.querySelectorAll('.cal-filter .chip'))
+    .forEach(function (c) {
+      c.addEventListener('click', function () {
+        document.querySelectorAll('.cal-filter .chip').forEach(function (x) {
+          x.setAttribute('aria-pressed', String(x === c));
+        });
+        minImpact = Number(c.dataset.min);
+        refresh();
+      });
     });
-  });
+
+  refresh();
+  setInterval(refresh, 30000);   // 每半分鐘更新時鐘與標示線位置
 })();
 
 // ── 重新載入 ───────────────────────────────────────────────

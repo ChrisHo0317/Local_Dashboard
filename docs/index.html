@@ -102,31 +102,46 @@
   .switch[aria-checked="true"] .knob { transform:translateX(20px); }
 
   /* 行事曆 */
-  .cal-filter { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .cal-bar { display:flex; align-items:center; justify-content:space-between;
+             gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  .cal-filter { display:flex; gap:8px; flex-wrap:wrap; }
   .chip { font-size:12px; padding:6px 14px; border-radius:999px; color:var(--muted); }
   .chip[aria-pressed="true"] { background:var(--pill); color:var(--fg); border-color:transparent; }
-  .cal-day { margin-bottom:16px; }
+  .cal-clock { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums;
+               white-space:nowrap; }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+
+  .cal-table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:13px; }
+  .cal-table th, .cal-table td { text-align:left; vertical-align:top; padding:9px 4px; }
+  .cal-table thead th { position:sticky; top:0; z-index:2; background:var(--bg);
+                        font-size:11px; font-weight:600; color:var(--muted);
+                        border-bottom:1px solid var(--border); padding:6px 4px; }
+  .cal-table .cal-time { width:46px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .cal-table .cal-imp  { width:18px; }
+  .cal-table .cal-num  { width:56px; text-align:right; font-size:11px; color:var(--muted);
+                         font-variant-numeric:tabular-nums; word-break:break-all; }
+  .cal-day-row th { font-size:12px; font-weight:600; color:var(--fg);
+                    background:var(--card); border-top:1px solid var(--border);
+                    border-bottom:1px solid var(--border); padding:6px 4px; }
   .cal-day.past { opacity:.6; }
-  .cal-day-h { font-size:13px; font-weight:600; padding:6px 0; margin-bottom:2px;
-               border-bottom:1px solid var(--border); position:sticky; top:0;
-               background:var(--bg); z-index:1; }
-  .cal-day.today .cal-day-h { color:var(--accent); }
-  .cal-today-tag { font-size:11px; font-weight:500; margin-left:6px;
-                   padding:1px 7px; border-radius:999px; background:var(--accent); color:#fff; }
-  .cal-row { display:flex; align-items:flex-start; gap:9px; padding:9px 2px;
-             border-bottom:1px solid var(--border); font-size:13px; }
-  .cal-row:last-child { border-bottom:0; }
-  .cal-time { flex:none; width:40px; color:var(--muted); font-variant-numeric:tabular-nums; }
-  .dot { flex:none; width:8px; height:8px; border-radius:50%; margin-top:5px; }
+  .cal-day.today .cal-day-row th { color:var(--accent); }
+  .cal-today-tag { font-size:11px; font-weight:500; margin-left:6px; padding:1px 7px;
+                   border-radius:999px; background:var(--accent); color:#fff; }
+  .cal-row td { border-bottom:1px solid var(--border); }
+  .dot { display:block; width:8px; height:8px; border-radius:50%; margin-top:5px; }
   .i-high { background:#e8590c; }
   .i-mid  { background:#f08c00; }
   .i-low  { background:#adb5bd; }
   .i-hol  { background:#4dabf7; }
-  .cal-main { flex:1 1 auto; min-width:0; }
   .cal-title { line-height:1.45; }
   .cal-sub { font-size:11px; color:var(--muted); margin-top:1px; }
-  .cal-nums { flex:none; text-align:right; font-size:11px; color:var(--muted);
-              display:flex; flex-direction:column; gap:2px; font-variant-numeric:tabular-nums; }
+
+  /* 現在時間標示線 */
+  .cal-now td { padding:0; }
+  .cal-now .now-line { display:flex; align-items:center; gap:8px; padding:3px 4px;
+                       border-top:2px solid #e03131; }
+  .cal-now .now-tag { font-size:11px; font-weight:600; color:#fff; background:#e03131;
+                      border-radius:999px; padding:1px 8px; font-variant-numeric:tabular-nums; }
   .cal-empty { color:var(--muted); font-size:13px; }
 
   /* 底部標籤列 */
@@ -184,7 +199,7 @@
           <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
         </svg>
       </button>
-      <span class="ver">v0.3.007</span>
+      <span class="ver">v0.3.008</span>
     </div>
   </header>
 
@@ -204,1046 +219,1167 @@
   </section>
 
   <section id="panel-calendar" class="panel" role="tabpanel" hidden>
-  <div class="cal-filter" role="group" aria-label="影響程度篩選">
-    <button type="button" class="chip" data-min="0" aria-pressed="true">全部</button>
-    <button type="button" class="chip" data-min="2" aria-pressed="false">中以上</button>
-    <button type="button" class="chip" data-min="3" aria-pressed="false">僅高影響</button>
+  <div class="cal-bar">
+    <div class="cal-filter" role="group" aria-label="影響程度篩選">
+      <button type="button" class="chip" data-min="0" aria-pressed="true">全部</button>
+      <button type="button" class="chip" data-min="2" aria-pressed="false">中以上</button>
+      <button type="button" class="chip" data-min="3" aria-pressed="false">僅高影響</button>
+    </div>
+    <div class="cal-clock" id="cal-clock" aria-live="off">—</div>
   </div>
-  <div class="cal-day" data-date="2026-08-30">
-    <div class="cal-day-h">8/30（日）</div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">23:15</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">G20 會議</div>
-        <div class="cal-sub">全球 · G20 Meetings</div>
-      </div>
-      
-    </div>
-  </div>
-  <div class="cal-day" data-date="2026-08-31">
-    <div class="cal-day-h">8/31（一）</div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">07:50</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">工業生產月增率初值</div>
-        <div class="cal-sub">日本 · Prelim Industrial Production m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 -0.7%</span><span>前值 1.3%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">07:50</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">零售銷售年增率</div>
-        <div class="cal-sub">日本 · Retail Sales y/y</div>
-      </div>
-      <div class="cal-nums"><span>預估 3.2%</span><span>前值 0.5%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">09:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">MI 通膨指標月增率</div>
-        <div class="cal-sub">澳洲 · MI Inflation Gauge m/m</div>
-      </div>
-      <div class="cal-nums"><span>前值 1.0%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">09:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">ANZ 企業信心指數</div>
-        <div class="cal-sub">紐西蘭 · ANZ Business Confidence</div>
-      </div>
-      <div class="cal-nums"><span>前值 56.1</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">09:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">企業營業利益季增率</div>
-        <div class="cal-sub">澳洲 · Company Operating Profits q/q</div>
-      </div>
-      <div class="cal-nums"><span>預估 2.0%</span><span>前值 -1.3%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">09:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">民間信貸月增率</div>
-        <div class="cal-sub">澳洲 · Private Sector Credit m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.7%</span><span>前值 0.8%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">09:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">製造業採購經理人指數</div>
-        <div class="cal-sub">中國 · Manufacturing PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 49.5</span><span>前值 49.2</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">09:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">非製造業採購經理人指數</div>
-        <div class="cal-sub">中國 · Non-Manufacturing PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 49.5</span><span>前值 49.0</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">13:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">新屋開工年增率</div>
-        <div class="cal-sub">日本 · Housing Starts y/y</div>
-      </div>
-      <div class="cal-nums"><span>預估 7.5%</span><span>前值 18.6%</span></div>
-    </div>
-    <div class="cal-row" data-impact="2">
-      <span class="cal-time">14:29</span>
-      <span class="dot i-mid" title="影響 中"></span>
-      <div class="cal-main">
-        <div class="cal-title">德國消費者物價指數月增率初值</div>
-        <div class="cal-sub">歐元區 · German Prelim CPI m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.3%</span><span>前值 0.8%</span></div>
-    </div>
-    <div class="cal-row" data-impact="0">
-      <span class="cal-time">15:00</span>
-      <span class="dot i-hol" title="影響 假日"></span>
-      <div class="cal-main">
-        <div class="cal-title">銀行假日</div>
-        <div class="cal-sub">英國 · Bank Holiday</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">23:15</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">G20 會議</div>
-        <div class="cal-sub">全球 · G20 Meetings</div>
-      </div>
-      
-    </div>
-  </div>
-  <div class="cal-day" data-date="2026-09-01">
-    <div class="cal-day-h">9/01（二）</div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">07:01</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">BRC 零售物價指數年增率</div>
-        <div class="cal-sub">英國 · BRC Shop Price Index y/y</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.9%</span><span>前值 0.9%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">07:50</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">資本支出季年增率</div>
-        <div class="cal-sub">日本 · Capital Spending q/y</div>
-      </div>
-      <div class="cal-nums"><span>預估 -0.2%</span><span>前值 0.0%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">08:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">製造業採購經理人指數終值</div>
-        <div class="cal-sub">日本 · Final Manufacturing PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 55.1</span><span>前值 55.1</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">09:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">建築許可月增率</div>
-        <div class="cal-sub">澳洲 · Building Approvals m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 -4.7%</span><span>前值 7.2%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">09:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">經常帳</div>
-        <div class="cal-sub">澳洲 · Current Account</div>
-      </div>
-      <div class="cal-nums"><span>預估 -29.7B</span><span>前值 -27.1B</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">09:45</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">RatingDog 製造業採購經理人指數</div>
-        <div class="cal-sub">中國 · RatingDog Manufacturing PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 51.0</span><span>前值 50.9</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">11:35</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">10 年期公債標售</div>
-        <div class="cal-sub">日本 · 10-y Bond Auction</div>
-      </div>
-      <div class="cal-nums"><span>前值 2.84|2.6</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">13:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">消費者信心指數</div>
-        <div class="cal-sub">日本 · Consumer Confidence</div>
-      </div>
-      <div class="cal-nums"><span>預估 35.3</span><span>前值 34.9</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">14:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">德國零售銷售月增率</div>
-        <div class="cal-sub">歐元區 · German Retail Sales m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.4%</span><span>前值 -0.7%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">14:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">Nationwide 房價指數月增率</div>
-        <div class="cal-sub">英國 · Nationwide HPI m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.1%</span><span>前值 0.1%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">14:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">商品價格年增率</div>
-        <div class="cal-sub">澳洲 · Commodity Prices y/y</div>
-      </div>
-      <div class="cal-nums"><span>前值 15.4%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">14:33</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">零售銷售年增率</div>
-        <div class="cal-sub">瑞士 · Retail Sales y/y</div>
-      </div>
-      <div class="cal-nums"><span>預估 1.6%</span><span>前值 1.5%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">15:15</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">西班牙製造業採購經理人指數</div>
-        <div class="cal-sub">歐元區 · Spanish Manufacturing PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 50.3</span><span>前值 50.2</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">15:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">製造業採購經理人指數</div>
-        <div class="cal-sub">瑞士 · Manufacturing PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 54.1</span><span>前值 53.2</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">15:45</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">義大利製造業採購經理人指數</div>
-        <div class="cal-sub">歐元區 · Italian Manufacturing PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 51.4</span><span>前值 51.3</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">15:50</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">法國製造業採購經理人指數終值</div>
-        <div class="cal-sub">歐元區 · French Final Manufacturing PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 51.5</span><span>前值 51.5</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">15:55</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">德國製造業採購經理人指數終值</div>
-        <div class="cal-sub">歐元區 · German Final Manufacturing PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 54.1</span><span>前值 54.1</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">16:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">製造業採購經理人指數終值</div>
-        <div class="cal-sub">歐元區 · Final Manufacturing PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 52.8</span><span>前值 52.8</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">16:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">義大利月度失業率</div>
-        <div class="cal-sub">歐元區 · Italian Monthly Unemployment Rate</div>
-      </div>
-      <div class="cal-nums"><span>預估 5.6%</span><span>前值 5.7%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">16:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">製造業採購經理人指數終值</div>
-        <div class="cal-sub">英國 · Final Manufacturing PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 51.5</span><span>前值 51.5</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">16:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">M4 貨幣供給月增率</div>
-        <div class="cal-sub">英國 · M4 Money Supply m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.9%</span><span>前值 0.8%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">16:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">房貸核准件數</div>
-        <div class="cal-sub">英國 · Mortgage Approvals</div>
-      </div>
-      <div class="cal-nums"><span>預估 59K</span><span>前值 58K</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">16:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">個人淨放款月增率</div>
-        <div class="cal-sub">英國 · Net Lending to Individuals m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 7.2B</span><span>前值 9.5B</span></div>
-    </div>
-    <div class="cal-row" data-impact="2">
-      <span class="cal-time">17:00</span>
-      <span class="dot i-mid" title="影響 中"></span>
-      <div class="cal-main">
-        <div class="cal-title">核心消費者物價指數年增率快報</div>
-        <div class="cal-sub">歐元區 · Core CPI Flash Estimate y/y</div>
-      </div>
-      <div class="cal-nums"><span>預估 2.5%</span><span>前值 2.5%</span></div>
-    </div>
-    <div class="cal-row" data-impact="2">
-      <span class="cal-time">17:00</span>
-      <span class="dot i-mid" title="影響 中"></span>
-      <div class="cal-main">
-        <div class="cal-title">消費者物價指數年增率快報</div>
-        <div class="cal-sub">歐元區 · CPI Flash Estimate y/y</div>
-      </div>
-      <div class="cal-nums"><span>預估 3.3%</span><span>前值 2.9%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">17:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">義大利消費者物價指數月增率初值</div>
-        <div class="cal-sub">歐元區 · Italian Prelim CPI m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.5%</span><span>前值 0.2%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">17:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">失業率</div>
-        <div class="cal-sub">歐元區 · Unemployment Rate</div>
-      </div>
-      <div class="cal-nums"><span>預估 6.3%</span><span>前值 6.3%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">21:05</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">FOMC 官員 Barr 談話</div>
-        <div class="cal-sub">美國 · FOMC Member Barr Speaks</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">21:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">製造業採購經理人指數</div>
-        <div class="cal-sub">加拿大 · Manufacturing PMI</div>
-      </div>
-      <div class="cal-nums"><span>前值 53.5</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">21:45</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">製造業採購經理人指數終值</div>
-        <div class="cal-sub">美國 · Final Manufacturing PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 53.3</span><span>前值 53.2</span></div>
-    </div>
-    <div class="cal-row" data-impact="3">
-      <span class="cal-time">22:00</span>
-      <span class="dot i-high" title="影響 高"></span>
-      <div class="cal-main">
-        <div class="cal-title">ISM 製造業採購經理人指數</div>
-        <div class="cal-sub">美國 · ISM Manufacturing PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 55.2</span><span>前值 55.6</span></div>
-    </div>
-    <div class="cal-row" data-impact="2">
-      <span class="cal-time">22:00</span>
-      <span class="dot i-mid" title="影響 中"></span>
-      <div class="cal-main">
-        <div class="cal-title">ISM 製造業物價指數</div>
-        <div class="cal-sub">美國 · ISM Manufacturing Prices</div>
-      </div>
-      <div class="cal-nums"><span>預估 70.5</span><span>前值 71.1</span></div>
-    </div>
-    <div class="cal-row" data-impact="2">
-      <span class="cal-time">22:00</span>
-      <span class="dot i-mid" title="影響 中"></span>
-      <div class="cal-main">
-        <div class="cal-title">JOLTS 職缺數</div>
-        <div class="cal-sub">美國 · JOLTS Job Openings</div>
-      </div>
-      <div class="cal-nums"><span>預估 7.33M</span><span>前值 7.36M</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">22:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">營建支出月增率</div>
-        <div class="cal-sub">美國 · Construction Spending m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.0%</span><span>前值 -0.1%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">22:14</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">RCM/TIPP 經濟樂觀指數</div>
-        <div class="cal-sub">美國 · RCM/TIPP Economic Optimism</div>
-      </div>
-      <div class="cal-nums"><span>預估 46.2</span><span>前值 45.1</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">22:15</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">Omdia 汽車總銷量</div>
-        <div class="cal-sub">美國 · Omdia Total Vehicle Sales</div>
-      </div>
-      <div class="cal-nums"><span>預估 16.3M</span><span>前值 16.3M</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">22:51</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">全球乳製品拍賣價格指數</div>
-        <div class="cal-sub">紐西蘭 · GDT Price Index</div>
-      </div>
-      <div class="cal-nums"><span>前值 2.3%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">23:15</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">G20 會議</div>
-        <div class="cal-sub">全球 · G20 Meetings</div>
-      </div>
-      
-    </div>
-  </div>
-  <div class="cal-day" data-date="2026-09-02">
-    <div class="cal-day-h">9/02（三）</div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">04:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">API 週度原油庫存報告</div>
-        <div class="cal-sub">美國 · API Weekly Statistical Bulletin</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">06:45</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">營建許可月增率</div>
-        <div class="cal-sub">紐西蘭 · Building Consents m/m</div>
-      </div>
-      <div class="cal-nums"><span>前值 -3.6%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">07:50</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">貨幣基數年增率</div>
-        <div class="cal-sub">日本 · Monetary Base y/y</div>
-      </div>
-      <div class="cal-nums"><span>預估 -13.5%</span><span>前值 -13.8%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">08:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">德國央行總裁 Nagel 談話</div>
-        <div class="cal-sub">歐元區 · German Buba President Nagel Speaks</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="3">
-      <span class="cal-time">09:30</span>
-      <span class="dot i-high" title="影響 高"></span>
-      <div class="cal-main">
-        <div class="cal-title">國內生產毛額季增率</div>
-        <div class="cal-sub">澳洲 · GDP q/q</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.3%</span><span>前值 0.3%</span></div>
-    </div>
-    <div class="cal-row" data-impact="3">
-      <span class="cal-time">10:00</span>
-      <span class="dot i-high" title="影響 高"></span>
-      <div class="cal-main">
-        <div class="cal-title">紐西蘭央行利率聲明</div>
-        <div class="cal-sub">紐西蘭 · RBNZ Rate Statement</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="3">
-      <span class="cal-time">10:00</span>
-      <span class="dot i-high" title="影響 高"></span>
-      <div class="cal-main">
-        <div class="cal-title">官方現金利率</div>
-        <div class="cal-sub">紐西蘭 · Official Cash Rate</div>
-      </div>
-      <div class="cal-nums"><span>預估 2.75%</span><span>前值 2.50%</span></div>
-    </div>
-    <div class="cal-row" data-impact="3">
-      <span class="cal-time">10:00</span>
-      <span class="dot i-high" title="影響 高"></span>
-      <div class="cal-main">
-        <div class="cal-title">紐西蘭央行貨幣政策聲明</div>
-        <div class="cal-sub">紐西蘭 · RBNZ Monetary Policy Statement</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="3">
-      <span class="cal-time">11:00</span>
-      <span class="dot i-high" title="影響 高"></span>
-      <div class="cal-main">
-        <div class="cal-title">紐西蘭央行記者會</div>
-        <div class="cal-sub">紐西蘭 · RBNZ Press Conference</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">14:45</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">法國政府預算餘額</div>
-        <div class="cal-sub">歐元區 · French Gov Budget Balance</div>
-      </div>
-      <div class="cal-nums"><span>前值 -106.8B</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">15:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">西班牙失業人數變動</div>
-        <div class="cal-sub">歐元區 · Spanish Unemployment Change</div>
-      </div>
-      <div class="cal-nums"><span>預估 15.4K</span><span>前值 19.5K</span></div>
-    </div>
-    <div class="cal-row" data-impact="2">
-      <span class="cal-time">20:15</span>
-      <span class="dot i-mid" title="影響 中"></span>
-      <div class="cal-main">
-        <div class="cal-title">ADP 非農就業人數</div>
-        <div class="cal-sub">美國 · ADP Non-Farm Employment Change</div>
-      </div>
-      <div class="cal-nums"><span>預估 48K</span><span>前值 44K</span></div>
-    </div>
-    <div class="cal-row" data-impact="3">
-      <span class="cal-time">21:45</span>
-      <span class="dot i-high" title="影響 高"></span>
-      <div class="cal-main">
-        <div class="cal-title">加拿大央行利率聲明</div>
-        <div class="cal-sub">加拿大 · BOC Rate Statement</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="3">
-      <span class="cal-time">21:45</span>
-      <span class="dot i-high" title="影響 高"></span>
-      <div class="cal-main">
-        <div class="cal-title">隔夜拆款利率</div>
-        <div class="cal-sub">加拿大 · Overnight Rate</div>
-      </div>
-      <div class="cal-nums"><span>預估 2.25%</span><span>前值 2.25%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">22:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">工廠訂單月增率</div>
-        <div class="cal-sub">美國 · Factory Orders m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.7%</span><span>前值 -0.3%</span></div>
-    </div>
-    <div class="cal-row" data-impact="3">
-      <span class="cal-time">22:30</span>
-      <span class="dot i-high" title="影響 高"></span>
-      <div class="cal-main">
-        <div class="cal-title">加拿大央行記者會</div>
-        <div class="cal-sub">加拿大 · BOC Press Conference</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">22:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">原油庫存</div>
-        <div class="cal-sub">美國 · Crude Oil Inventories</div>
-      </div>
-      <div class="cal-nums"><span>前值 0.1M</span></div>
-    </div>
-  </div>
-  <div class="cal-day" data-date="2026-09-03">
-    <div class="cal-day-h">9/03（四）</div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">02:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">聯準會褐皮書</div>
-        <div class="cal-sub">美國 · Beige Book</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="2">
-      <span class="cal-time">04:10</span>
-      <span class="dot i-mid" title="影響 中"></span>
-      <div class="cal-main">
-        <div class="cal-title">紐西蘭央行總裁 Breman 談話</div>
-        <div class="cal-sub">紐西蘭 · RBNZ Gov Breman Speaks</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">06:45</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">海外貿易指數季增率</div>
-        <div class="cal-sub">紐西蘭 · Overseas Trade Index q/q</div>
-      </div>
-      <div class="cal-nums"><span>預估 -2.2%</span><span>前值 -2.0%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">09:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">ANZ 商品價格月增率</div>
-        <div class="cal-sub">紐西蘭 · ANZ Commodity Prices m/m</div>
-      </div>
-      <div class="cal-nums"><span>前值 -3.9%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">09:15</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">澳洲央行助理總裁 Jones 談話</div>
-        <div class="cal-sub">澳洲 · RBA Assist Gov Jones Speaks</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">09:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">商品貿易帳</div>
-        <div class="cal-sub">澳洲 · Goods Trade Balance</div>
-      </div>
-      <div class="cal-nums"><span>預估 1.50B</span><span>前值 1.93B</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">09:45</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">RatingDog 服務業採購經理人指數</div>
-        <div class="cal-sub">中國 · RatingDog Services PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 50.6</span><span>前值 50.4</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">11:35</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">30 年期公債標售</div>
-        <div class="cal-sub">日本 · 30-y Bond Auction</div>
-      </div>
-      <div class="cal-nums"><span>前值 3.94|3.9</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">13:15</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">澳洲央行助理總裁 Hunter 談話</div>
-        <div class="cal-sub">澳洲 · RBA Assist Gov Hunter Speaks</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="2">
-      <span class="cal-time">14:30</span>
-      <span class="dot i-mid" title="影響 中"></span>
-      <div class="cal-main">
-        <div class="cal-title">消費者物價指數月增率</div>
-        <div class="cal-sub">瑞士 · CPI m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.0%</span><span>前值 -0.1%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">15:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">國內生產毛額季增率</div>
-        <div class="cal-sub">瑞士 · GDP q/q</div>
-      </div>
-      <div class="cal-nums"><span>預估 1.5%</span><span>前值 0.7%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">15:15</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">西班牙服務業採購經理人指數</div>
-        <div class="cal-sub">歐元區 · Spanish Services PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 59.0</span><span>前值 58.3</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">15:45</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">義大利服務業採購經理人指數</div>
-        <div class="cal-sub">歐元區 · Italian Services PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 53.6</span><span>前值 52.5</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">15:50</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">法國服務業採購經理人指數終值</div>
-        <div class="cal-sub">歐元區 · French Final Services PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 48.4</span><span>前值 48.4</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">15:55</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">德國服務業採購經理人指數終值</div>
-        <div class="cal-sub">歐元區 · German Final Services PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 48.5</span><span>前值 48.5</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">16:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">服務業採購經理人指數終值</div>
-        <div class="cal-sub">歐元區 · Final Services PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 51.7</span><span>前值 51.7</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">16:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">服務業採購經理人指數終值</div>
-        <div class="cal-sub">英國 · Final Services PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 52.8</span><span>前值 52.8</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">17:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">生產者物價指數月增率</div>
-        <div class="cal-sub">歐元區 · PPI m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 1.2%</span><span>前值 -0.3%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">17:03</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">西班牙 10 年期公債標售</div>
-        <div class="cal-sub">歐元區 · Spanish 10-y Bond Auction</div>
-      </div>
-      <div class="cal-nums"><span>前值 3.54|2.4</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">17:18</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">法國 10 年期公債標售</div>
-        <div class="cal-sub">歐元區 · French 10-y Bond Auction</div>
-      </div>
-      <div class="cal-nums"><span>前值 3.86|3.7</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">17:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">挑戰者裁員人數年增率</div>
-        <div class="cal-sub">美國 · Challenger Job Cuts y/y</div>
-      </div>
-      <div class="cal-nums"><span>前值 -46.1%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">20:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">勞動生產力季增率</div>
-        <div class="cal-sub">加拿大 · Labor Productivity q/q</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.7%</span><span>前值 -0.5%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">20:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">貿易帳</div>
-        <div class="cal-sub">加拿大 · Trade Balance</div>
-      </div>
-      <div class="cal-nums"><span>預估 3.2B</span><span>前值 3.9B</span></div>
-    </div>
-    <div class="cal-row" data-impact="2">
-      <span class="cal-time">20:30</span>
-      <span class="dot i-mid" title="影響 中"></span>
-      <div class="cal-main">
-        <div class="cal-title">初領失業金人數</div>
-        <div class="cal-sub">美國 · Unemployment Claims</div>
-      </div>
-      <div class="cal-nums"><span>預估 205K</span><span>前值 203K</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">20:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">FOMC 官員 Waller 談話</div>
-        <div class="cal-sub">美國 · FOMC Member Waller Speaks</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">20:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">非農生產力季增率修正值</div>
-        <div class="cal-sub">美國 · Revised Nonfarm Productivity q/q</div>
-      </div>
-      <div class="cal-nums"><span>預估 1.4%</span><span>前值 1.4%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">20:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">單位勞動成本季增率修正值</div>
-        <div class="cal-sub">美國 · Revised Unit Labor Costs q/q</div>
-      </div>
-      <div class="cal-nums"><span>預估 1.3%</span><span>前值 1.3%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">20:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">貿易帳</div>
-        <div class="cal-sub">美國 · Trade Balance</div>
-      </div>
-      <div class="cal-nums"><span>預估 -89.4B</span><span>前值 -73.3B</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">21:45</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">服務業採購經理人指數終值</div>
-        <div class="cal-sub">美國 · Final Services PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 56.8</span><span>前值 56.8</span></div>
-    </div>
-    <div class="cal-row" data-impact="2">
-      <span class="cal-time">22:00</span>
-      <span class="dot i-mid" title="影響 中"></span>
-      <div class="cal-main">
-        <div class="cal-title">ISM 服務業採購經理人指數</div>
-        <div class="cal-sub">美國 · ISM Services PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 54.2</span><span>前值 54.1</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">22:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">天然氣庫存</div>
-        <div class="cal-sub">美國 · Natural Gas Storage</div>
-      </div>
-      <div class="cal-nums"><span>前值 15B</span></div>
-    </div>
-  </div>
-  <div class="cal-day" data-date="2026-09-04">
-    <div class="cal-day-h">9/04（五）</div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">03:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">FOMC 官員 Hammack 談話</div>
-        <div class="cal-sub">美國 · FOMC Member Hammack Speaks</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">03:05</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">FOMC 官員 Goolsbee 談話</div>
-        <div class="cal-sub">美國 · FOMC Member Goolsbee Speaks</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">07:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">家庭支出年增率</div>
-        <div class="cal-sub">日本 · Household Spending y/y</div>
-      </div>
-      <div class="cal-nums"><span>預估 -1.6%</span><span>前值 -3.3%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">14:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">德國工廠訂單月增率</div>
-        <div class="cal-sub">歐元區 · German Factory Orders m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.3%</span><span>前值 3.1%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">16:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">義大利零售銷售月增率</div>
-        <div class="cal-sub">歐元區 · Italian Retail Sales m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.2%</span><span>前值 -0.1%</span></div>
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">16:30</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">營建業採購經理人指數</div>
-        <div class="cal-sub">英國 · Construction PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 45.8</span><span>前值 44.7</span></div>
-    </div>
-    <div class="cal-row" data-impact="3">
-      <span class="cal-time">16:50</span>
-      <span class="dot i-high" title="影響 高"></span>
-      <div class="cal-main">
-        <div class="cal-title">英國央行總裁 Bailey 談話</div>
-        <div class="cal-sub">英國 · BOE Gov Bailey Speaks</div>
-      </div>
-      
-    </div>
-    <div class="cal-row" data-impact="1">
-      <span class="cal-time">17:00</span>
-      <span class="dot i-low" title="影響 低"></span>
-      <div class="cal-main">
-        <div class="cal-title">零售銷售月增率</div>
-        <div class="cal-sub">歐元區 · Retail Sales m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.3%</span><span>前值 -0.3%</span></div>
-    </div>
-    <div class="cal-row" data-impact="3">
-      <span class="cal-time">20:30</span>
-      <span class="dot i-high" title="影響 高"></span>
-      <div class="cal-main">
-        <div class="cal-title">非農就業人數</div>
-        <div class="cal-sub">美國 · Non-Farm Employment Change</div>
-      </div>
-      <div class="cal-nums"><span>預估 55K</span><span>前值 -23K</span></div>
-    </div>
-    <div class="cal-row" data-impact="3">
-      <span class="cal-time">20:30</span>
-      <span class="dot i-high" title="影響 高"></span>
-      <div class="cal-main">
-        <div class="cal-title">平均時薪月增率</div>
-        <div class="cal-sub">美國 · Average Hourly Earnings m/m</div>
-      </div>
-      <div class="cal-nums"><span>預估 0.3%</span><span>前值 0.1%</span></div>
-    </div>
-    <div class="cal-row" data-impact="3">
-      <span class="cal-time">20:30</span>
-      <span class="dot i-high" title="影響 高"></span>
-      <div class="cal-main">
-        <div class="cal-title">失業率</div>
-        <div class="cal-sub">美國 · Unemployment Rate</div>
-      </div>
-      <div class="cal-nums"><span>預估 4.1%</span><span>前值 4.1%</span></div>
-    </div>
-    <div class="cal-row" data-impact="3">
-      <span class="cal-time">20:30</span>
-      <span class="dot i-high" title="影響 高"></span>
-      <div class="cal-main">
-        <div class="cal-title">就業人數變動</div>
-        <div class="cal-sub">加拿大 · Employment Change</div>
-      </div>
-      <div class="cal-nums"><span>預估 15.1K</span><span>前值 75.1K</span></div>
-    </div>
-    <div class="cal-row" data-impact="3">
-      <span class="cal-time">20:30</span>
-      <span class="dot i-high" title="影響 高"></span>
-      <div class="cal-main">
-        <div class="cal-title">失業率</div>
-        <div class="cal-sub">加拿大 · Unemployment Rate</div>
-      </div>
-      <div class="cal-nums"><span>預估 6.4%</span><span>前值 6.4%</span></div>
-    </div>
-    <div class="cal-row" data-impact="2">
-      <span class="cal-time">22:00</span>
-      <span class="dot i-mid" title="影響 中"></span>
-      <div class="cal-main">
-        <div class="cal-title">Ivey 採購經理人指數</div>
-        <div class="cal-sub">加拿大 · Ivey PMI</div>
-      </div>
-      <div class="cal-nums"><span>預估 56.2</span><span>前值 55.1</span></div>
-    </div>
-  </div>
+  <table class="cal-table">
+    <thead>
+      <tr><th class="cal-time">時間</th><th class="cal-imp"><span class="sr">影響</span></th><th class="cal-ev">事件</th><th class="cal-num">預估</th><th class="cal-num">前值</th></tr>
+    </thead>
+    <tbody class="cal-day" data-date="2026-08-30">
+      <tr class="cal-day-row"><th colspan="5" scope="rowgroup">8/30（日）</th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788102900000">
+        <td class="cal-time">23:15</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">G20 會議</div>
+          <div class="cal-sub">全球 · G20 Meetings</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+    </tbody>
+    <tbody class="cal-day" data-date="2026-08-31">
+      <tr class="cal-day-row"><th colspan="5" scope="rowgroup">8/31（一）</th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788133800000">
+        <td class="cal-time">07:50</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">工業生產月增率初值</div>
+          <div class="cal-sub">日本 · Prelim Industrial Production m/m</div>
+        </td>
+        <td class="cal-num">-0.7%</td>
+        <td class="cal-num">1.3%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788133800000">
+        <td class="cal-time">07:50</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">零售銷售年增率</div>
+          <div class="cal-sub">日本 · Retail Sales y/y</div>
+        </td>
+        <td class="cal-num">3.2%</td>
+        <td class="cal-num">0.5%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788138000000">
+        <td class="cal-time">09:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">MI 通膨指標月增率</div>
+          <div class="cal-sub">澳洲 · MI Inflation Gauge m/m</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num">1.0%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788138000000">
+        <td class="cal-time">09:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">ANZ 企業信心指數</div>
+          <div class="cal-sub">紐西蘭 · ANZ Business Confidence</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num">56.1</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788139800000">
+        <td class="cal-time">09:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">企業營業利益季增率</div>
+          <div class="cal-sub">澳洲 · Company Operating Profits q/q</div>
+        </td>
+        <td class="cal-num">2.0%</td>
+        <td class="cal-num">-1.3%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788139800000">
+        <td class="cal-time">09:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">民間信貸月增率</div>
+          <div class="cal-sub">澳洲 · Private Sector Credit m/m</div>
+        </td>
+        <td class="cal-num">0.7%</td>
+        <td class="cal-num">0.8%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788139800000">
+        <td class="cal-time">09:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">製造業採購經理人指數</div>
+          <div class="cal-sub">中國 · Manufacturing PMI</div>
+        </td>
+        <td class="cal-num">49.5</td>
+        <td class="cal-num">49.2</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788139800000">
+        <td class="cal-time">09:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">非製造業採購經理人指數</div>
+          <div class="cal-sub">中國 · Non-Manufacturing PMI</div>
+        </td>
+        <td class="cal-num">49.5</td>
+        <td class="cal-num">49.0</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788152400000">
+        <td class="cal-time">13:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">新屋開工年增率</div>
+          <div class="cal-sub">日本 · Housing Starts y/y</div>
+        </td>
+        <td class="cal-num">7.5%</td>
+        <td class="cal-num">18.6%</td>
+      </tr>
+      <tr class="cal-row" data-impact="2" data-ts="1788157740000">
+        <td class="cal-time">14:29</td>
+        <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">德國消費者物價指數月增率初值</div>
+          <div class="cal-sub">歐元區 · German Prelim CPI m/m</div>
+        </td>
+        <td class="cal-num">0.3%</td>
+        <td class="cal-num">0.8%</td>
+      </tr>
+      <tr class="cal-row" data-impact="0" data-ts="1788159600000">
+        <td class="cal-time">15:00</td>
+        <td class="cal-imp"><span class="dot i-hol" title="影響 假日"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">銀行假日</div>
+          <div class="cal-sub">英國 · Bank Holiday</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788189300000">
+        <td class="cal-time">23:15</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">G20 會議</div>
+          <div class="cal-sub">全球 · G20 Meetings</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+    </tbody>
+    <tbody class="cal-day" data-date="2026-09-01">
+      <tr class="cal-day-row"><th colspan="5" scope="rowgroup">9/01（二）</th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788217260000">
+        <td class="cal-time">07:01</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">BRC 零售物價指數年增率</div>
+          <div class="cal-sub">英國 · BRC Shop Price Index y/y</div>
+        </td>
+        <td class="cal-num">0.9%</td>
+        <td class="cal-num">0.9%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788220200000">
+        <td class="cal-time">07:50</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">資本支出季年增率</div>
+          <div class="cal-sub">日本 · Capital Spending q/y</div>
+        </td>
+        <td class="cal-num">-0.2%</td>
+        <td class="cal-num">0.0%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788222600000">
+        <td class="cal-time">08:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">製造業採購經理人指數終值</div>
+          <div class="cal-sub">日本 · Final Manufacturing PMI</div>
+        </td>
+        <td class="cal-num">55.1</td>
+        <td class="cal-num">55.1</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788226200000">
+        <td class="cal-time">09:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">建築許可月增率</div>
+          <div class="cal-sub">澳洲 · Building Approvals m/m</div>
+        </td>
+        <td class="cal-num">-4.7%</td>
+        <td class="cal-num">7.2%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788226200000">
+        <td class="cal-time">09:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">經常帳</div>
+          <div class="cal-sub">澳洲 · Current Account</div>
+        </td>
+        <td class="cal-num">-29.7B</td>
+        <td class="cal-num">-27.1B</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788227100000">
+        <td class="cal-time">09:45</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">RatingDog 製造業採購經理人指數</div>
+          <div class="cal-sub">中國 · RatingDog Manufacturing PMI</div>
+        </td>
+        <td class="cal-num">51.0</td>
+        <td class="cal-num">50.9</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788233700000">
+        <td class="cal-time">11:35</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">10 年期公債標售</div>
+          <div class="cal-sub">日本 · 10-y Bond Auction</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num">2.84|2.6</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788238800000">
+        <td class="cal-time">13:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">消費者信心指數</div>
+          <div class="cal-sub">日本 · Consumer Confidence</div>
+        </td>
+        <td class="cal-num">35.3</td>
+        <td class="cal-num">34.9</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788242400000">
+        <td class="cal-time">14:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">德國零售銷售月增率</div>
+          <div class="cal-sub">歐元區 · German Retail Sales m/m</div>
+        </td>
+        <td class="cal-num">0.4%</td>
+        <td class="cal-num">-0.7%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788242400000">
+        <td class="cal-time">14:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">Nationwide 房價指數月增率</div>
+          <div class="cal-sub">英國 · Nationwide HPI m/m</div>
+        </td>
+        <td class="cal-num">0.1%</td>
+        <td class="cal-num">0.1%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788244200000">
+        <td class="cal-time">14:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">商品價格年增率</div>
+          <div class="cal-sub">澳洲 · Commodity Prices y/y</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num">15.4%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788244380000">
+        <td class="cal-time">14:33</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">零售銷售年增率</div>
+          <div class="cal-sub">瑞士 · Retail Sales y/y</div>
+        </td>
+        <td class="cal-num">1.6%</td>
+        <td class="cal-num">1.5%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788246900000">
+        <td class="cal-time">15:15</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">西班牙製造業採購經理人指數</div>
+          <div class="cal-sub">歐元區 · Spanish Manufacturing PMI</div>
+        </td>
+        <td class="cal-num">50.3</td>
+        <td class="cal-num">50.2</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788247800000">
+        <td class="cal-time">15:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">製造業採購經理人指數</div>
+          <div class="cal-sub">瑞士 · Manufacturing PMI</div>
+        </td>
+        <td class="cal-num">54.1</td>
+        <td class="cal-num">53.2</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788248700000">
+        <td class="cal-time">15:45</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">義大利製造業採購經理人指數</div>
+          <div class="cal-sub">歐元區 · Italian Manufacturing PMI</div>
+        </td>
+        <td class="cal-num">51.4</td>
+        <td class="cal-num">51.3</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788249000000">
+        <td class="cal-time">15:50</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">法國製造業採購經理人指數終值</div>
+          <div class="cal-sub">歐元區 · French Final Manufacturing PMI</div>
+        </td>
+        <td class="cal-num">51.5</td>
+        <td class="cal-num">51.5</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788249300000">
+        <td class="cal-time">15:55</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">德國製造業採購經理人指數終值</div>
+          <div class="cal-sub">歐元區 · German Final Manufacturing PMI</div>
+        </td>
+        <td class="cal-num">54.1</td>
+        <td class="cal-num">54.1</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788249600000">
+        <td class="cal-time">16:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">製造業採購經理人指數終值</div>
+          <div class="cal-sub">歐元區 · Final Manufacturing PMI</div>
+        </td>
+        <td class="cal-num">52.8</td>
+        <td class="cal-num">52.8</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788251400000">
+        <td class="cal-time">16:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">義大利月度失業率</div>
+          <div class="cal-sub">歐元區 · Italian Monthly Unemployment Rate</div>
+        </td>
+        <td class="cal-num">5.6%</td>
+        <td class="cal-num">5.7%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788251400000">
+        <td class="cal-time">16:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">製造業採購經理人指數終值</div>
+          <div class="cal-sub">英國 · Final Manufacturing PMI</div>
+        </td>
+        <td class="cal-num">51.5</td>
+        <td class="cal-num">51.5</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788251400000">
+        <td class="cal-time">16:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">M4 貨幣供給月增率</div>
+          <div class="cal-sub">英國 · M4 Money Supply m/m</div>
+        </td>
+        <td class="cal-num">0.9%</td>
+        <td class="cal-num">0.8%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788251400000">
+        <td class="cal-time">16:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">房貸核准件數</div>
+          <div class="cal-sub">英國 · Mortgage Approvals</div>
+        </td>
+        <td class="cal-num">59K</td>
+        <td class="cal-num">58K</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788251400000">
+        <td class="cal-time">16:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">個人淨放款月增率</div>
+          <div class="cal-sub">英國 · Net Lending to Individuals m/m</div>
+        </td>
+        <td class="cal-num">7.2B</td>
+        <td class="cal-num">9.5B</td>
+      </tr>
+      <tr class="cal-row" data-impact="2" data-ts="1788253200000">
+        <td class="cal-time">17:00</td>
+        <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">核心消費者物價指數年增率快報</div>
+          <div class="cal-sub">歐元區 · Core CPI Flash Estimate y/y</div>
+        </td>
+        <td class="cal-num">2.5%</td>
+        <td class="cal-num">2.5%</td>
+      </tr>
+      <tr class="cal-row" data-impact="2" data-ts="1788253200000">
+        <td class="cal-time">17:00</td>
+        <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">消費者物價指數年增率快報</div>
+          <div class="cal-sub">歐元區 · CPI Flash Estimate y/y</div>
+        </td>
+        <td class="cal-num">3.3%</td>
+        <td class="cal-num">2.9%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788253200000">
+        <td class="cal-time">17:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">義大利消費者物價指數月增率初值</div>
+          <div class="cal-sub">歐元區 · Italian Prelim CPI m/m</div>
+        </td>
+        <td class="cal-num">0.5%</td>
+        <td class="cal-num">0.2%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788253200000">
+        <td class="cal-time">17:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">失業率</div>
+          <div class="cal-sub">歐元區 · Unemployment Rate</div>
+        </td>
+        <td class="cal-num">6.3%</td>
+        <td class="cal-num">6.3%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788267900000">
+        <td class="cal-time">21:05</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">FOMC 官員 Barr 談話</div>
+          <div class="cal-sub">美國 · FOMC Member Barr Speaks</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788269400000">
+        <td class="cal-time">21:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">製造業採購經理人指數</div>
+          <div class="cal-sub">加拿大 · Manufacturing PMI</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num">53.5</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788270300000">
+        <td class="cal-time">21:45</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">製造業採購經理人指數終值</div>
+          <div class="cal-sub">美國 · Final Manufacturing PMI</div>
+        </td>
+        <td class="cal-num">53.3</td>
+        <td class="cal-num">53.2</td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788271200000">
+        <td class="cal-time">22:00</td>
+        <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">ISM 製造業採購經理人指數</div>
+          <div class="cal-sub">美國 · ISM Manufacturing PMI</div>
+        </td>
+        <td class="cal-num">55.2</td>
+        <td class="cal-num">55.6</td>
+      </tr>
+      <tr class="cal-row" data-impact="2" data-ts="1788271200000">
+        <td class="cal-time">22:00</td>
+        <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">ISM 製造業物價指數</div>
+          <div class="cal-sub">美國 · ISM Manufacturing Prices</div>
+        </td>
+        <td class="cal-num">70.5</td>
+        <td class="cal-num">71.1</td>
+      </tr>
+      <tr class="cal-row" data-impact="2" data-ts="1788271200000">
+        <td class="cal-time">22:00</td>
+        <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">JOLTS 職缺數</div>
+          <div class="cal-sub">美國 · JOLTS Job Openings</div>
+        </td>
+        <td class="cal-num">7.33M</td>
+        <td class="cal-num">7.36M</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788271200000">
+        <td class="cal-time">22:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">營建支出月增率</div>
+          <div class="cal-sub">美國 · Construction Spending m/m</div>
+        </td>
+        <td class="cal-num">0.0%</td>
+        <td class="cal-num">-0.1%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788272040000">
+        <td class="cal-time">22:14</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">RCM/TIPP 經濟樂觀指數</div>
+          <div class="cal-sub">美國 · RCM/TIPP Economic Optimism</div>
+        </td>
+        <td class="cal-num">46.2</td>
+        <td class="cal-num">45.1</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788272100000">
+        <td class="cal-time">22:15</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">Omdia 汽車總銷量</div>
+          <div class="cal-sub">美國 · Omdia Total Vehicle Sales</div>
+        </td>
+        <td class="cal-num">16.3M</td>
+        <td class="cal-num">16.3M</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788274260000">
+        <td class="cal-time">22:51</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">全球乳製品拍賣價格指數</div>
+          <div class="cal-sub">紐西蘭 · GDT Price Index</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num">2.3%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788275700000">
+        <td class="cal-time">23:15</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">G20 會議</div>
+          <div class="cal-sub">全球 · G20 Meetings</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+    </tbody>
+    <tbody class="cal-day" data-date="2026-09-02">
+      <tr class="cal-day-row"><th colspan="5" scope="rowgroup">9/02（三）</th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788294600000">
+        <td class="cal-time">04:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">API 週度原油庫存報告</div>
+          <div class="cal-sub">美國 · API Weekly Statistical Bulletin</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788302700000">
+        <td class="cal-time">06:45</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">營建許可月增率</div>
+          <div class="cal-sub">紐西蘭 · Building Consents m/m</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num">-3.6%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788306600000">
+        <td class="cal-time">07:50</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">貨幣基數年增率</div>
+          <div class="cal-sub">日本 · Monetary Base y/y</div>
+        </td>
+        <td class="cal-num">-13.5%</td>
+        <td class="cal-num">-13.8%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788309000000">
+        <td class="cal-time">08:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">德國央行總裁 Nagel 談話</div>
+          <div class="cal-sub">歐元區 · German Buba President Nagel Speaks</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788312600000">
+        <td class="cal-time">09:30</td>
+        <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">國內生產毛額季增率</div>
+          <div class="cal-sub">澳洲 · GDP q/q</div>
+        </td>
+        <td class="cal-num">0.3%</td>
+        <td class="cal-num">0.3%</td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788314400000">
+        <td class="cal-time">10:00</td>
+        <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">紐西蘭央行利率聲明</div>
+          <div class="cal-sub">紐西蘭 · RBNZ Rate Statement</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788314400000">
+        <td class="cal-time">10:00</td>
+        <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">官方現金利率</div>
+          <div class="cal-sub">紐西蘭 · Official Cash Rate</div>
+        </td>
+        <td class="cal-num">2.75%</td>
+        <td class="cal-num">2.50%</td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788314400000">
+        <td class="cal-time">10:00</td>
+        <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">紐西蘭央行貨幣政策聲明</div>
+          <div class="cal-sub">紐西蘭 · RBNZ Monetary Policy Statement</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788318000000">
+        <td class="cal-time">11:00</td>
+        <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">紐西蘭央行記者會</div>
+          <div class="cal-sub">紐西蘭 · RBNZ Press Conference</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788331500000">
+        <td class="cal-time">14:45</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">法國政府預算餘額</div>
+          <div class="cal-sub">歐元區 · French Gov Budget Balance</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num">-106.8B</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788332400000">
+        <td class="cal-time">15:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">西班牙失業人數變動</div>
+          <div class="cal-sub">歐元區 · Spanish Unemployment Change</div>
+        </td>
+        <td class="cal-num">15.4K</td>
+        <td class="cal-num">19.5K</td>
+      </tr>
+      <tr class="cal-row" data-impact="2" data-ts="1788351300000">
+        <td class="cal-time">20:15</td>
+        <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">ADP 非農就業人數</div>
+          <div class="cal-sub">美國 · ADP Non-Farm Employment Change</div>
+        </td>
+        <td class="cal-num">48K</td>
+        <td class="cal-num">44K</td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788356700000">
+        <td class="cal-time">21:45</td>
+        <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">加拿大央行利率聲明</div>
+          <div class="cal-sub">加拿大 · BOC Rate Statement</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788356700000">
+        <td class="cal-time">21:45</td>
+        <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">隔夜拆款利率</div>
+          <div class="cal-sub">加拿大 · Overnight Rate</div>
+        </td>
+        <td class="cal-num">2.25%</td>
+        <td class="cal-num">2.25%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788357600000">
+        <td class="cal-time">22:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">工廠訂單月增率</div>
+          <div class="cal-sub">美國 · Factory Orders m/m</div>
+        </td>
+        <td class="cal-num">0.7%</td>
+        <td class="cal-num">-0.3%</td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788359400000">
+        <td class="cal-time">22:30</td>
+        <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">加拿大央行記者會</div>
+          <div class="cal-sub">加拿大 · BOC Press Conference</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788359400000">
+        <td class="cal-time">22:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">原油庫存</div>
+          <div class="cal-sub">美國 · Crude Oil Inventories</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num">0.1M</td>
+      </tr>
+    </tbody>
+    <tbody class="cal-day" data-date="2026-09-03">
+      <tr class="cal-day-row"><th colspan="5" scope="rowgroup">9/03（四）</th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788372000000">
+        <td class="cal-time">02:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">聯準會褐皮書</div>
+          <div class="cal-sub">美國 · Beige Book</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="2" data-ts="1788379800000">
+        <td class="cal-time">04:10</td>
+        <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">紐西蘭央行總裁 Breman 談話</div>
+          <div class="cal-sub">紐西蘭 · RBNZ Gov Breman Speaks</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788389100000">
+        <td class="cal-time">06:45</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">海外貿易指數季增率</div>
+          <div class="cal-sub">紐西蘭 · Overseas Trade Index q/q</div>
+        </td>
+        <td class="cal-num">-2.2%</td>
+        <td class="cal-num">-2.0%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788397200000">
+        <td class="cal-time">09:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">ANZ 商品價格月增率</div>
+          <div class="cal-sub">紐西蘭 · ANZ Commodity Prices m/m</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num">-3.9%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788398100000">
+        <td class="cal-time">09:15</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">澳洲央行助理總裁 Jones 談話</div>
+          <div class="cal-sub">澳洲 · RBA Assist Gov Jones Speaks</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788399000000">
+        <td class="cal-time">09:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">商品貿易帳</div>
+          <div class="cal-sub">澳洲 · Goods Trade Balance</div>
+        </td>
+        <td class="cal-num">1.50B</td>
+        <td class="cal-num">1.93B</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788399900000">
+        <td class="cal-time">09:45</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">RatingDog 服務業採購經理人指數</div>
+          <div class="cal-sub">中國 · RatingDog Services PMI</div>
+        </td>
+        <td class="cal-num">50.6</td>
+        <td class="cal-num">50.4</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788406500000">
+        <td class="cal-time">11:35</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">30 年期公債標售</div>
+          <div class="cal-sub">日本 · 30-y Bond Auction</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num">3.94|3.9</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788412500000">
+        <td class="cal-time">13:15</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">澳洲央行助理總裁 Hunter 談話</div>
+          <div class="cal-sub">澳洲 · RBA Assist Gov Hunter Speaks</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="2" data-ts="1788417000000">
+        <td class="cal-time">14:30</td>
+        <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">消費者物價指數月增率</div>
+          <div class="cal-sub">瑞士 · CPI m/m</div>
+        </td>
+        <td class="cal-num">0.0%</td>
+        <td class="cal-num">-0.1%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788418800000">
+        <td class="cal-time">15:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">國內生產毛額季增率</div>
+          <div class="cal-sub">瑞士 · GDP q/q</div>
+        </td>
+        <td class="cal-num">1.5%</td>
+        <td class="cal-num">0.7%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788419700000">
+        <td class="cal-time">15:15</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">西班牙服務業採購經理人指數</div>
+          <div class="cal-sub">歐元區 · Spanish Services PMI</div>
+        </td>
+        <td class="cal-num">59.0</td>
+        <td class="cal-num">58.3</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788421500000">
+        <td class="cal-time">15:45</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">義大利服務業採購經理人指數</div>
+          <div class="cal-sub">歐元區 · Italian Services PMI</div>
+        </td>
+        <td class="cal-num">53.6</td>
+        <td class="cal-num">52.5</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788421800000">
+        <td class="cal-time">15:50</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">法國服務業採購經理人指數終值</div>
+          <div class="cal-sub">歐元區 · French Final Services PMI</div>
+        </td>
+        <td class="cal-num">48.4</td>
+        <td class="cal-num">48.4</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788422100000">
+        <td class="cal-time">15:55</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">德國服務業採購經理人指數終值</div>
+          <div class="cal-sub">歐元區 · German Final Services PMI</div>
+        </td>
+        <td class="cal-num">48.5</td>
+        <td class="cal-num">48.5</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788422400000">
+        <td class="cal-time">16:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">服務業採購經理人指數終值</div>
+          <div class="cal-sub">歐元區 · Final Services PMI</div>
+        </td>
+        <td class="cal-num">51.7</td>
+        <td class="cal-num">51.7</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788424200000">
+        <td class="cal-time">16:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">服務業採購經理人指數終值</div>
+          <div class="cal-sub">英國 · Final Services PMI</div>
+        </td>
+        <td class="cal-num">52.8</td>
+        <td class="cal-num">52.8</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788426000000">
+        <td class="cal-time">17:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">生產者物價指數月增率</div>
+          <div class="cal-sub">歐元區 · PPI m/m</div>
+        </td>
+        <td class="cal-num">1.2%</td>
+        <td class="cal-num">-0.3%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788426180000">
+        <td class="cal-time">17:03</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">西班牙 10 年期公債標售</div>
+          <div class="cal-sub">歐元區 · Spanish 10-y Bond Auction</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num">3.54|2.4</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788427080000">
+        <td class="cal-time">17:18</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">法國 10 年期公債標售</div>
+          <div class="cal-sub">歐元區 · French 10-y Bond Auction</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num">3.86|3.7</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788427800000">
+        <td class="cal-time">17:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">挑戰者裁員人數年增率</div>
+          <div class="cal-sub">美國 · Challenger Job Cuts y/y</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num">-46.1%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788438600000">
+        <td class="cal-time">20:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">勞動生產力季增率</div>
+          <div class="cal-sub">加拿大 · Labor Productivity q/q</div>
+        </td>
+        <td class="cal-num">0.7%</td>
+        <td class="cal-num">-0.5%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788438600000">
+        <td class="cal-time">20:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">貿易帳</div>
+          <div class="cal-sub">加拿大 · Trade Balance</div>
+        </td>
+        <td class="cal-num">3.2B</td>
+        <td class="cal-num">3.9B</td>
+      </tr>
+      <tr class="cal-row" data-impact="2" data-ts="1788438600000">
+        <td class="cal-time">20:30</td>
+        <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">初領失業金人數</div>
+          <div class="cal-sub">美國 · Unemployment Claims</div>
+        </td>
+        <td class="cal-num">205K</td>
+        <td class="cal-num">203K</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788438600000">
+        <td class="cal-time">20:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">FOMC 官員 Waller 談話</div>
+          <div class="cal-sub">美國 · FOMC Member Waller Speaks</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788438600000">
+        <td class="cal-time">20:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">非農生產力季增率修正值</div>
+          <div class="cal-sub">美國 · Revised Nonfarm Productivity q/q</div>
+        </td>
+        <td class="cal-num">1.4%</td>
+        <td class="cal-num">1.4%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788438600000">
+        <td class="cal-time">20:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">單位勞動成本季增率修正值</div>
+          <div class="cal-sub">美國 · Revised Unit Labor Costs q/q</div>
+        </td>
+        <td class="cal-num">1.3%</td>
+        <td class="cal-num">1.3%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788438600000">
+        <td class="cal-time">20:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">貿易帳</div>
+          <div class="cal-sub">美國 · Trade Balance</div>
+        </td>
+        <td class="cal-num">-89.4B</td>
+        <td class="cal-num">-73.3B</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788443100000">
+        <td class="cal-time">21:45</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">服務業採購經理人指數終值</div>
+          <div class="cal-sub">美國 · Final Services PMI</div>
+        </td>
+        <td class="cal-num">56.8</td>
+        <td class="cal-num">56.8</td>
+      </tr>
+      <tr class="cal-row" data-impact="2" data-ts="1788444000000">
+        <td class="cal-time">22:00</td>
+        <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">ISM 服務業採購經理人指數</div>
+          <div class="cal-sub">美國 · ISM Services PMI</div>
+        </td>
+        <td class="cal-num">54.2</td>
+        <td class="cal-num">54.1</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788445800000">
+        <td class="cal-time">22:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">天然氣庫存</div>
+          <div class="cal-sub">美國 · Natural Gas Storage</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num">15B</td>
+      </tr>
+    </tbody>
+    <tbody class="cal-day" data-date="2026-09-04">
+      <tr class="cal-day-row"><th colspan="5" scope="rowgroup">9/04（五）</th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788462000000">
+        <td class="cal-time">03:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">FOMC 官員 Hammack 談話</div>
+          <div class="cal-sub">美國 · FOMC Member Hammack Speaks</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788462300000">
+        <td class="cal-time">03:05</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">FOMC 官員 Goolsbee 談話</div>
+          <div class="cal-sub">美國 · FOMC Member Goolsbee Speaks</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788478200000">
+        <td class="cal-time">07:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">家庭支出年增率</div>
+          <div class="cal-sub">日本 · Household Spending y/y</div>
+        </td>
+        <td class="cal-num">-1.6%</td>
+        <td class="cal-num">-3.3%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788501600000">
+        <td class="cal-time">14:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">德國工廠訂單月增率</div>
+          <div class="cal-sub">歐元區 · German Factory Orders m/m</div>
+        </td>
+        <td class="cal-num">0.3%</td>
+        <td class="cal-num">3.1%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788508800000">
+        <td class="cal-time">16:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">義大利零售銷售月增率</div>
+          <div class="cal-sub">歐元區 · Italian Retail Sales m/m</div>
+        </td>
+        <td class="cal-num">0.2%</td>
+        <td class="cal-num">-0.1%</td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788510600000">
+        <td class="cal-time">16:30</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">營建業採購經理人指數</div>
+          <div class="cal-sub">英國 · Construction PMI</div>
+        </td>
+        <td class="cal-num">45.8</td>
+        <td class="cal-num">44.7</td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788511800000">
+        <td class="cal-time">16:50</td>
+        <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">英國央行總裁 Bailey 談話</div>
+          <div class="cal-sub">英國 · BOE Gov Bailey Speaks</div>
+        </td>
+        <td class="cal-num"></td>
+        <td class="cal-num"></td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788512400000">
+        <td class="cal-time">17:00</td>
+        <td class="cal-imp"><span class="dot i-low" title="影響 低"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">零售銷售月增率</div>
+          <div class="cal-sub">歐元區 · Retail Sales m/m</div>
+        </td>
+        <td class="cal-num">0.3%</td>
+        <td class="cal-num">-0.3%</td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788525000000">
+        <td class="cal-time">20:30</td>
+        <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">非農就業人數</div>
+          <div class="cal-sub">美國 · Non-Farm Employment Change</div>
+        </td>
+        <td class="cal-num">55K</td>
+        <td class="cal-num">-23K</td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788525000000">
+        <td class="cal-time">20:30</td>
+        <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">平均時薪月增率</div>
+          <div class="cal-sub">美國 · Average Hourly Earnings m/m</div>
+        </td>
+        <td class="cal-num">0.3%</td>
+        <td class="cal-num">0.1%</td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788525000000">
+        <td class="cal-time">20:30</td>
+        <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">失業率</div>
+          <div class="cal-sub">美國 · Unemployment Rate</div>
+        </td>
+        <td class="cal-num">4.1%</td>
+        <td class="cal-num">4.1%</td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788525000000">
+        <td class="cal-time">20:30</td>
+        <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">就業人數變動</div>
+          <div class="cal-sub">加拿大 · Employment Change</div>
+        </td>
+        <td class="cal-num">15.1K</td>
+        <td class="cal-num">75.1K</td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788525000000">
+        <td class="cal-time">20:30</td>
+        <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">失業率</div>
+          <div class="cal-sub">加拿大 · Unemployment Rate</div>
+        </td>
+        <td class="cal-num">6.4%</td>
+        <td class="cal-num">6.4%</td>
+      </tr>
+      <tr class="cal-row" data-impact="2" data-ts="1788530400000">
+        <td class="cal-time">22:00</td>
+        <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
+        <td class="cal-ev">
+          <div class="cal-title">Ivey 採購經理人指數</div>
+          <div class="cal-sub">加拿大 · Ivey PMI</div>
+        </td>
+        <td class="cal-num">56.2</td>
+        <td class="cal-num">55.1</td>
+      </tr>
+    </tbody>
+  </table>
   </section>
 
   <section id="panel-settings" class="panel" role="tabpanel" hidden>
@@ -1298,8 +1434,8 @@
 
     <div class="card">
       <div class="card-h">關於</div>
-      <div class="row"><span>版本</span><b>v0.3.007</b></div>
-      <div class="row"><span>頁面產生時間</span><b>2026-09-01 21:48 (UTC+8)</b></div>
+      <div class="row"><span>版本</span><b>v0.3.008</b></div>
+      <div class="row"><span>頁面產生時間</span><b>2026-09-01 22:08 (UTC+8)</b></div>
       <div class="row"><span>原始碼</span>
         <a href="https://github.com/ChrisHo0317/Local_Dashboard"
            target="_blank" rel="noopener">GitHub</a></div>
@@ -1659,47 +1795,116 @@ function initTouch(gd) {
     });
 }
 
-// ── 行事曆：影響程度篩選、標出今天 ─────────────────────────
-// 「今天」在瀏覽器端判斷，而不是產生頁面時寫死 —— 頁面會被快取，
-// 隔天再開就會標錯日子。
+// ── 行事曆：影響程度篩選、標出今天、現在時間標示 ───────────
+// 所有跟「現在」有關的東西都在瀏覽器端算，不在產生頁面時寫死 ——
+// 頁面會被 CDN 快取，寫死的話隔天再開就會標錯。
 (function () {
-  var days = Array.prototype.slice.call(document.querySelectorAll('.cal-day'));
-  if (!days.length) return;
+  var table = document.querySelector('.cal-table');
+  if (!table) return;
 
-  var now = new Date();
-  var iso = now.getFullYear() + '-' +
-            String(now.getMonth() + 1).padStart(2, '0') + '-' +
-            String(now.getDate()).padStart(2, '0');
-  days.forEach(function (d) {
-    if (d.dataset.date === iso) {
-      d.classList.add('today');
+  var days = Array.prototype.slice.call(table.querySelectorAll('.cal-day'));
+  var clock = document.getElementById('cal-clock');
+  var minImpact = 0;
+
+  // 台北時間（UTC+8）：不論使用者裝置在哪個時區，顯示都與表格一致
+  function taipei() {
+    return new Date(Date.now() + (8 * 60 + new Date().getTimezoneOffset()) * 60000);
+  }
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function markDays() {
+    var t = taipei();
+    var iso = t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
+    days.forEach(function (d) {
+      d.classList.toggle('today', d.dataset.date === iso);
+      d.classList.toggle('past', d.dataset.date < iso);
+      var head = d.querySelector('.cal-day-row th');
+      var tag = head.querySelector('.cal-today-tag');
+      if (d.dataset.date === iso && !tag) {
+        tag = document.createElement('span');
+        tag.className = 'cal-today-tag';
+        tag.textContent = '今天';
+        head.appendChild(tag);
+      } else if (d.dataset.date !== iso && tag) {
+        tag.remove();
+      }
+    });
+    return iso;
+  }
+
+  var nowRow = null;
+  function buildNowRow(text) {
+    if (!nowRow) {
+      nowRow = document.createElement('tr');
+      nowRow.className = 'cal-now';
+      var td = document.createElement('td');
+      td.colSpan = 5;
+      var line = document.createElement('div');
+      line.className = 'now-line';
       var tag = document.createElement('span');
-      tag.className = 'cal-today-tag';
-      tag.textContent = '今天';
-      d.querySelector('.cal-day-h').appendChild(tag);
-    } else if (d.dataset.date < iso) {
-      d.classList.add('past');
+      tag.className = 'now-tag';
+      line.appendChild(tag);
+      td.appendChild(line);
+      nowRow.appendChild(td);
+      nowRow._tag = tag;
     }
-  });
+    nowRow._tag.textContent = text;
+    return nowRow;
+  }
 
-  var chips = Array.prototype.slice.call(document.querySelectorAll('.cal-filter .chip'));
-  function apply(min) {
+  // 把標示線插到今天「已過去」與「還沒到」的事件之間
+  function placeNow(iso) {
+    var today = days.filter(function (d) { return d.dataset.date === iso; })[0];
+    if (!today) { if (nowRow) nowRow.remove(); return; }
+
+    var t = taipei();
+    var row = buildNowRow(pad(t.getHours()) + ':' + pad(t.getMinutes()));
+    var now = Date.now();
+    var rows = Array.prototype.slice.call(today.querySelectorAll('.cal-row'))
+                    .filter(function (r) { return !r.hidden; });
+
+    var next = null;
+    for (var i = 0; i < rows.length; i++) {
+      if (Number(rows[i].dataset.ts) > now) { next = rows[i]; break; }
+    }
+    if (next) { today.insertBefore(row, next); }
+    else { today.appendChild(row); }
+  }
+
+  function applyFilter() {
     days.forEach(function (d) {
       var shown = 0;
-      Array.prototype.slice.call(d.querySelectorAll('.cal-row')).forEach(function (row) {
-        var on = Number(row.dataset.impact) >= min;
-        row.hidden = !on;
+      Array.prototype.slice.call(d.querySelectorAll('.cal-row')).forEach(function (r) {
+        var on = Number(r.dataset.impact) >= minImpact;
+        r.hidden = !on;
         if (on) shown++;
       });
       d.hidden = (shown === 0);
     });
   }
-  chips.forEach(function (c) {
-    c.addEventListener('click', function () {
-      chips.forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); });
-      apply(Number(c.dataset.min));
+
+  function refresh() {
+    var iso = markDays();
+    applyFilter();
+    placeNow(iso);
+    var t = taipei();
+    clock.textContent = '現在 ' + (t.getMonth() + 1) + '/' + pad(t.getDate()) + ' ' +
+                        pad(t.getHours()) + ':' + pad(t.getMinutes()) + '（UTC+8）';
+  }
+
+  Array.prototype.slice.call(document.querySelectorAll('.cal-filter .chip'))
+    .forEach(function (c) {
+      c.addEventListener('click', function () {
+        document.querySelectorAll('.cal-filter .chip').forEach(function (x) {
+          x.setAttribute('aria-pressed', String(x === c));
+        });
+        minImpact = Number(c.dataset.min);
+        refresh();
+      });
     });
-  });
+
+  refresh();
+  setInterval(refresh, 30000);   // 每半分鐘更新時鐘與標示線位置
 })();
 
 // ── 重新載入 ───────────────────────────────────────────────

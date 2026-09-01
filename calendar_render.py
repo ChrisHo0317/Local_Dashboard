@@ -1,8 +1,12 @@
 """
-把行事曆事件轉成靜態 HTML
+把行事曆事件轉成靜態 HTML（表格）
 
 時間一律換算成台北時間（UTC+8，台灣沒有日光節約時間，直接用固定位移即可，
 不必依賴系統的 tz 資料庫）。事件名稱、國別、影響程度由 calendar_i18n 中文化。
+
+輸出成單一 <table>，每天一個 <tbody>，欄位固定寬度，各天的欄位才會對齊。
+每列帶 data-ts（epoch 毫秒），前端據此插入「現在」標示線 —— 頁面會被 CDN
+快取，時間相關的東西一律在瀏覽器端算，不能在產生頁面時寫死。
 
 只輸出一段時間窗內的事件：CSV 會逐週累積下去，全部塞進頁面會愈來愈肥。
 """
@@ -54,35 +58,33 @@ def stats(df: pd.DataFrame) -> dict:
 
 def panel_html(df: pd.DataFrame) -> str:
     """產生行事曆分頁的內容（不含 <section> 外框）。"""
-    chips = (
-        '  <div class="cal-filter" role="group" aria-label="影響程度篩選">\n'
-        '    <button type="button" class="chip" data-min="0" aria-pressed="true">全部</button>\n'
-        '    <button type="button" class="chip" data-min="2" aria-pressed="false">中以上</button>\n'
-        '    <button type="button" class="chip" data-min="3" aria-pressed="false">僅高影響</button>\n'
+    head = (
+        '  <div class="cal-bar">\n'
+        '    <div class="cal-filter" role="group" aria-label="影響程度篩選">\n'
+        '      <button type="button" class="chip" data-min="0" aria-pressed="true">全部</button>\n'
+        '      <button type="button" class="chip" data-min="2" aria-pressed="false">中以上</button>\n'
+        '      <button type="button" class="chip" data-min="3" aria-pressed="false">僅高影響</button>\n'
+        '    </div>\n'
+        '    <div class="cal-clock" id="cal-clock" aria-live="off">—</div>\n'
         '  </div>'
     )
 
     view = window(df)
     if view.empty:
-        return chips + '\n  <p class="cal-empty">目前沒有事件資料。</p>'
+        return head + '\n  <p class="cal-empty">目前沒有事件資料。</p>'
 
-    out = [chips]
+    bodies = []
     for day, group in view.groupby(view["_ts"].dt.tz_convert(TAIPEI).dt.date, sort=True):
-        head = f"{day.month}/{day.day:02d}（{WEEKDAYS[day.weekday()]}）"
-        rows = []
+        label = f"{day.month}/{day.day:02d}（{WEEKDAYS[day.weekday()]}）"
+        rows = [
+            f'      <tr class="cal-day-row"><th colspan="5" scope="rowgroup">{label}</th></tr>'
+        ]
         for _, e in group.iterrows():
             local = _local(e["_ts"])
             impact = e["impact"]
             rank = IMPACT_ORDER.get(impact, 1)
             # 來源把全日事件標成 00:00；那種顯示「全日」比顯示 00:00 清楚
             when = "全日" if (local.hour == 0 and local.minute == 0) else local.strftime("%H:%M")
-
-            nums = []
-            if e["forecast"]:
-                nums.append(f'<span>預估 {escape(e["forecast"])}</span>')
-            if e["previous"]:
-                nums.append(f'<span>前值 {escape(e["previous"])}</span>')
-            nums_html = f'<div class="cal-nums">{"".join(nums)}</div>' if nums else ""
 
             zh = translate_title(e["title"])
             en = e["title"]
@@ -92,22 +94,31 @@ def panel_html(df: pd.DataFrame) -> str:
                 sub += " · " + escape(en)
 
             rows.append(
-                f'    <div class="cal-row" data-impact="{rank}">\n'
-                f'      <span class="cal-time">{when}</span>\n'
-                f'      <span class="dot {IMPACT_CLASS.get(impact, "i-low")}"'
-                f' title="影響 {translate_impact(impact)}"></span>\n'
-                f'      <div class="cal-main">\n'
-                f'        <div class="cal-title">{escape(zh)}</div>\n'
-                f'        <div class="cal-sub">{sub}</div>\n'
-                f'      </div>\n'
-                f'      {nums_html}\n'
-                f'    </div>'
+                f'      <tr class="cal-row" data-impact="{rank}"'
+                f' data-ts="{int(e["_ts"].timestamp() * 1000)}">\n'
+                f'        <td class="cal-time">{when}</td>\n'
+                f'        <td class="cal-imp"><span class="dot {IMPACT_CLASS.get(impact, "i-low")}"'
+                f' title="影響 {translate_impact(impact)}"></span></td>\n'
+                f'        <td class="cal-ev">\n'
+                f'          <div class="cal-title">{escape(zh)}</div>\n'
+                f'          <div class="cal-sub">{sub}</div>\n'
+                f'        </td>\n'
+                f'        <td class="cal-num">{escape(e["forecast"])}</td>\n'
+                f'        <td class="cal-num">{escape(e["previous"])}</td>\n'
+                f'      </tr>'
             )
 
-        out.append(
-            f'  <div class="cal-day" data-date="{day.isoformat()}">\n'
-            f'    <div class="cal-day-h">{head}</div>\n'
-            + "\n".join(rows) + "\n  </div>"
+        bodies.append(
+            f'    <tbody class="cal-day" data-date="{day.isoformat()}">\n'
+            + "\n".join(rows) + "\n    </tbody>"
         )
 
-    return "\n".join(out)
+    table = (
+        '  <table class="cal-table">\n'
+        '    <thead>\n'
+        '      <tr><th class="cal-time">時間</th><th class="cal-imp"><span class="sr">影響</span></th>'
+        '<th class="cal-ev">事件</th><th class="cal-num">預估</th><th class="cal-num">前值</th></tr>\n'
+        '    </thead>\n'
+        + "\n".join(bodies) + "\n  </table>"
+    )
+    return head + "\n" + table
