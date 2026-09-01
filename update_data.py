@@ -18,7 +18,8 @@ from bond_scraper import MoneyDJBondScraper
 from calendar_data import CSV_PATH as CAL_CSV, merge_events
 from calendar_scraper import ForexFactoryCalendarScraper
 from dram_data import CSV_PATH as DRAM_CSV, merge_prices
-from f1_data import CSV_PATH as F1_CSV, STANDINGS_CSV, merge_schedule, merge_standings
+from f1_data import (CSV_PATH as F1_CSV, SERIES_CSV, STANDINGS_CSV,
+                     merge_points_series, merge_schedule, merge_standings)
 from f1_scraper import F1CalendarScraper, F1StandingsScraper
 from gold_data import CSV_PATH as GOLD_CSV, merge_prices as merge_gold
 from gold_scraper import YahooGoldScraper
@@ -106,16 +107,25 @@ def update_f1() -> int:
 
 
 def update_f1_standings() -> int:
-    """F1 積分榜：每站之後都會變，一律以最新抓到的為準。"""
+    """
+    F1 積分榜與逐站積分走勢：同一個頁面就有，一次抓完。
+    每站之後都會變，一律以最新抓到的為準。
+    """
     year = date.today().year
-    rows = F1StandingsScraper(logger=log).fetch_standings(year)
-    if not rows:
+    data = F1StandingsScraper(logger=log).fetch(year)
+    if not data["standings"] and not data["series"]:
         log.warning("F1 積分榜：未取得任何資料（頁面可能改版），本次不更新")
         return 0
-    changed = merge_standings(rows)
-    log.info(f"F1 積分榜：抓取 {len(rows)} 筆，"
+
+    changed = merge_standings(data["standings"])
+    log.info(f"F1 積分榜：抓取 {len(data['standings'])} 筆，"
              + (f"已更新 {STANDINGS_CSV.name}" if changed else "與現有資料相同"))
-    return changed
+
+    changed_series = merge_points_series(data["series"])
+    log.info(f"F1 積分走勢：抓取 {len(data['series'])} 筆，"
+             + (f"已更新 {SERIES_CSV.name}" if changed_series else "與現有資料相同"))
+
+    return changed + changed_series
 
 
 def main() -> int:

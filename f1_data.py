@@ -124,5 +124,46 @@ def merge_standings(rows: list[dict]) -> int:
 
 
 def load_all() -> dict:
-    """F1 分頁需要的全部資料（賽程 + 積分榜）。"""
-    return {"schedule": load_schedule(), "standings": load_standings()}
+    """F1 分頁需要的全部資料（賽程 + 積分榜 + 逐站積分）。"""
+    return {
+        "schedule": load_schedule(),
+        "standings": load_standings(),
+        "series": load_points_series(),
+    }
+
+
+# ── 逐站累積積分（積分走勢圖用）──────────────────────────────
+SERIES_CSV = DATA_DIR / "f1_points_series.csv"
+SERIES_COLUMNS = ["kind", "round", "id", "name", "points"]
+
+
+def load_points_series() -> pd.DataFrame:
+    """讀取逐站累積積分。檔案不存在時回傳空 DataFrame。"""
+    if not SERIES_CSV.exists():
+        return pd.DataFrame(columns=SERIES_COLUMNS)
+    df = pd.read_csv(SERIES_CSV, dtype=str).fillna("")
+    if df.empty:
+        return pd.DataFrame(columns=SERIES_COLUMNS)
+    df["round"] = pd.to_numeric(df["round"], errors="coerce")
+    df["points"] = pd.to_numeric(df["points"], errors="coerce")
+    df = df.dropna(subset=["round", "points"])
+    return df.sort_values(["kind", "round"]).reset_index(drop=True)
+
+
+def merge_points_series(rows: list[dict]) -> int:
+    """寫入逐站積分，回傳「有異動」時的筆數。與積分榜同樣以最新為準。"""
+    if not rows:
+        return 0
+    incoming = pd.DataFrame(rows, columns=SERIES_COLUMNS).astype(str).fillna("")
+    if incoming.empty:
+        return 0
+
+    if SERIES_CSV.exists():
+        existing = pd.read_csv(SERIES_CSV, dtype=str).fillna("")
+        existing = existing.reindex(columns=SERIES_COLUMNS)
+        if existing.equals(incoming):
+            return 0
+
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    incoming.to_csv(SERIES_CSV, index=False, encoding="utf-8")
+    return len(incoming)

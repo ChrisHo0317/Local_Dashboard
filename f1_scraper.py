@@ -222,11 +222,26 @@ class F1StandingsScraper:
     def __init__(self, logger: logging.Logger | None = None):
         self.logger = logger or logging.getLogger("F1StandingsScraper")
 
+    def fetch(self, year: int) -> dict:
+        """
+        一次取回積分榜與逐站積分走勢（同一個頁面就有，不必抓兩次）。
+
+        回傳 {"standings": [...], "series": [...]}；失敗則兩者皆為空串列。
+        """
+        html = self._fetch_html(year)
+        if not html:
+            return {"standings": [], "series": []}
+        return {
+            "standings": self._parse_standings(html),
+            "series": self._parse_series(html),
+        }
+
     def fetch_standings(self, year: int) -> list[dict]:
-        """
-        回傳: [{"kind","position","name","name_en","team","points","wins","podiums","gained"}, ...]
-        kind 為 driver 或 constructor。失敗則回傳空串列。
-        """
+        """只要積分榜時用這個。"""
+        return self.fetch(year)["standings"]
+
+    def _fetch_html(self, year: int) -> str:
+        """"""
         try:
             session = cffi_requests.Session(impersonate="chrome124")
             resp = session.get(
@@ -235,11 +250,12 @@ class F1StandingsScraper:
                 timeout=40,
             )
             resp.raise_for_status()
+            return resp.text
         except Exception as e:
             self.logger.error(f"f1-boxbox 頁面讀取失敗: {e}")
-            return []
+            return ""
 
-        html = resp.text
+    def _parse_standings(self, html: str) -> list[dict]:
         raw = html.replace('\\"', '"')
 
         drivers = self._grab_array(raw, "driverStandings")
@@ -278,8 +294,41 @@ class F1StandingsScraper:
             })
 
         self.logger.info(
-            f"f1-boxbox：{year} 年 {len(drivers)} 位車手、{len(teams)} 支車隊"
+            f"f1-boxbox：{len(drivers)} 位車手、{len(teams)} 支車隊"
         )
+        return rows
+
+    def _parse_series(self, html: str) -> list[dict]:
+        """
+        逐站累積積分（冠軍積分走勢圖用）。
+
+        driverStandingsTimeSeries / constructorStandingsTimeSeries 每筆是
+        「某人在第 N 站結束後的累積積分」，名字同樣是英文，用連結文字補中文。
+        """
+        raw = html.replace('\\"', '"')
+        driver_zh = self._link_names(html, "drivers")
+        team_zh = self._link_names(html, "teams")
+
+        rows = []
+        for key, kind, zh_map, id_field in (
+            ("driverStandingsTimeSeries", "driver", driver_zh, "driverId"),
+            ("constructorStandingsTimeSeries", "constructor", team_zh, "constructorId"),
+        ):
+            for e in self._grab_array(raw, key):
+                ident = e.get(id_field) or e.get("id") or ""
+                rows.append({
+                    "kind": kind,
+                    "round": _num(e.get("round")),
+                    "id": str(ident),
+                    "name": zh_map.get(str(ident), "") or e.get("name", ""),
+                    "points": _num(e.get("points")),
+                })
+
+        if rows:
+            rounds = {int(r["round"]) for r in rows if r["round"].isdigit()}
+            self.logger.info(
+                f"f1-boxbox：積分走勢 {len(rows)} 筆，第 {min(rounds)} ～ {max(rounds)} 站"
+            )
         return rows
 
     def _grab_array(self, raw: str, key: str) -> list[dict]:

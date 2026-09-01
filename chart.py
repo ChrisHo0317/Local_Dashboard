@@ -192,3 +192,54 @@ def build_gold_figure(df: pd.DataFrame, dark: bool = False,
                       showlegend: bool = True) -> go.Figure:
     """國際金價走勢圖（欄位 item / price_date / price_usd）。"""
     return _line_figure(df, "price_usd", "USD / 盎司", "%{y:,.1f}", dark, showlegend)
+
+
+def build_points_figure(df: pd.DataFrame, dark: bool = False,
+                        showlegend: bool = True) -> go.Figure:
+    """
+    F1 冠軍積分走勢（欄位 round / name / points，points 為累積值）。
+
+    x 軸是「第幾站」而不是日期，所以不用 _line_figure 那一套
+    （rangeslider、快速區間、日期格式在這裡都沒有意義）。
+    """
+    tmpl, bg = theme_colors(dark)
+
+    if df is None or df.empty:
+        return go.Figure().update_layout(
+            title="尚無積分資料", template=tmpl, paper_bgcolor=bg, plot_bgcolor=bg,
+        )
+
+    # 依最終積分排序，圖例與配色才會照名次
+    order = (df.sort_values("round").groupby("name")["points"].last()
+               .sort_values(ascending=False).index.tolist())
+    grid = df.pivot_table(index="round", columns="name",
+                          values="points", aggfunc="last").sort_index()
+    grid = grid.reindex(columns=order)
+    long = grid.reset_index().melt(id_vars="round", var_name="name", value_name="points")
+
+    fig = px.line(
+        long, x="round", y="points", color="name",
+        labels={"round": "站次", "points": "累積積分", "name": "項目"},
+        markers=True, template=tmpl, render_mode="svg",
+    )
+    fig.update_traces(
+        marker=dict(size=4), line=dict(width=2), cliponaxis=False, connectgaps=True,
+        hovertemplate="%{y:.0f}<extra>%{fullData.name}</extra>",
+    )
+    fig.update_xaxes(
+        dtick=1, tick0=1, title_text="站次",
+        showspikes=True, spikemode="across", spikesnap="data",
+        spikethickness=1, spikedash="dot", spikecolor=_SPIKE_COLOR[dark],
+    )
+    fig.update_layout(
+        hovermode="x unified",
+        hoverdistance=-1,
+        spikedistance=-1,
+        showlegend=showlegend,
+        legend=dict(orientation="h", yanchor="top", y=-0.22,
+                    xanchor="left", x=0, title_text=""),
+        paper_bgcolor=bg,
+        plot_bgcolor=bg,
+        margin=dict(l=54, r=20, t=20, b=150 if showlegend else 46),
+    )
+    return fig

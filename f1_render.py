@@ -1,10 +1,10 @@
 """
 把 F1 賽程與積分榜轉成靜態 HTML
 
-分頁內再分三個二階分頁：
-    賽程  依大獎賽分組的場次表（一個賽事週末一組）
-    車手  車手積分榜
-    車隊  車隊積分榜
+分頁內的層次：
+    賽程          依大獎賽分組的場次表（一個賽事週末一組）
+    積分 → 車手   冠軍積分走勢圖 + 車手積分榜
+         → 車隊   冠軍積分走勢圖 + 車隊積分榜
 
 賽程沿用財經行事曆那一套 class（cal-table / cal-day / cal-row …），
 樣式與「今天」標記、現在時間標示線、篩選都能直接共用；
@@ -28,15 +28,20 @@ WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"]
 
 RANK_CLASS = {3: "i-high", 2: "i-mid", 1: "i-low"}
 
-# (id, 標籤, 頁面標題, 說明)。切換子分頁時頁面標頭會跟著換。
+# (id, 標籤, 頁面標題, 說明)。切換分頁時頁面標頭會跟著換。
 SUBTABS = [
     ("sched", "賽程", "F1 賽程表",
      "資料來源：F1 Calendar　·　時間為台北時間（UTC+8）"),
-    ("drivers", "車手", "F1 車手積分榜",
-     "資料來源：f1-boxbox　·　名次升降為與上一站比較"),
-    ("teams", "車隊", "F1 車隊積分榜",
-     "資料來源：f1-boxbox　·　名次升降為與上一站比較"),
+    ("points", "積分", "F1 積分榜", "資料來源：f1-boxbox"),
 ]
+
+# 積分底下的孫分頁：(id, 標籤, 圖表 key, 積分榜的 kind, 名稱欄標題, 頁面標題)
+GRANDTABS = [
+    ("drivers", "車手", "f1drivers", "driver", "車手", "F1 車手積分榜"),
+    ("teams", "車隊", "f1teams", "constructor", "車隊", "F1 車隊積分榜"),
+]
+
+STANDINGS_META = "資料來源：f1-boxbox　·　上圖為逐站累積積分，名次升降為與上一站比較"
 
 
 def _local(ts: pd.Timestamp) -> datetime:
@@ -86,6 +91,18 @@ def _subtabs_html() -> str:
         )
     return ('  <div class="subtabs" role="tablist" aria-label="F1 子分頁">\n'
             + "\n".join(btns) + "\n  </div>")
+
+
+def _grandtabs_html() -> str:
+    btns = []
+    for i, (gid, label, _chart, _kind, _hdr, title) in enumerate(GRANDTABS):
+        btns.append(
+            f'        <button type="button" class="grandtab" data-grand="{gid}"'
+            f' data-title="{escape(title)}" data-meta="{escape(STANDINGS_META)}"'
+            f' aria-selected="{"true" if i == 0 else "false"}">{label}</button>'
+        )
+    return ('    <div class="grandtabs" role="tablist" aria-label="積分子分頁">\n'
+            + "\n".join(btns) + "\n    </div>")
 
 
 def _schedule_html(df: pd.DataFrame) -> str:
@@ -209,15 +226,29 @@ def _standings_html(df: pd.DataFrame, kind: str, name_header: str) -> str:
     )
 
 
+def _points_panel_html(standings: pd.DataFrame) -> str:
+    """積分子分頁：孫分頁（車手／車隊），各自是走勢圖 + 積分榜。"""
+    parts = [_grandtabs_html()]
+    for i, (gid, _label, chart_key, kind, header, _title) in enumerate(GRANDTABS):
+        hidden = "" if i == 0 else " hidden"
+        parts.append(
+            f'    <div class="grandpanel" data-grand="{gid}"{hidden}>\n'
+            f'      <div class="chart chart-sm" id="chart-{chart_key}"></div>\n'
+            f'      <div class="legend-bar" data-chart="{chart_key}"></div>\n'
+            f'{_standings_html(standings, kind, header)}\n'
+            f'    </div>'
+        )
+    return "\n".join(parts)
+
+
 def panel_html(data: dict) -> str:
     """產生 F1 分頁的內容（不含 <section> 外框）。"""
     schedule = data.get("schedule", pd.DataFrame())
     standings = data.get("standings", pd.DataFrame())
 
     panels = [
-        ('sched', _schedule_html(schedule)),
-        ('drivers', _standings_html(standings, "driver", "車手")),
-        ('teams', _standings_html(standings, "constructor", "車隊")),
+        ("sched", _schedule_html(schedule)),
+        ("points", _points_panel_html(standings)),
     ]
     body = []
     for i, (sid, content) in enumerate(panels):

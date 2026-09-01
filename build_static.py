@@ -32,9 +32,10 @@ import plotly.io as pio
 from bond_data import CSV_PATH as BOND_CSV, latest_date as bond_latest, load_bonds
 from calendar_data import CSV_PATH as CAL_CSV, load_events
 from calendar_render import panel_html as cal_panel_html, stats as cal_stats
-from chart import build_bond_figure, build_figure, build_gold_figure, series_colors
+from chart import (build_bond_figure, build_figure, build_gold_figure,
+                   build_points_figure, series_colors)
 from dram_data import BASE_DIR, CSV_PATH as DRAM_CSV, latest_date as dram_latest, load_dram
-from f1_data import CSV_PATH as F1_CSV, load_all as load_f1_all
+from f1_data import CSV_PATH as F1_CSV, load_all as load_f1_all, load_points_series
 from f1_render import panel_html as f1_panel_html, stats as f1_stats
 from gold_data import CSV_PATH as GOLD_CSV, latest_date as gold_latest, load_gold
 from version import __version__
@@ -137,6 +138,12 @@ PANELS = [
 ]
 
 CHART_PANELS = [p for p in PANELS if p.get("kind", "chart") == "chart"]
+
+# 不自成一個分頁、而是嵌在別的分頁裡的圖表（F1 積分子分頁的走勢圖）
+EXTRA_CHARTS = [
+    {"key": "f1drivers", "kind": "driver", "item_label": "車手"},
+    {"key": "f1teams", "kind": "constructor", "item_label": "車隊"},
+]
 
 # 齒輪圖示（設定分頁）
 SETTINGS_ICON = (
@@ -407,6 +414,14 @@ TPL = """<!doctype html>
   .subtab { font-size:13px; padding:7px 16px; border-radius:999px; color:var(--muted); }
   .subtab[aria-selected="true"] { background:var(--pill); color:var(--fg); border-color:transparent;
                                   font-weight:600; }
+
+  .grandtabs { display:flex; gap:6px; margin-bottom:12px; }
+  .grandtab { font-size:12px; padding:5px 14px; border-radius:999px; color:var(--muted); }
+  .grandtab[aria-selected="true"] { background:var(--pill); color:var(--fg);
+                                    border-color:transparent; font-weight:600; }
+  /* 嵌在分頁裡的小圖：不需要跟主圖表分頁一樣高 */
+  .chart.chart-sm { height:360px; }
+  @media (max-width:820px) { .chart.chart-sm { height:320px; } }
 
   /* 積分榜 */
   .rank-table { width:100%; border-collapse:separate; border-spacing:0;
@@ -756,7 +771,8 @@ function selectTab(name, animate) {
   // 有二階分頁的話，回到主分頁時重設回第一個子分頁
   var panel = document.getElementById('panel-' + name);
   var firstSub = panel ? panel.querySelector('.subtab') : null;
-  if (firstSub && firstSub.getAttribute('aria-selected') !== 'true') firstSub.click();
+  if (firstSub && firstSub.getAttribute('aria-selected') !== 'true') { firstSub.click(); }
+  else { activateCharts(panel); }
   // 圖表第一次顯示（或主題變更後首次顯示）才真正繪製；
   // 已畫過的只要重新丈量寬度即可。
   var c = CHARTS[name];
@@ -1088,22 +1104,56 @@ function initCalendarTable(table) {
 Array.prototype.slice.call(document.querySelectorAll('.cal-table'))
   .forEach(initCalendarTable);
 
-// ── 二階分頁（目前只有 F1 用）───────────────────────────────
-Array.prototype.slice.call(document.querySelectorAll('.subtabs')).forEach(function (bar) {
-  var panel = bar.closest('.panel');
-  var tabs = Array.prototype.slice.call(bar.querySelectorAll('.subtab'));
-  var subs = Array.prototype.slice.call(panel.querySelectorAll('.subpanel'));
+// ── 二階／三階分頁（目前只有 F1 用）─────────────────────────
+// 圖表在隱藏的分頁裡量不到寬度，所以顯示的當下才繪製或重新丈量。
+function activateCharts(container) {
+  if (!container) return;
+  Array.prototype.slice.call(container.querySelectorAll('.chart')).forEach(function (div) {
+    if (div.offsetParent === null) return;          // 還藏著就先不畫
+    var key = div.id.replace('chart-', '');
+    var c = CHARTS[key];
+    if (!c) return;
+    if (!c.rendered || c.dirty) { renderChart(key); }
+    else { Plotly.Plots.resize(div); }
+  });
+}
+
+function setHead(el) {
+  if (!el || !el.dataset.title) return;
+  document.getElementById('page-title').textContent = el.dataset.title;
+  document.getElementById('page-meta').innerHTML = el.dataset.meta || '';
+}
+
+function initTabGroup(bar, tabClass, panelClass, dataKey) {
+  var scope = bar.parentElement;
+  var tabs = Array.prototype.slice.call(bar.querySelectorAll('.' + tabClass));
+  var panes = Array.prototype.slice.call(scope.children).filter(function (el) {
+    return el.classList.contains(panelClass);
+  });
   tabs.forEach(function (t) {
     t.addEventListener('click', function () {
       tabs.forEach(function (x) { x.setAttribute('aria-selected', String(x === t)); });
-      subs.forEach(function (p) { p.hidden = (p.dataset.sub !== t.dataset.sub); });
-      if (t.dataset.title) {
-        document.getElementById('page-title').textContent = t.dataset.title;
-        document.getElementById('page-meta').innerHTML = t.dataset.meta || '';
-      }
+      var shown = null;
+      panes.forEach(function (p) {
+        var on = (p.dataset[dataKey] === t.dataset[dataKey]);
+        p.hidden = !on;
+        if (on) shown = p;
+      });
+      setHead(t);
+      // 顯示的分頁裡若還有孫分頁，標題以孫分頁為準
+      var grand = shown ? shown.querySelector('.grandtab[aria-selected="true"]') : null;
+      setHead(grand);
+      activateCharts(shown);
       syncSticky();   // 內容換了，黏著層高度要重量
     });
   });
+}
+
+Array.prototype.slice.call(document.querySelectorAll('.subtabs')).forEach(function (bar) {
+  initTabGroup(bar, 'subtab', 'subpanel', 'sub');
+});
+Array.prototype.slice.call(document.querySelectorAll('.grandtabs')).forEach(function (bar) {
+  initTabGroup(bar, 'grandtab', 'grandpanel', 'grand');
 });
 
 // ── 重新載入 ───────────────────────────────────────────────
@@ -1150,6 +1200,28 @@ if (MOBILE_Q.addEventListener) {
 """
 
 
+def _chart_entry(key: str, fig_light, fig_dark, item_label: str) -> dict:
+    """把一張圖包成前端要的格式（只嵌一份 traces + 兩份 layout）。"""
+    light = json.loads(pio.to_json(fig_light))
+    darkj = json.loads(pio.to_json(fig_dark))
+
+    # 只嵌入一份 traces 的前提是兩個主題的線條完全相同。
+    # plotly_dark 目前與 plotly 共用同一組 colorway，但若哪天不再成立，
+    # 這裡要立刻發現，而不是默默送出配色錯誤的頁面。
+    if light["data"] != darkj["data"]:
+        raise RuntimeError(
+            f"{key}：淺色與深色的 traces 不一致，不能只嵌入一份。"
+            "請改回各嵌一份，或找出差異來源。"
+        )
+
+    return {
+        "traces": light["data"],
+        "layout": {"light": light["layout"], "dark": darkj["layout"]},
+        "series": series_colors(fig_light),
+        "itemLabel": item_label,
+    }
+
+
 def build() -> Path:
     """讀各資料集、產生 docs/index.html，回傳輸出路徑。"""
     charts = {}
@@ -1172,29 +1244,23 @@ def build() -> Path:
         fig_light = p["figure"](df, dark=False, showlegend=False)
         fig_dark = p["figure"](df, dark=True, showlegend=False)
 
-        light = json.loads(pio.to_json(fig_light))
-        darkj = json.loads(pio.to_json(fig_dark))
-
-        # 只嵌入一份 traces 的前提是兩個主題的線條完全相同。
-        # plotly_dark 目前與 plotly 共用同一組 colorway，但若哪天不再成立，
-        # 這裡要立刻發現，而不是默默送出配色錯誤的頁面。
-        if light["data"] != darkj["data"]:
-            raise RuntimeError(
-                f"{p['id']}：淺色與深色的 traces 不一致，不能只嵌入一份。"
-                "請改回各嵌一份，或找出差異來源。"
-            )
-
-        charts[p["id"]] = {
-            "traces": light["data"],
-            "layout": {"light": light["layout"], "dark": darkj["layout"]},
-            "series": series_colors(fig_light),
-            "itemLabel": p["item_label"],
-        }
+        charts[p["id"]] = _chart_entry(p["id"], fig_light, fig_dark, p["item_label"])
         stats[p["id"]] = _stats(p)
         head[p["id"]] = {
             "title": p["title"],
             "meta": f'{p["meta"]}<br>最後更新日：{stats[p["id"]]["latest"]}',
         }
+
+    # 嵌在 F1 積分子分頁裡的兩張走勢圖
+    series = load_points_series()
+    for extra in EXTRA_CHARTS:
+        part = series[series["kind"] == extra["kind"]] if not series.empty else series
+        charts[extra["key"]] = _chart_entry(
+            extra["key"],
+            build_points_figure(part, dark=False, showlegend=False),
+            build_points_figure(part, dark=True, showlegend=False),
+            extra["item_label"],
+        )
 
     head["settings"] = {"title": "設定", "meta": "外觀、資料集資訊與版本"}
 

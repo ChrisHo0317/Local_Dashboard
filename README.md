@@ -27,7 +27,7 @@ GitHub Pages 只能託管靜態檔案，無法執行 Dash 的伺服器端 callba
 | 美債殖利率 | 美國公債 1／2／5／10／20／30 年期殖利率（MoneyDJ）|
 | 黃金 | 國際金價 COMEX 近月期貨，USD／盎司（Yahoo Finance）|
 | 行事曆 | 財經事件行事曆，中文化、表格呈現（ForexFactory）|
-| F1 | 賽程（依大獎賽分組）／車手積分榜／車隊積分榜三個二階分頁（F1 Calendar、f1-boxbox）|
+| F1 | 賽程（依大獎賽分組）／積分（車手、車隊：走勢圖 + 積分榜）（F1 Calendar、f1-boxbox）|
 | 設定 | 外觀（深色模式）、各資料集資訊與顯示開關、關於 |
 
 要新增圖表分頁，在 `build_static.py` 的 `PANELS` 加一筆即可 —— 標籤列、分頁、圖例、設定頁的資料卡片都會跟著生成，滑動指示器依按鈕實際位置計算，不需要改任何數值。
@@ -87,7 +87,7 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `calendar_render.py` | 行事曆分頁的 HTML 產生 |
 | `f1_data.py` | 讀寫 `data/f1_schedule.csv` |
 | `f1_scraper.py` | f1calendar.com 賽程爬蟲 + f1-boxbox 積分榜爬蟲 |
-| `f1_render.py` | F1 分頁的 HTML 產生：二階分頁 + 賽程表 + 積分榜 |
+| `f1_render.py` | F1 分頁的 HTML 產生：二／三階分頁 + 賽程表 + 積分榜 |
 | `chart.py` | `build_figure()` / `build_bond_figure()` — 唯一的圖表定義來源 |
 | `docs/` | 發佈目錄：`index.html`（產生）+ 圖示與 `manifest.webmanifest`（靜態） |
 | `scraper.py` | TrendForce DRAM 現貨報價爬蟲（僅提供當日快照）|
@@ -231,4 +231,12 @@ f1calendar.com 站上的表格只顯示「6 Mar 01:30」這種沒有年份、也
 - 來源對「0 勝／0 頒獎台」的車手**直接省略該欄位**（23 位裡有 15 位），
   沒有就是 0，不能當成缺值。
 
-積分榜每站之後都會變，舊快照沒有保留意義，一律以最新抓到的為準。
+同一個頁面還有 `driverStandingsTimeSeries` / `constructorStandingsTimeSeries`，
+是每個人在各站結束後的**累積積分**，拿來畫冠軍積分走勢圖（2026 賽季 408 筆、12 站）。
+
+積分榜與走勢每站之後都會變，舊快照沒有保留意義，一律以最新抓到的為準。
+
+F1 分頁的層次是：`賽程` 與 `積分` 兩個子分頁，`積分` 底下再分 `車手` / `車隊`
+兩個孫分頁，各自是「走勢圖 + 積分榜」。走勢圖是嵌在分頁裡的圖表（不自成一個主分頁），
+在 `build_static.py` 的 `EXTRA_CHARTS` 定義，並沿用同一套收合式圖例與延後繪製邏輯 ——
+圖表在隱藏的分頁裡量不到寬度，一定要顯示的當下才畫。
