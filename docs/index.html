@@ -138,6 +138,13 @@
   .cal-table .cal-num  { width:56px; text-align:right; font-size:11px; color:var(--muted);
                          font-variant-numeric:tabular-nums; word-break:break-all; }
   .cal-table .cal-sess { width:78px; text-align:right; font-size:11px; color:var(--muted); }
+  /* F1：日期與時間疊成兩行，一個賽事週末橫跨數天也看得清楚 */
+  .cal-table .cal-when { width:76px; }
+  .w-date { font-size:11px; color:var(--muted); line-height:1.3; }
+  .w-time { font-variant-numeric:tabular-nums; line-height:1.3; }
+  /* 分組標題（F1 用兩行：賽事 + 地點/日期）*/
+  .grp-main { font-size:12px; font-weight:600; color:var(--fg); }
+  .grp-sub { font-size:11px; font-weight:400; color:var(--muted); margin-top:1px; }
   /* 日期釘在表頭下方，捲到下一天才換掉 */
   .cal-day-row th { position:sticky; top:calc(var(--head-h,0px) + var(--thead-h,0px));
                     z-index:2; font-size:12px; font-weight:600; color:var(--fg);
@@ -224,7 +231,7 @@
           <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
         </svg>
       </button>
-      <span class="ver">v0.3.013</span>
+      <span class="ver">v0.3.014</span>
     </div>
   </header>
 
@@ -1428,606 +1435,512 @@
   </div>
   <table class="cal-table">
     <thead>
-      <tr><th class="cal-time">時間</th><th class="cal-imp"><span class="sr">場次類型</span></th><th class="cal-ev">賽事</th><th class="cal-sess">場次</th></tr>
+      <tr><th class="cal-when">日期時間</th><th class="cal-imp"><span class="sr">場次類型</span></th><th class="cal-ev">場次</th></tr>
     </thead>
-    <tbody class="cal-day" data-date="2026-09-04">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">9/04（五）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1788517800000">
-        <td class="cal-time">18:30</td>
-        <td class="cal-imp"><span class="dot i-low" title="第一節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">義大利大獎賽</div>
-          <div class="cal-sub">R13 · Monza</div>
-        </td>
-        <td class="cal-sess">第一節練習賽</td>
-      </tr>
-      <tr class="cal-row" data-impact="1" data-ts="1788530400000">
-        <td class="cal-time">22:00</td>
-        <td class="cal-imp"><span class="dot i-low" title="第二節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">義大利大獎賽</div>
-          <div class="cal-sub">R13 · Monza</div>
-        </td>
-        <td class="cal-sess">第二節練習賽</td>
-      </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-09-05">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">9/05（六）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1788604200000">
-        <td class="cal-time">18:30</td>
-        <td class="cal-imp"><span class="dot i-low" title="第三節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">義大利大獎賽</div>
-          <div class="cal-sub">R13 · Monza</div>
-        </td>
-        <td class="cal-sess">第三節練習賽</td>
-      </tr>
-      <tr class="cal-row" data-impact="2" data-ts="1788616800000">
-        <td class="cal-time">22:00</td>
-        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">義大利大獎賽</div>
-          <div class="cal-sub">R13 · Monza</div>
-        </td>
-        <td class="cal-sess">排位賽</td>
-      </tr>
-    </tbody>
     <tbody class="cal-day" data-date="2026-09-06">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">9/06（日）</th></tr>
-      <tr class="cal-row" data-impact="3" data-ts="1788699600000">
-        <td class="cal-time">21:00</td>
-        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">義大利大獎賽</div>
-          <div class="cal-sub">R13 · Monza</div>
+      <tr class="cal-day-row"><th colspan="3" scope="rowgroup">
+        <div class="grp-main">R13　義大利大獎賽</div>
+        <div class="grp-sub">Monza · 9/04 – 9/06</div>
+      </th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1788517800000" data-day="2026-09-04">
+        <td class="cal-when">
+          <div class="w-date">9/04（五）</div>
+          <div class="w-time">18:30</div>
         </td>
-        <td class="cal-sess">大獎賽</td>
-      </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-09-11">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">9/11（五）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1789126200000">
-        <td class="cal-time">19:30</td>
         <td class="cal-imp"><span class="dot i-low" title="第一節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">西班牙大獎賽</div>
-          <div class="cal-sub">R14 · Madrid</div>
-        </td>
-        <td class="cal-sess">第一節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第一節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="1" data-ts="1789138800000">
-        <td class="cal-time">23:00</td>
+      <tr class="cal-row" data-impact="1" data-ts="1788530400000" data-day="2026-09-04">
+        <td class="cal-when">
+          <div class="w-date">9/04（五）</div>
+          <div class="w-time">22:00</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第二節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">西班牙大獎賽</div>
-          <div class="cal-sub">R14 · Madrid</div>
-        </td>
-        <td class="cal-sess">第二節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第二節練習賽</div></td>
       </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-09-12">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">9/12（六）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1789209000000">
-        <td class="cal-time">18:30</td>
+      <tr class="cal-row" data-impact="1" data-ts="1788604200000" data-day="2026-09-05">
+        <td class="cal-when">
+          <div class="w-date">9/05（六）</div>
+          <div class="w-time">18:30</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第三節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">西班牙大獎賽</div>
-          <div class="cal-sub">R14 · Madrid</div>
-        </td>
-        <td class="cal-sess">第三節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第三節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="2" data-ts="1789221600000">
-        <td class="cal-time">22:00</td>
-        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">西班牙大獎賽</div>
-          <div class="cal-sub">R14 · Madrid</div>
+      <tr class="cal-row" data-impact="2" data-ts="1788616800000" data-day="2026-09-05">
+        <td class="cal-when">
+          <div class="w-date">9/05（六）</div>
+          <div class="w-time">22:00</div>
         </td>
-        <td class="cal-sess">排位賽</td>
+        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">排位賽</div></td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1788699600000" data-day="2026-09-06">
+        <td class="cal-when">
+          <div class="w-date">9/06（日）</div>
+          <div class="w-time">21:00</div>
+        </td>
+        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">大獎賽</div></td>
       </tr>
     </tbody>
     <tbody class="cal-day" data-date="2026-09-13">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">9/13（日）</th></tr>
-      <tr class="cal-row" data-impact="3" data-ts="1789304400000">
-        <td class="cal-time">21:00</td>
-        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">西班牙大獎賽</div>
-          <div class="cal-sub">R14 · Madrid</div>
+      <tr class="cal-day-row"><th colspan="3" scope="rowgroup">
+        <div class="grp-main">R14　西班牙大獎賽</div>
+        <div class="grp-sub">Madrid · 9/11 – 9/13</div>
+      </th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1789126200000" data-day="2026-09-11">
+        <td class="cal-when">
+          <div class="w-date">9/11（五）</div>
+          <div class="w-time">19:30</div>
         </td>
-        <td class="cal-sess">大獎賽</td>
-      </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-09-24">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">9/24（四）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1790238600000">
-        <td class="cal-time">16:30</td>
         <td class="cal-imp"><span class="dot i-low" title="第一節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">亞塞拜然大獎賽</div>
-          <div class="cal-sub">R15 · Baku</div>
-        </td>
-        <td class="cal-sess">第一節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第一節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="1" data-ts="1790251200000">
-        <td class="cal-time">20:00</td>
+      <tr class="cal-row" data-impact="1" data-ts="1789138800000" data-day="2026-09-11">
+        <td class="cal-when">
+          <div class="w-date">9/11（五）</div>
+          <div class="w-time">23:00</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第二節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">亞塞拜然大獎賽</div>
-          <div class="cal-sub">R15 · Baku</div>
-        </td>
-        <td class="cal-sess">第二節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第二節練習賽</div></td>
       </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-09-25">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">9/25（五）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1790325000000">
-        <td class="cal-time">16:30</td>
+      <tr class="cal-row" data-impact="1" data-ts="1789209000000" data-day="2026-09-12">
+        <td class="cal-when">
+          <div class="w-date">9/12（六）</div>
+          <div class="w-time">18:30</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第三節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">亞塞拜然大獎賽</div>
-          <div class="cal-sub">R15 · Baku</div>
-        </td>
-        <td class="cal-sess">第三節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第三節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="2" data-ts="1790337600000">
-        <td class="cal-time">20:00</td>
-        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">亞塞拜然大獎賽</div>
-          <div class="cal-sub">R15 · Baku</div>
+      <tr class="cal-row" data-impact="2" data-ts="1789221600000" data-day="2026-09-12">
+        <td class="cal-when">
+          <div class="w-date">9/12（六）</div>
+          <div class="w-time">22:00</div>
         </td>
-        <td class="cal-sess">排位賽</td>
+        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">排位賽</div></td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1789304400000" data-day="2026-09-13">
+        <td class="cal-when">
+          <div class="w-date">9/13（日）</div>
+          <div class="w-time">21:00</div>
+        </td>
+        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">大獎賽</div></td>
       </tr>
     </tbody>
     <tbody class="cal-day" data-date="2026-09-26">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">9/26（六）</th></tr>
-      <tr class="cal-row" data-impact="3" data-ts="1790420400000">
-        <td class="cal-time">19:00</td>
-        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">亞塞拜然大獎賽</div>
-          <div class="cal-sub">R15 · Baku</div>
+      <tr class="cal-day-row"><th colspan="3" scope="rowgroup">
+        <div class="grp-main">R15　亞塞拜然大獎賽</div>
+        <div class="grp-sub">Baku · 9/24 – 9/26</div>
+      </th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1790238600000" data-day="2026-09-24">
+        <td class="cal-when">
+          <div class="w-date">9/24（四）</div>
+          <div class="w-time">16:30</div>
         </td>
-        <td class="cal-sess">大獎賽</td>
-      </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-10-02">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">10/02（五）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1790915400000">
-        <td class="cal-time">12:30</td>
         <td class="cal-imp"><span class="dot i-low" title="第一節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">巴林大獎賽 (馬來西亞)</div>
-          <div class="cal-sub">R16 · Sepang</div>
-        </td>
-        <td class="cal-sess">第一節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第一節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="1" data-ts="1790928000000">
-        <td class="cal-time">16:00</td>
+      <tr class="cal-row" data-impact="1" data-ts="1790251200000" data-day="2026-09-24">
+        <td class="cal-when">
+          <div class="w-date">9/24（四）</div>
+          <div class="w-time">20:00</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第二節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">巴林大獎賽 (馬來西亞)</div>
-          <div class="cal-sub">R16 · Sepang</div>
-        </td>
-        <td class="cal-sess">第二節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第二節練習賽</div></td>
       </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-10-03">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">10/03（六）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1791001800000">
-        <td class="cal-time">12:30</td>
+      <tr class="cal-row" data-impact="1" data-ts="1790325000000" data-day="2026-09-25">
+        <td class="cal-when">
+          <div class="w-date">9/25（五）</div>
+          <div class="w-time">16:30</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第三節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">巴林大獎賽 (馬來西亞)</div>
-          <div class="cal-sub">R16 · Sepang</div>
-        </td>
-        <td class="cal-sess">第三節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第三節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="2" data-ts="1791014400000">
-        <td class="cal-time">16:00</td>
-        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">巴林大獎賽 (馬來西亞)</div>
-          <div class="cal-sub">R16 · Sepang</div>
+      <tr class="cal-row" data-impact="2" data-ts="1790337600000" data-day="2026-09-25">
+        <td class="cal-when">
+          <div class="w-date">9/25（五）</div>
+          <div class="w-time">20:00</div>
         </td>
-        <td class="cal-sess">排位賽</td>
+        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">排位賽</div></td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1790420400000" data-day="2026-09-26">
+        <td class="cal-when">
+          <div class="w-date">9/26（六）</div>
+          <div class="w-time">19:00</div>
+        </td>
+        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">大獎賽</div></td>
       </tr>
     </tbody>
     <tbody class="cal-day" data-date="2026-10-04">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">10/04（日）</th></tr>
-      <tr class="cal-row" data-impact="3" data-ts="1791097200000">
-        <td class="cal-time">15:00</td>
-        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">巴林大獎賽 (馬來西亞)</div>
-          <div class="cal-sub">R16 · Sepang</div>
+      <tr class="cal-day-row"><th colspan="3" scope="rowgroup">
+        <div class="grp-main">R16　巴林大獎賽 (馬來西亞)</div>
+        <div class="grp-sub">Sepang · 10/02 – 10/04</div>
+      </th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1790915400000" data-day="2026-10-02">
+        <td class="cal-when">
+          <div class="w-date">10/02（五）</div>
+          <div class="w-time">12:30</div>
         </td>
-        <td class="cal-sess">大獎賽</td>
-      </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-10-09">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">10/09（五）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1791534600000">
-        <td class="cal-time">16:30</td>
         <td class="cal-imp"><span class="dot i-low" title="第一節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">新加坡大獎賽</div>
-          <div class="cal-sub">R17 · Singapore</div>
-        </td>
-        <td class="cal-sess">第一節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第一節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="2" data-ts="1791549000000">
-        <td class="cal-time">20:30</td>
-        <td class="cal-imp"><span class="dot i-mid" title="衝刺排位賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">新加坡大獎賽</div>
-          <div class="cal-sub">R17 · Singapore</div>
+      <tr class="cal-row" data-impact="1" data-ts="1790928000000" data-day="2026-10-02">
+        <td class="cal-when">
+          <div class="w-date">10/02（五）</div>
+          <div class="w-time">16:00</div>
         </td>
-        <td class="cal-sess">衝刺排位賽</td>
+        <td class="cal-imp"><span class="dot i-low" title="第二節練習賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">第二節練習賽</div></td>
       </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-10-10">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">10/10（六）</th></tr>
-      <tr class="cal-row" data-impact="2" data-ts="1791622800000">
-        <td class="cal-time">17:00</td>
-        <td class="cal-imp"><span class="dot i-mid" title="衝刺賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">新加坡大獎賽</div>
-          <div class="cal-sub">R17 · Singapore</div>
+      <tr class="cal-row" data-impact="1" data-ts="1791001800000" data-day="2026-10-03">
+        <td class="cal-when">
+          <div class="w-date">10/03（六）</div>
+          <div class="w-time">12:30</div>
         </td>
-        <td class="cal-sess">衝刺賽</td>
+        <td class="cal-imp"><span class="dot i-low" title="第三節練習賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">第三節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="2" data-ts="1791637200000">
-        <td class="cal-time">21:00</td>
+      <tr class="cal-row" data-impact="2" data-ts="1791014400000" data-day="2026-10-03">
+        <td class="cal-when">
+          <div class="w-date">10/03（六）</div>
+          <div class="w-time">16:00</div>
+        </td>
         <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">新加坡大獎賽</div>
-          <div class="cal-sub">R17 · Singapore</div>
+        <td class="cal-ev"><div class="cal-title">排位賽</div></td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1791097200000" data-day="2026-10-04">
+        <td class="cal-when">
+          <div class="w-date">10/04（日）</div>
+          <div class="w-time">15:00</div>
         </td>
-        <td class="cal-sess">排位賽</td>
+        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">大獎賽</div></td>
       </tr>
     </tbody>
     <tbody class="cal-day" data-date="2026-10-11">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">10/11（日）</th></tr>
-      <tr class="cal-row" data-impact="3" data-ts="1791720000000">
-        <td class="cal-time">20:00</td>
-        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">新加坡大獎賽</div>
-          <div class="cal-sub">R17 · Singapore</div>
+      <tr class="cal-day-row"><th colspan="3" scope="rowgroup">
+        <div class="grp-main">R17　新加坡大獎賽</div>
+        <div class="grp-sub">Singapore · 10/09 – 10/11</div>
+      </th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1791534600000" data-day="2026-10-09">
+        <td class="cal-when">
+          <div class="w-date">10/09（五）</div>
+          <div class="w-time">16:30</div>
         </td>
-        <td class="cal-sess">大獎賽</td>
-      </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-10-24">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">10/24（六）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1792776600000">
-        <td class="cal-time">01:30</td>
         <td class="cal-imp"><span class="dot i-low" title="第一節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">美國大獎賽</div>
-          <div class="cal-sub">R18 · Austin</div>
-        </td>
-        <td class="cal-sess">第一節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第一節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="1" data-ts="1792789200000">
-        <td class="cal-time">05:00</td>
-        <td class="cal-imp"><span class="dot i-low" title="第二節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">美國大獎賽</div>
-          <div class="cal-sub">R18 · Austin</div>
+      <tr class="cal-row" data-impact="2" data-ts="1791549000000" data-day="2026-10-09">
+        <td class="cal-when">
+          <div class="w-date">10/09（五）</div>
+          <div class="w-time">20:30</div>
         </td>
-        <td class="cal-sess">第二節練習賽</td>
+        <td class="cal-imp"><span class="dot i-mid" title="衝刺排位賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">衝刺排位賽</div></td>
       </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-10-25">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">10/25（日）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1792863000000">
-        <td class="cal-time">01:30</td>
-        <td class="cal-imp"><span class="dot i-low" title="第三節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">美國大獎賽</div>
-          <div class="cal-sub">R18 · Austin</div>
+      <tr class="cal-row" data-impact="2" data-ts="1791622800000" data-day="2026-10-10">
+        <td class="cal-when">
+          <div class="w-date">10/10（六）</div>
+          <div class="w-time">17:00</div>
         </td>
-        <td class="cal-sess">第三節練習賽</td>
+        <td class="cal-imp"><span class="dot i-mid" title="衝刺賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">衝刺賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="2" data-ts="1792875600000">
-        <td class="cal-time">05:00</td>
+      <tr class="cal-row" data-impact="2" data-ts="1791637200000" data-day="2026-10-10">
+        <td class="cal-when">
+          <div class="w-date">10/10（六）</div>
+          <div class="w-time">21:00</div>
+        </td>
         <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">美國大獎賽</div>
-          <div class="cal-sub">R18 · Austin</div>
+        <td class="cal-ev"><div class="cal-title">排位賽</div></td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1791720000000" data-day="2026-10-11">
+        <td class="cal-when">
+          <div class="w-date">10/11（日）</div>
+          <div class="w-time">20:00</div>
         </td>
-        <td class="cal-sess">排位賽</td>
+        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">大獎賽</div></td>
       </tr>
     </tbody>
     <tbody class="cal-day" data-date="2026-10-26">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">10/26（一）</th></tr>
-      <tr class="cal-row" data-impact="3" data-ts="1792958400000">
-        <td class="cal-time">04:00</td>
-        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">美國大獎賽</div>
-          <div class="cal-sub">R18 · Austin</div>
+      <tr class="cal-day-row"><th colspan="3" scope="rowgroup">
+        <div class="grp-main">R18　美國大獎賽</div>
+        <div class="grp-sub">Austin · 10/24 – 10/26</div>
+      </th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1792776600000" data-day="2026-10-24">
+        <td class="cal-when">
+          <div class="w-date">10/24（六）</div>
+          <div class="w-time">01:30</div>
         </td>
-        <td class="cal-sess">大獎賽</td>
-      </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-10-31">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">10/31（六）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1793385000000">
-        <td class="cal-time">02:30</td>
         <td class="cal-imp"><span class="dot i-low" title="第一節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">墨西哥城大獎賽</div>
-          <div class="cal-sub">R19 · Mexico City</div>
-        </td>
-        <td class="cal-sess">第一節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第一節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="1" data-ts="1793397600000">
-        <td class="cal-time">06:00</td>
+      <tr class="cal-row" data-impact="1" data-ts="1792789200000" data-day="2026-10-24">
+        <td class="cal-when">
+          <div class="w-date">10/24（六）</div>
+          <div class="w-time">05:00</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第二節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">墨西哥城大獎賽</div>
-          <div class="cal-sub">R19 · Mexico City</div>
-        </td>
-        <td class="cal-sess">第二節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第二節練習賽</div></td>
       </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-11-01">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">11/01（日）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1793467800000">
-        <td class="cal-time">01:30</td>
+      <tr class="cal-row" data-impact="1" data-ts="1792863000000" data-day="2026-10-25">
+        <td class="cal-when">
+          <div class="w-date">10/25（日）</div>
+          <div class="w-time">01:30</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第三節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">墨西哥城大獎賽</div>
-          <div class="cal-sub">R19 · Mexico City</div>
-        </td>
-        <td class="cal-sess">第三節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第三節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="2" data-ts="1793480400000">
-        <td class="cal-time">05:00</td>
-        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">墨西哥城大獎賽</div>
-          <div class="cal-sub">R19 · Mexico City</div>
+      <tr class="cal-row" data-impact="2" data-ts="1792875600000" data-day="2026-10-25">
+        <td class="cal-when">
+          <div class="w-date">10/25（日）</div>
+          <div class="w-time">05:00</div>
         </td>
-        <td class="cal-sess">排位賽</td>
+        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">排位賽</div></td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1792958400000" data-day="2026-10-26">
+        <td class="cal-when">
+          <div class="w-date">10/26（一）</div>
+          <div class="w-time">04:00</div>
+        </td>
+        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">大獎賽</div></td>
       </tr>
     </tbody>
     <tbody class="cal-day" data-date="2026-11-02">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">11/02（一）</th></tr>
-      <tr class="cal-row" data-impact="3" data-ts="1793563200000">
-        <td class="cal-time">04:00</td>
-        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">墨西哥城大獎賽</div>
-          <div class="cal-sub">R19 · Mexico City</div>
+      <tr class="cal-day-row"><th colspan="3" scope="rowgroup">
+        <div class="grp-main">R19　墨西哥城大獎賽</div>
+        <div class="grp-sub">Mexico City · 10/31 – 11/02</div>
+      </th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1793385000000" data-day="2026-10-31">
+        <td class="cal-when">
+          <div class="w-date">10/31（六）</div>
+          <div class="w-time">02:30</div>
         </td>
-        <td class="cal-sess">大獎賽</td>
-      </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-11-06">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">11/06（五）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1793979000000">
-        <td class="cal-time">23:30</td>
         <td class="cal-imp"><span class="dot i-low" title="第一節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">巴西大獎賽</div>
-          <div class="cal-sub">R20 · Sao Paulo</div>
-        </td>
-        <td class="cal-sess">第一節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第一節練習賽</div></td>
       </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-11-07">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">11/07（六）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1793991600000">
-        <td class="cal-time">03:00</td>
+      <tr class="cal-row" data-impact="1" data-ts="1793397600000" data-day="2026-10-31">
+        <td class="cal-when">
+          <div class="w-date">10/31（六）</div>
+          <div class="w-time">06:00</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第二節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">巴西大獎賽</div>
-          <div class="cal-sub">R20 · Sao Paulo</div>
-        </td>
-        <td class="cal-sess">第二節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第二節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="1" data-ts="1794061800000">
-        <td class="cal-time">22:30</td>
+      <tr class="cal-row" data-impact="1" data-ts="1793467800000" data-day="2026-11-01">
+        <td class="cal-when">
+          <div class="w-date">11/01（日）</div>
+          <div class="w-time">01:30</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第三節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">巴西大獎賽</div>
-          <div class="cal-sub">R20 · Sao Paulo</div>
-        </td>
-        <td class="cal-sess">第三節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第三節練習賽</div></td>
       </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-11-08">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">11/08（日）</th></tr>
-      <tr class="cal-row" data-impact="2" data-ts="1794074400000">
-        <td class="cal-time">02:00</td>
-        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">巴西大獎賽</div>
-          <div class="cal-sub">R20 · Sao Paulo</div>
+      <tr class="cal-row" data-impact="2" data-ts="1793480400000" data-day="2026-11-01">
+        <td class="cal-when">
+          <div class="w-date">11/01（日）</div>
+          <div class="w-time">05:00</div>
         </td>
-        <td class="cal-sess">排位賽</td>
+        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">排位賽</div></td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1793563200000" data-day="2026-11-02">
+        <td class="cal-when">
+          <div class="w-date">11/02（一）</div>
+          <div class="w-time">04:00</div>
+        </td>
+        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">大獎賽</div></td>
       </tr>
     </tbody>
     <tbody class="cal-day" data-date="2026-11-09">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">11/09（一）</th></tr>
-      <tr class="cal-row" data-impact="3" data-ts="1794157200000">
-        <td class="cal-time">01:00</td>
-        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">巴西大獎賽</div>
-          <div class="cal-sub">R20 · Sao Paulo</div>
+      <tr class="cal-day-row"><th colspan="3" scope="rowgroup">
+        <div class="grp-main">R20　巴西大獎賽</div>
+        <div class="grp-sub">Sao Paulo · 11/06 – 11/09</div>
+      </th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1793979000000" data-day="2026-11-06">
+        <td class="cal-when">
+          <div class="w-date">11/06（五）</div>
+          <div class="w-time">23:30</div>
         </td>
-        <td class="cal-sess">大獎賽</td>
-      </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-11-20">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">11/20（五）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1795134600000">
-        <td class="cal-time">08:30</td>
         <td class="cal-imp"><span class="dot i-low" title="第一節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">拉斯維加斯大獎賽</div>
-          <div class="cal-sub">R21 · Las Vegas</div>
-        </td>
-        <td class="cal-sess">第一節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第一節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="1" data-ts="1795147200000">
-        <td class="cal-time">12:00</td>
+      <tr class="cal-row" data-impact="1" data-ts="1793991600000" data-day="2026-11-07">
+        <td class="cal-when">
+          <div class="w-date">11/07（六）</div>
+          <div class="w-time">03:00</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第二節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">拉斯維加斯大獎賽</div>
-          <div class="cal-sub">R21 · Las Vegas</div>
-        </td>
-        <td class="cal-sess">第二節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第二節練習賽</div></td>
       </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-11-21">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">11/21（六）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1795221000000">
-        <td class="cal-time">08:30</td>
+      <tr class="cal-row" data-impact="1" data-ts="1794061800000" data-day="2026-11-07">
+        <td class="cal-when">
+          <div class="w-date">11/07（六）</div>
+          <div class="w-time">22:30</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第三節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">拉斯維加斯大獎賽</div>
-          <div class="cal-sub">R21 · Las Vegas</div>
-        </td>
-        <td class="cal-sess">第三節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第三節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="2" data-ts="1795233600000">
-        <td class="cal-time">12:00</td>
-        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">拉斯維加斯大獎賽</div>
-          <div class="cal-sub">R21 · Las Vegas</div>
+      <tr class="cal-row" data-impact="2" data-ts="1794074400000" data-day="2026-11-08">
+        <td class="cal-when">
+          <div class="w-date">11/08（日）</div>
+          <div class="w-time">02:00</div>
         </td>
-        <td class="cal-sess">排位賽</td>
+        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">排位賽</div></td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1794157200000" data-day="2026-11-09">
+        <td class="cal-when">
+          <div class="w-date">11/09（一）</div>
+          <div class="w-time">01:00</div>
+        </td>
+        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">大獎賽</div></td>
       </tr>
     </tbody>
     <tbody class="cal-day" data-date="2026-11-22">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">11/22（日）</th></tr>
-      <tr class="cal-row" data-impact="3" data-ts="1795320000000">
-        <td class="cal-time">12:00</td>
-        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">拉斯維加斯大獎賽</div>
-          <div class="cal-sub">R21 · Las Vegas</div>
+      <tr class="cal-day-row"><th colspan="3" scope="rowgroup">
+        <div class="grp-main">R21　拉斯維加斯大獎賽</div>
+        <div class="grp-sub">Las Vegas · 11/20 – 11/22</div>
+      </th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1795134600000" data-day="2026-11-20">
+        <td class="cal-when">
+          <div class="w-date">11/20（五）</div>
+          <div class="w-time">08:30</div>
         </td>
-        <td class="cal-sess">大獎賽</td>
-      </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-11-27">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">11/27（五）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1795786200000">
-        <td class="cal-time">21:30</td>
         <td class="cal-imp"><span class="dot i-low" title="第一節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">卡達大獎賽</div>
-          <div class="cal-sub">R22 · Doha</div>
-        </td>
-        <td class="cal-sess">第一節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第一節練習賽</div></td>
       </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-11-28">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">11/28（六）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1795798800000">
-        <td class="cal-time">01:00</td>
+      <tr class="cal-row" data-impact="1" data-ts="1795147200000" data-day="2026-11-20">
+        <td class="cal-when">
+          <div class="w-date">11/20（五）</div>
+          <div class="w-time">12:00</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第二節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">卡達大獎賽</div>
-          <div class="cal-sub">R22 · Doha</div>
-        </td>
-        <td class="cal-sess">第二節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第二節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="1" data-ts="1795876200000">
-        <td class="cal-time">22:30</td>
+      <tr class="cal-row" data-impact="1" data-ts="1795221000000" data-day="2026-11-21">
+        <td class="cal-when">
+          <div class="w-date">11/21（六）</div>
+          <div class="w-time">08:30</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第三節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">卡達大獎賽</div>
-          <div class="cal-sub">R22 · Doha</div>
-        </td>
-        <td class="cal-sess">第三節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第三節練習賽</div></td>
       </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-11-29">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">11/29（日）</th></tr>
-      <tr class="cal-row" data-impact="2" data-ts="1795888800000">
-        <td class="cal-time">02:00</td>
-        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">卡達大獎賽</div>
-          <div class="cal-sub">R22 · Doha</div>
+      <tr class="cal-row" data-impact="2" data-ts="1795233600000" data-day="2026-11-21">
+        <td class="cal-when">
+          <div class="w-date">11/21（六）</div>
+          <div class="w-time">12:00</div>
         </td>
-        <td class="cal-sess">排位賽</td>
+        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">排位賽</div></td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1795320000000" data-day="2026-11-22">
+        <td class="cal-when">
+          <div class="w-date">11/22（日）</div>
+          <div class="w-time">12:00</div>
+        </td>
+        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">大獎賽</div></td>
       </tr>
     </tbody>
     <tbody class="cal-day" data-date="2026-11-30">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">11/30（一）</th></tr>
-      <tr class="cal-row" data-impact="3" data-ts="1795968000000">
-        <td class="cal-time">00:00</td>
-        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">卡達大獎賽</div>
-          <div class="cal-sub">R22 · Doha</div>
+      <tr class="cal-day-row"><th colspan="3" scope="rowgroup">
+        <div class="grp-main">R22　卡達大獎賽</div>
+        <div class="grp-sub">Doha · 11/27 – 11/30</div>
+      </th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1795786200000" data-day="2026-11-27">
+        <td class="cal-when">
+          <div class="w-date">11/27（五）</div>
+          <div class="w-time">21:30</div>
         </td>
-        <td class="cal-sess">大獎賽</td>
-      </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-12-04">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">12/04（五）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1796376600000">
-        <td class="cal-time">17:30</td>
         <td class="cal-imp"><span class="dot i-low" title="第一節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">阿布達比大獎賽</div>
-          <div class="cal-sub">R23 · Yas Marina</div>
-        </td>
-        <td class="cal-sess">第一節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第一節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="1" data-ts="1796389200000">
-        <td class="cal-time">21:00</td>
+      <tr class="cal-row" data-impact="1" data-ts="1795798800000" data-day="2026-11-28">
+        <td class="cal-when">
+          <div class="w-date">11/28（六）</div>
+          <div class="w-time">01:00</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第二節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">阿布達比大獎賽</div>
-          <div class="cal-sub">R23 · Yas Marina</div>
-        </td>
-        <td class="cal-sess">第二節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第二節練習賽</div></td>
       </tr>
-    </tbody>
-    <tbody class="cal-day" data-date="2026-12-05">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">12/05（六）</th></tr>
-      <tr class="cal-row" data-impact="1" data-ts="1796466600000">
-        <td class="cal-time">18:30</td>
+      <tr class="cal-row" data-impact="1" data-ts="1795876200000" data-day="2026-11-28">
+        <td class="cal-when">
+          <div class="w-date">11/28（六）</div>
+          <div class="w-time">22:30</div>
+        </td>
         <td class="cal-imp"><span class="dot i-low" title="第三節練習賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">阿布達比大獎賽</div>
-          <div class="cal-sub">R23 · Yas Marina</div>
-        </td>
-        <td class="cal-sess">第三節練習賽</td>
+        <td class="cal-ev"><div class="cal-title">第三節練習賽</div></td>
       </tr>
-      <tr class="cal-row" data-impact="2" data-ts="1796479200000">
-        <td class="cal-time">22:00</td>
-        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">阿布達比大獎賽</div>
-          <div class="cal-sub">R23 · Yas Marina</div>
+      <tr class="cal-row" data-impact="2" data-ts="1795888800000" data-day="2026-11-29">
+        <td class="cal-when">
+          <div class="w-date">11/29（日）</div>
+          <div class="w-time">02:00</div>
         </td>
-        <td class="cal-sess">排位賽</td>
+        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">排位賽</div></td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1795968000000" data-day="2026-11-30">
+        <td class="cal-when">
+          <div class="w-date">11/30（一）</div>
+          <div class="w-time">00:00</div>
+        </td>
+        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">大獎賽</div></td>
       </tr>
     </tbody>
     <tbody class="cal-day" data-date="2026-12-06">
-      <tr class="cal-day-row"><th colspan="4" scope="rowgroup">12/06（日）</th></tr>
-      <tr class="cal-row" data-impact="3" data-ts="1796562000000">
-        <td class="cal-time">21:00</td>
-        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
-        <td class="cal-ev">
-          <div class="cal-title">阿布達比大獎賽</div>
-          <div class="cal-sub">R23 · Yas Marina</div>
+      <tr class="cal-day-row"><th colspan="3" scope="rowgroup">
+        <div class="grp-main">R23　阿布達比大獎賽</div>
+        <div class="grp-sub">Yas Marina · 12/04 – 12/06</div>
+      </th></tr>
+      <tr class="cal-row" data-impact="1" data-ts="1796376600000" data-day="2026-12-04">
+        <td class="cal-when">
+          <div class="w-date">12/04（五）</div>
+          <div class="w-time">17:30</div>
         </td>
-        <td class="cal-sess">大獎賽</td>
+        <td class="cal-imp"><span class="dot i-low" title="第一節練習賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">第一節練習賽</div></td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1796389200000" data-day="2026-12-04">
+        <td class="cal-when">
+          <div class="w-date">12/04（五）</div>
+          <div class="w-time">21:00</div>
+        </td>
+        <td class="cal-imp"><span class="dot i-low" title="第二節練習賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">第二節練習賽</div></td>
+      </tr>
+      <tr class="cal-row" data-impact="1" data-ts="1796466600000" data-day="2026-12-05">
+        <td class="cal-when">
+          <div class="w-date">12/05（六）</div>
+          <div class="w-time">18:30</div>
+        </td>
+        <td class="cal-imp"><span class="dot i-low" title="第三節練習賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">第三節練習賽</div></td>
+      </tr>
+      <tr class="cal-row" data-impact="2" data-ts="1796479200000" data-day="2026-12-05">
+        <td class="cal-when">
+          <div class="w-date">12/05（六）</div>
+          <div class="w-time">22:00</div>
+        </td>
+        <td class="cal-imp"><span class="dot i-mid" title="排位賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">排位賽</div></td>
+      </tr>
+      <tr class="cal-row" data-impact="3" data-ts="1796562000000" data-day="2026-12-06">
+        <td class="cal-when">
+          <div class="w-date">12/06（日）</div>
+          <div class="w-time">21:00</div>
+        </td>
+        <td class="cal-imp"><span class="dot i-high" title="大獎賽"></span></td>
+        <td class="cal-ev"><div class="cal-title">大獎賽</div></td>
       </tr>
     </tbody>
   </table>
@@ -2115,8 +2028,8 @@
 
     <div class="card">
       <div class="card-h">關於</div>
-      <div class="row"><span>版本</span><b>v0.3.013</b></div>
-      <div class="row"><span>頁面產生時間</span><b>2026-09-01 23:30 (UTC+8)</b></div>
+      <div class="row"><span>版本</span><b>v0.3.014</b></div>
+      <div class="row"><span>頁面產生時間</span><b>2026-09-01 23:47 (UTC+8)</b></div>
       <div class="row"><span>原始碼</span>
         <a href="https://github.com/ChrisHo0317/Local_Dashboard"
            target="_blank" rel="noopener">GitHub</a></div>
@@ -2626,20 +2539,26 @@ function initCalendarTable(table) {
   }
   function pad(n) { return String(n).padStart(2, '0'); }
 
+  // 以每一列自己的日期判斷，財經行事曆（一天一組）與 F1（一個賽事週末一組）
+  // 都適用：只要組裡有今天的場次就標「今天」，整組都過了才算已過去。
   function markDays() {
     var t = taipei();
     var iso = t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
     days.forEach(function (d) {
-      d.classList.toggle('today', d.dataset.date === iso);
-      d.classList.toggle('past', d.dataset.date < iso);
+      var rowDays = Array.prototype.slice.call(d.querySelectorAll('.cal-row'))
+        .map(function (r) { return r.dataset.day || d.dataset.date; });
+      var hasToday = rowDays.indexOf(iso) >= 0;
+      var allPast = rowDays.length > 0 && rowDays.every(function (x) { return x < iso; });
+      d.classList.toggle('today', hasToday);
+      d.classList.toggle('past', allPast);
       var head = d.querySelector('.cal-day-row th');
       var tag = head.querySelector('.cal-today-tag');
-      if (d.dataset.date === iso && !tag) {
+      if (hasToday && !tag) {
         tag = document.createElement('span');
         tag.className = 'cal-today-tag';
         tag.textContent = '今天';
         head.appendChild(tag);
-      } else if (d.dataset.date !== iso && tag) {
+      } else if (!hasToday && tag) {
         tag.remove();
       }
     });
@@ -2665,23 +2584,27 @@ function initCalendarTable(table) {
     return nowRow;
   }
 
-  // 把標示線插到今天「已過去」與「還沒到」的項目之間
-  function placeNow(iso) {
-    var today = days.filter(function (d) { return d.dataset.date === iso; })[0];
-    if (!today) { if (nowRow) nowRow.remove(); return; }
-
+  // 標示線插在「全表第一個還沒到的可見項目」之前。
+  // 不綁定今天那一組：F1 是依大獎賽分組，今天不一定有場次。
+  function placeNow() {
     var t = taipei();
     var row = buildNowRow(pad(t.getHours()) + ':' + pad(t.getMinutes()));
     var now = Date.now();
-    var rows = Array.prototype.slice.call(today.querySelectorAll('.cal-row'))
-                    .filter(function (r) { return !r.hidden; });
 
-    var next = null;
-    for (var i = 0; i < rows.length; i++) {
-      if (Number(rows[i].dataset.ts) > now) { next = rows[i]; break; }
+    for (var i = 0; i < days.length; i++) {
+      if (days[i].hidden) continue;
+      var rows = Array.prototype.slice.call(days[i].querySelectorAll('.cal-row'))
+                      .filter(function (r) { return !r.hidden; });
+      for (var j = 0; j < rows.length; j++) {
+        if (Number(rows[j].dataset.ts) > now) {
+          days[i].insertBefore(row, rows[j]);
+          return;
+        }
+      }
     }
-    if (next) { today.insertBefore(row, next); }
-    else { today.appendChild(row); }
+    // 全部都過去了就放在最後一組末尾
+    var last = days.filter(function (d) { return !d.hidden; }).pop();
+    if (last) { last.appendChild(row); } else if (nowRow) { nowRow.remove(); }
   }
 
   function applyFilter() {
@@ -2697,9 +2620,9 @@ function initCalendarTable(table) {
   }
 
   function refresh() {
-    var iso = markDays();
+    markDays();
     applyFilter();
-    placeNow(iso);
+    placeNow();
     if (clock) {
       var t = taipei();
       clock.textContent = '現在 ' + (t.getMonth() + 1) + '/' + pad(t.getDate()) + ' ' +

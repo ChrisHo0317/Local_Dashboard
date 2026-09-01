@@ -369,6 +369,13 @@ TPL = """<!doctype html>
   .cal-table .cal-num  { width:56px; text-align:right; font-size:11px; color:var(--muted);
                          font-variant-numeric:tabular-nums; word-break:break-all; }
   .cal-table .cal-sess { width:78px; text-align:right; font-size:11px; color:var(--muted); }
+  /* F1：日期與時間疊成兩行，一個賽事週末橫跨數天也看得清楚 */
+  .cal-table .cal-when { width:76px; }
+  .w-date { font-size:11px; color:var(--muted); line-height:1.3; }
+  .w-time { font-variant-numeric:tabular-nums; line-height:1.3; }
+  /* 分組標題（F1 用兩行：賽事 + 地點/日期）*/
+  .grp-main { font-size:12px; font-weight:600; color:var(--fg); }
+  .grp-sub { font-size:11px; font-weight:400; color:var(--muted); margin-top:1px; }
   /* 日期釘在表頭下方，捲到下一天才換掉 */
   .cal-day-row th { position:sticky; top:calc(var(--head-h,0px) + var(--thead-h,0px));
                     z-index:2; font-size:12px; font-weight:600; color:var(--fg);
@@ -948,20 +955,26 @@ function initCalendarTable(table) {
   }
   function pad(n) { return String(n).padStart(2, '0'); }
 
+  // 以每一列自己的日期判斷，財經行事曆（一天一組）與 F1（一個賽事週末一組）
+  // 都適用：只要組裡有今天的場次就標「今天」，整組都過了才算已過去。
   function markDays() {
     var t = taipei();
     var iso = t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
     days.forEach(function (d) {
-      d.classList.toggle('today', d.dataset.date === iso);
-      d.classList.toggle('past', d.dataset.date < iso);
+      var rowDays = Array.prototype.slice.call(d.querySelectorAll('.cal-row'))
+        .map(function (r) { return r.dataset.day || d.dataset.date; });
+      var hasToday = rowDays.indexOf(iso) >= 0;
+      var allPast = rowDays.length > 0 && rowDays.every(function (x) { return x < iso; });
+      d.classList.toggle('today', hasToday);
+      d.classList.toggle('past', allPast);
       var head = d.querySelector('.cal-day-row th');
       var tag = head.querySelector('.cal-today-tag');
-      if (d.dataset.date === iso && !tag) {
+      if (hasToday && !tag) {
         tag = document.createElement('span');
         tag.className = 'cal-today-tag';
         tag.textContent = '今天';
         head.appendChild(tag);
-      } else if (d.dataset.date !== iso && tag) {
+      } else if (!hasToday && tag) {
         tag.remove();
       }
     });
@@ -987,23 +1000,27 @@ function initCalendarTable(table) {
     return nowRow;
   }
 
-  // 把標示線插到今天「已過去」與「還沒到」的項目之間
-  function placeNow(iso) {
-    var today = days.filter(function (d) { return d.dataset.date === iso; })[0];
-    if (!today) { if (nowRow) nowRow.remove(); return; }
-
+  // 標示線插在「全表第一個還沒到的可見項目」之前。
+  // 不綁定今天那一組：F1 是依大獎賽分組，今天不一定有場次。
+  function placeNow() {
     var t = taipei();
     var row = buildNowRow(pad(t.getHours()) + ':' + pad(t.getMinutes()));
     var now = Date.now();
-    var rows = Array.prototype.slice.call(today.querySelectorAll('.cal-row'))
-                    .filter(function (r) { return !r.hidden; });
 
-    var next = null;
-    for (var i = 0; i < rows.length; i++) {
-      if (Number(rows[i].dataset.ts) > now) { next = rows[i]; break; }
+    for (var i = 0; i < days.length; i++) {
+      if (days[i].hidden) continue;
+      var rows = Array.prototype.slice.call(days[i].querySelectorAll('.cal-row'))
+                      .filter(function (r) { return !r.hidden; });
+      for (var j = 0; j < rows.length; j++) {
+        if (Number(rows[j].dataset.ts) > now) {
+          days[i].insertBefore(row, rows[j]);
+          return;
+        }
+      }
     }
-    if (next) { today.insertBefore(row, next); }
-    else { today.appendChild(row); }
+    // 全部都過去了就放在最後一組末尾
+    var last = days.filter(function (d) { return !d.hidden; }).pop();
+    if (last) { last.appendChild(row); } else if (nowRow) { nowRow.remove(); }
   }
 
   function applyFilter() {
@@ -1019,9 +1036,9 @@ function initCalendarTable(table) {
   }
 
   function refresh() {
-    var iso = markDays();
+    markDays();
     applyFilter();
-    placeNow(iso);
+    placeNow();
     if (clock) {
       var t = taipei();
       clock.textContent = '現在 ' + (t.getMonth() + 1) + '/' + pad(t.getDate()) + ' ' +
