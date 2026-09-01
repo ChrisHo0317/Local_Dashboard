@@ -41,10 +41,19 @@
          font-family:-apple-system,"Segoe UI","Microsoft JhengHei",sans-serif;
          transition:background .2s,color .2s; -webkit-text-size-adjust:100%; }
   .wrap { max-width:1400px; margin:0 auto;
-          padding:calc(20px + env(safe-area-inset-top)) 20px
-                  calc(110px + env(safe-area-inset-bottom)); }
-  header { display:flex; gap:16px; align-items:flex-start;
-           justify-content:space-between; margin-bottom:14px; }
+          padding:0 20px calc(110px + env(safe-area-inset-bottom)); }
+  /* 標題釘選在畫面上方。上方的安全區留白移到 header 自己身上，
+     否則捲動後 .wrap 的 padding 跟著捲走，標題會貼到瀏海。 */
+  header { position:sticky; top:0; z-index:40; background:var(--bg);
+           display:flex; gap:16px; align-items:flex-start; justify-content:space-between;
+           padding:calc(18px + env(safe-area-inset-top)) 0 12px;
+           transition:padding .18s, box-shadow .18s; }
+  body.scrolled header { padding-top:calc(9px + env(safe-area-inset-top)); padding-bottom:9px;
+                         box-shadow:0 1px 0 var(--border); }
+  /* 捲動後收起說明文字，只留標題，才不會吃掉太多畫面 */
+  #page-meta { overflow:hidden; max-height:64px; opacity:1;
+               transition:max-height .18s, opacity .18s; }
+  body.scrolled #page-meta { max-height:0; opacity:0; }
   h1 { font-size:20px; margin:0 0 4px; font-weight:600; }
   .meta { font-size:13px; color:var(--muted); line-height:1.6; }
   .head-right { display:flex; align-items:center; gap:8px; padding-top:1px; }
@@ -111,23 +120,28 @@
                white-space:nowrap; }
   .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
 
-  .cal-table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:13px; }
+  /* border-collapse:separate 是必要的：collapse 之下 sticky 的儲存格會弄丟框線，
+     所以分隔線改用 inset box-shadow 畫。 */
+  .cal-table { width:100%; border-collapse:separate; border-spacing:0;
+               table-layout:fixed; font-size:13px; }
   .cal-table th, .cal-table td { text-align:left; vertical-align:top; padding:9px 4px; }
-  .cal-table thead th { position:sticky; top:0; z-index:2; background:var(--bg);
+  .cal-table thead th { position:sticky; top:var(--head-h,0px); z-index:3; background:var(--bg);
                         font-size:11px; font-weight:600; color:var(--muted);
-                        border-bottom:1px solid var(--border); padding:6px 4px; }
+                        box-shadow:inset 0 -1px 0 var(--border); padding:6px 4px; }
   .cal-table .cal-time { width:46px; color:var(--muted); font-variant-numeric:tabular-nums; }
   .cal-table .cal-imp  { width:18px; }
   .cal-table .cal-num  { width:56px; text-align:right; font-size:11px; color:var(--muted);
                          font-variant-numeric:tabular-nums; word-break:break-all; }
-  .cal-day-row th { font-size:12px; font-weight:600; color:var(--fg);
-                    background:var(--card); border-top:1px solid var(--border);
-                    border-bottom:1px solid var(--border); padding:6px 4px; }
+  /* 日期釘在表頭下方，捲到下一天才換掉 */
+  .cal-day-row th { position:sticky; top:calc(var(--head-h,0px) + var(--thead-h,0px));
+                    z-index:2; font-size:12px; font-weight:600; color:var(--fg);
+                    background:var(--card); padding:7px 4px;
+                    box-shadow:inset 0 1px 0 var(--border), inset 0 -1px 0 var(--border); }
   .cal-day.past { opacity:.6; }
   .cal-day.today .cal-day-row th { color:var(--accent); }
   .cal-today-tag { font-size:11px; font-weight:500; margin-left:6px; padding:1px 7px;
                    border-radius:999px; background:var(--accent); color:#fff; }
-  .cal-row td { border-bottom:1px solid var(--border); }
+  .cal-row td { box-shadow:inset 0 -1px 0 var(--border); }
   .dot { display:block; width:8px; height:8px; border-radius:50%; margin-top:5px; }
   .i-high { background:#e8590c; }
   .i-mid  { background:#f08c00; }
@@ -199,7 +213,7 @@
           <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
         </svg>
       </button>
-      <span class="ver">v0.3.008</span>
+      <span class="ver">v0.3.009</span>
     </div>
   </header>
 
@@ -1434,8 +1448,8 @@
 
     <div class="card">
       <div class="card-h">關於</div>
-      <div class="row"><span>版本</span><b>v0.3.008</b></div>
-      <div class="row"><span>頁面產生時間</span><b>2026-09-01 22:08 (UTC+8)</b></div>
+      <div class="row"><span>版本</span><b>v0.3.009</b></div>
+      <div class="row"><span>頁面產生時間</span><b>2026-09-01 22:28 (UTC+8)</b></div>
       <div class="row"><span>原始碼</span>
         <a href="https://github.com/ChrisHo0317/Local_Dashboard"
            target="_blank" rel="noopener">GitHub</a></div>
@@ -1608,6 +1622,31 @@ function buildLegend(bar) {
   sync();
 }
 
+// ── 黏著層：把標題與表頭的實際高度餵給 CSS ─────────────────
+// 標題高度會變（分頁不同、捲動後說明文字收起），所以用量到的值設 CSS 變數，
+// 下面的表頭與日期列才知道該釘在哪個位置。
+var pageHeader = document.querySelector('header');
+var stickyTicking = false;
+
+function syncSticky() {
+  var root = document.documentElement;
+  root.style.setProperty('--head-h', pageHeader.offsetHeight + 'px');
+  var thead = document.querySelector('.cal-table thead');
+  if (thead) root.style.setProperty('--thead-h', thead.offsetHeight + 'px');
+}
+
+window.addEventListener('scroll', function () {
+  if (stickyTicking) return;
+  stickyTicking = true;
+  requestAnimationFrame(function () {
+    document.body.classList.toggle('scrolled', window.scrollY > 8);
+    syncSticky();
+    stickyTicking = false;
+  });
+}, {passive: true});
+
+window.addEventListener('resize', syncSticky);
+
 // ── 底部標籤列 ─────────────────────────────────────────────
 var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
 var pill = document.getElementById('tab-pill');
@@ -1640,6 +1679,7 @@ function selectTab(name, animate) {
     if (!c.rendered || c.dirty) { renderChart(name); }
     else { Plotly.Plots.resize(document.getElementById('chart-' + name)); }
   }
+  syncSticky();   // 各分頁的說明文字行數不同，標題高度會跟著變
 }
 
 tabs.forEach(function (t) {
@@ -1926,6 +1966,7 @@ try {
 document.querySelectorAll('.legend-bar').forEach(buildLegend);
 applyTheme();
 selectTab(Object.keys(CHARTS)[0], false);   // 只會畫出第一張圖
+syncSticky();
 Object.keys(CHARTS).forEach(function (k) {
   initTouch(document.getElementById('chart-' + k));
 });
