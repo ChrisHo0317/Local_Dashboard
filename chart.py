@@ -39,6 +39,9 @@ _SPIKE_COLOR = {False: "#868e96", True: "#7a8296"}
 # 超過這個日期數就改成純線條，不畫標記點
 MARKER_LIMIT = 300
 
+# 預設只看最近幾個月；時間軸縮圖仍顯示完整區間，可自行拉開
+DEFAULT_MONTHS = 3
+
 
 def theme_colors(dark: bool) -> tuple[str, str]:
     """回傳 (plotly template 名稱, 背景色)。"""
@@ -105,12 +108,25 @@ def _line_figure(df: pd.DataFrame, value_col: str, y_label: str,
 
     first = df["price_date"].min()
     last = df["price_date"].max()
+    # 預設顯示最近 DEFAULT_MONTHS 個月
+    start = max(first, last - pd.DateOffset(months=DEFAULT_MONTHS))
+
+    # y 軸配合預設視窗，第一眼就是縮放好的樣子；之後改變時間軸範圍時
+    # 由前端重算（Plotly 不會因為 x 縮放而自動調整 y）。
+    win = grid[(grid["price_date"] >= start) & (grid["price_date"] <= last)]
+    vals = win[value_col].dropna()
+    y_range = None
+    if len(vals):
+        lo, hi = float(vals.min()), float(vals.max())
+        pad = (hi - lo) * 0.04 or abs(hi) * 0.02 or 1.0
+        # 價格與殖利率都不會是負的，下緣不要因為留白而掉到 0 以下
+        y_range = [max(0.0, lo - pad) if lo >= 0 else lo - pad, hi + pad]
 
     fig.update_xaxes(
         # 明確指定範圍，右端貼齊最後一筆資料。留給 autorange 的話右邊會多出一段
         # 留白，而 rangeselector 的「1月」是以目前範圍右端往回算，
         # 那段留白會讓最新資料無法對齊右邊界。
-        range=[first, last],
+        range=[start, last],
         # 垂直指標線：手機上以單指點按移動，spikesnap="data" 讓它對齊實際資料點
         showspikes=True, spikemode="across", spikesnap="data",
         spikethickness=1, spikedash="dot", spikecolor=_SPIKE_COLOR[dark],
@@ -123,7 +139,8 @@ def _line_figure(df: pd.DataFrame, value_col: str, y_label: str,
             dict(dtickrange=["M12", None], value="%Y"),
         ],
         hoverformat="%Y/%m/%d",   # 指標標籤標頭的日期格式
-        rangeslider=dict(visible=True, thickness=0.10,
+        # 縮圖固定顯示完整區間（不跟著主圖的預設視窗縮），才看得出目前看的是哪一段
+        rangeslider=dict(visible=True, thickness=0.10, autorange=True,
                          bgcolor=bg, bordercolor=_SLIDER_BORDER[dark], borderwidth=1),
         rangeselector=dict(
             buttons=[
@@ -154,6 +171,8 @@ def _line_figure(df: pd.DataFrame, value_col: str, y_label: str,
         plot_bgcolor=bg,
         margin=dict(l=60, r=30, t=60, b=150 if showlegend else 40),
     )
+    if y_range:
+        fig.update_yaxes(range=y_range)
     return fig
 
 

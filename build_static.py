@@ -481,13 +481,53 @@ function layoutFor(key, mobile) {
   return L;
 }
 
+// Plotly 不會因為 x 縮放而自動調整 y，切到短區間時線會擠成一團。
+// 這裡依「目前 x 範圍內、且沒被關掉的線」重算 y 範圍。
+// 用 calcdata 而不是原始 data：calcdata 的 x 已經是數值（毫秒），
+// y 也解好了（嵌入的資料是 base64 二進位陣列），不必逐點換算。
+function rescaleY(gd) {
+  var fl = gd._fullLayout;
+  if (!fl || !fl.xaxis || !gd.calcdata) return;
+  var x0 = fl.xaxis.r2l(fl.xaxis.range[0]);
+  var x1 = fl.xaxis.r2l(fl.xaxis.range[1]);
+  var lo = Infinity, hi = -Infinity;
+
+  gd.calcdata.forEach(function (cd, i) {
+    var tr = (gd._fullData || [])[i];
+    if (!tr || tr.visible !== true) return;
+    for (var j = 0; j < cd.length; j++) {
+      var pt = cd[j];
+      var y = pt.y;
+      if (y === undefined || y === null || y !== y) continue;   // y!==y 濾 NaN
+      if (pt.x < x0 || pt.x > x1) continue;
+      if (y < lo) lo = y;
+      if (y > hi) hi = y;
+    }
+  });
+
+  if (lo === Infinity || hi === -Infinity) return;
+  var pad = (hi - lo) * 0.04 || Math.abs(hi) * 0.02 || 1;
+  // 價格與殖利率都不會是負的，下緣不要因為留白而掉到 0 以下
+  var bottom = (lo >= 0) ? Math.max(0, lo - pad) : lo - pad;
+  Plotly.relayout(gd, {'yaxis.range': [bottom, hi + pad]});
+}
+
 function renderChart(key) {
   const c = CHARTS[key];
+  const gd = document.getElementById('chart-' + key);
   const mobile = MOBILE_Q.matches;
   const data = c.traces.map(function (t, i) {
     return Object.assign({}, t, {visible: c.hidden.has(i) ? 'legendonly' : true});
   });
-  Plotly.react('chart-' + key, data, layoutFor(key, mobile), {
+  const L = layoutFor(key, mobile);
+
+  // 已經畫過的話沿用目前的時間軸範圍：切換型號顯示或深色模式時，
+  // 不該把使用者已經縮放好的區間重設回預設值。
+  if (c.rendered && gd._fullLayout && gd._fullLayout.xaxis) {
+    L.xaxis = Object.assign({}, L.xaxis, {range: gd._fullLayout.xaxis.range.slice()});
+  }
+
+  Plotly.react(gd, data, L, {
     responsive: true,
     displaylogo: false,
     displayModeBar: !mobile,  // 手機隱藏工具列，改用原生手勢與下方時間軸縮圖
@@ -495,8 +535,23 @@ function renderChart(key) {
     // 要回到全區間改用左上角的「全部」按鈕。
     doubleClick: mobile ? false : 'reset+autosize'
   });
+
+  if (!c.bound) {
+    // 改變時間軸範圍後重算 y。自己的 relayout 也會觸發這個事件，用旗標擋掉遞迴。
+    gd.on('plotly_relayout', function (ev) {
+      if (c.busy) return;
+      var touchedX = Object.keys(ev || {}).some(function (k) { return k.indexOf('xaxis') === 0; });
+      if (!touchedX) return;
+      c.busy = true;
+      rescaleY(gd);
+      setTimeout(function () { c.busy = false; }, 0);
+    });
+    c.bound = true;
+  }
+
   c.rendered = true;
   c.dirty = false;
+  rescaleY(gd);            // 型號顯示改變後 y 也要跟著重算
 }
 
 function applyTheme() {
