@@ -201,11 +201,15 @@ def _standings_html(df: pd.DataFrame, kind: str, name_header: str) -> str:
     for _, e in part.iterrows():
         sub = (f'<div class="cal-sub">{escape(e["team"])}</div>'
                if kind == "driver" and e["team"] else "")
+        # 名稱前的隊色標記，與走勢圖同一組顏色
+        color = e["color"] if "color" in part.columns and e["color"] else ""
+        bar = (f'<span class="team-bar" style="background:{escape(color)}"></span>'
+               if color else "")
         rows.append(
             '      <tr>\n'
             f'        <td class="rk-pos">{escape(e["position"])}{_gained_html(e["gained"])}</td>\n'
             f'        <td class="rk-name">\n'
-            f'          <div class="cal-title">{escape(e["name"])}</div>\n'
+            f'          <div class="cal-title">{bar}{escape(e["name"])}</div>\n'
             f'          {sub}\n'
             f'        </td>\n'
             f'        <td class="rk-pts">{escape(e["points"])}</td>\n'

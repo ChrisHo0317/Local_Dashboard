@@ -217,15 +217,32 @@ def build_points_figure(df: pd.DataFrame, dark: bool = False,
     grid = grid.reindex(columns=order)
     long = grid.reset_index().melt(id_vars="round", var_name="name", value_name="points")
 
+    # 用來源網站的車隊代表色；沒有顏色欄位時退回 px 的預設配色
+    color_map = {}
+    if "color" in df.columns:
+        color_map = (df[df["color"] != ""].drop_duplicates("name")
+                       .set_index("name")["color"].to_dict())
+
     fig = px.line(
         long, x="round", y="points", color="name",
         labels={"round": "站次", "points": "累積積分", "name": "項目"},
         markers=True, template=tmpl, render_mode="svg",
+        color_discrete_map=color_map or None,
     )
     fig.update_traces(
         marker=dict(size=4), line=dict(width=2), cliponaxis=False, connectgaps=True,
         hovertemplate="%{y:.0f}<extra>%{fullData.name}</extra>",
     )
+
+    # 同隊的兩位車手是同一個顏色，第二位改用虛線才分得出來
+    used = {}
+    for trace in fig.data:
+        c = trace.line.color
+        used[c] = used.get(c, 0) + 1
+        if used[c] == 2:
+            trace.line.dash = "dash"
+        elif used[c] > 2:
+            trace.line.dash = "dot"
     fig.update_xaxes(
         dtick=1, tick0=1, title_text="站次",
         showspikes=True, spikemode="across", spikesnap="data",

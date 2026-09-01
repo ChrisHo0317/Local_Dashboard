@@ -1,35 +1,35 @@
-kind,position,name,name_en,team,points,wins,podiums,gained
-driver,1,基米·安託內利,Kimi Antonelli,梅賽德斯,242,6,10,0
-driver,2,喬治·拉塞爾,George Russell,梅賽德斯,183,2,6,1
-driver,3,劉易斯·漢密爾頓,Lewis Hamilton,法拉利,183,1,5,-1
-driver,4,蘭多·諾里斯,Lando Norris,邁凱倫,159,2,4,1
-driver,5,夏爾·勒克萊爾,Charles Leclerc,法拉利,155,1,4,-1
-driver,6,馬克斯·維斯塔潘,Max Verstappen,紅牛,112,0,4,0
-driver,7,奧斯卡·皮亞斯特里,Oscar Piastri,邁凱倫,104,0,2,0
-driver,8,伊薩克·哈德爾,Isack Hadjar,紅牛,68,0,0,0
-driver,9,利亞姆·勞森,Liam Lawson,紅牛,49,0,0,0
-driver,10,皮埃爾·加斯利,Pierre Gasly,阿爾派,44,0,1,0
-driver,11,阿爾維德·林德布拉德,Arvid Lindblad,賽車公牛,23,0,0,0
-driver,12,弗蘭科·科拉皮託,Franco Colapinto,阿爾派,19,0,0,0
-driver,13,奧利弗·貝爾曼,Oliver Bearman,哈斯,18,0,0,0
-driver,14,加布裡埃爾·博爾託萊託,Gabriel Bortoleto,奧迪,10,0,0,0
-driver,15,尼科·哈肯伯格,Nico Hülkenberg,奧迪,6,0,0,3
-driver,16,小卡洛斯·塞恩斯,Carlos Sainz Jr.,威廉姆斯,6,0,0,-1
-driver,17,亞歷山大·阿爾本,Alexander Albon,威廉姆斯,5,0,0,-1
-driver,18,埃斯特班·奧康,Esteban Ocon,哈斯,3,0,0,-1
-driver,19,費爾南多·阿隆索,Fernando Alonso,阿斯頓·馬丁,3,0,0,0
-driver,20,角田裕毅,Yuki Tsunoda,賽車公牛,0,0,0,3
-driver,21,蘭斯·斯特羅爾,Lance Stroll,阿斯頓·馬丁,0,0,0,-1
-driver,22,瓦爾特利·博塔斯,Valtteri Bottas,凱迪拉克,0,0,0,-1
-driver,23,塞爾吉奧·佩雷斯,Sergio Pérez,凱迪拉克,0,0,0,-1
-constructor,1,梅賽德斯,Mercedes,,425,8,16,0
-constructor,2,法拉利,Ferrari,,338,2,9,0
-constructor,3,邁凱倫,McLaren,,263,2,6,0
-constructor,4,紅牛,Red Bull,,186,0,4,0
-constructor,5,賽車公牛,Racing Bulls,,66,0,0,0
-constructor,6,阿爾派,Alpine,,63,0,1,0
-constructor,7,哈斯,Haas,,21,0,0,0
-constructor,8,奧迪,Audi,,16,0,0,0
-constructor,9,威廉姆斯,Williams,,11,0,0,0
-constructor,10,阿斯頓·馬丁,Aston Martin,,3,0,0,0
-constructor,11,凱迪拉克,Cadillac,,0,0,0,0
+kind,position,name,name_en,team,points,wins,podiums,gained,color
+driver,1,基米·安託內利,Kimi Antonelli,梅賽德斯,242,6,10,0,#00d7b6
+driver,2,喬治·拉塞爾,George Russell,梅賽德斯,183,2,6,1,#00d7b6
+driver,3,劉易斯·漢密爾頓,Lewis Hamilton,法拉利,183,1,5,-1,#ed1131
+driver,4,蘭多·諾里斯,Lando Norris,邁凱倫,159,2,4,1,#f47600
+driver,5,夏爾·勒克萊爾,Charles Leclerc,法拉利,155,1,4,-1,#ed1131
+driver,6,馬克斯·維斯塔潘,Max Verstappen,紅牛,112,0,4,0,#4781d7
+driver,7,奧斯卡·皮亞斯特里,Oscar Piastri,邁凱倫,104,0,2,0,#f47600
+driver,8,伊薩克·哈德爾,Isack Hadjar,紅牛,68,0,0,0,#4781d7
+driver,9,利亞姆·勞森,Liam Lawson,紅牛,49,0,0,0,#4781d7
+driver,10,皮埃爾·加斯利,Pierre Gasly,阿爾派,44,0,1,0,#00a1e8
+driver,11,阿爾維德·林德布拉德,Arvid Lindblad,賽車公牛,23,0,0,0,#6c98ff
+driver,12,弗蘭科·科拉皮託,Franco Colapinto,阿爾派,19,0,0,0,#00a1e8
+driver,13,奧利弗·貝爾曼,Oliver Bearman,哈斯,18,0,0,0,#9c9fa2
+driver,14,加布裡埃爾·博爾託萊託,Gabriel Bortoleto,奧迪,10,0,0,0,#f50537
+driver,15,尼科·哈肯伯格,Nico Hülkenberg,奧迪,6,0,0,3,#f50537
+driver,16,小卡洛斯·塞恩斯,Carlos Sainz Jr.,威廉姆斯,6,0,0,-1,#1868db
+driver,17,亞歷山大·阿爾本,Alexander Albon,威廉姆斯,5,0,0,-1,#1868db
+driver,18,埃斯特班·奧康,Esteban Ocon,哈斯,3,0,0,-1,#9c9fa2
+driver,19,費爾南多·阿隆索,Fernando Alonso,阿斯頓·馬丁,3,0,0,0,#229971
+driver,20,角田裕毅,Yuki Tsunoda,賽車公牛,0,0,0,3,#6c98ff
+driver,21,蘭斯·斯特羅爾,Lance Stroll,阿斯頓·馬丁,0,0,0,-1,#229971
+driver,22,瓦爾特利·博塔斯,Valtteri Bottas,凱迪拉克,0,0,0,-1,#909090
+driver,23,塞爾吉奧·佩雷斯,Sergio Pérez,凱迪拉克,0,0,0,-1,#909090
+constructor,1,梅賽德斯,Mercedes,,425,8,16,0,#00d7b6
+constructor,2,法拉利,Ferrari,,338,2,9,0,#ed1131
+constructor,3,邁凱倫,McLaren,,263,2,6,0,#f47600
+constructor,4,紅牛,Red Bull,,186,0,4,0,#4781d7
+constructor,5,賽車公牛,Racing Bulls,,66,0,0,0,#6c98ff
+constructor,6,阿爾派,Alpine,,63,0,1,0,#00a1e8
+constructor,7,哈斯,Haas,,21,0,0,0,#9c9fa2
+constructor,8,奧迪,Audi,,16,0,0,0,#f50537
+constructor,9,威廉姆斯,Williams,,11,0,0,0,#1868db
+constructor,10,阿斯頓·馬丁,Aston Martin,,3,0,0,0,#229971
+constructor,11,凱迪拉克,Cadillac,,0,0,0,0,#909090

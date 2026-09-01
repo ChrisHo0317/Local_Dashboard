@@ -266,6 +266,7 @@ class F1StandingsScraper:
 
         driver_zh = self._link_names(html, "drivers")
         team_zh = self._link_names(html, "teams")
+        colors = self._team_colors(html)
 
         rows = []
         for d in drivers:
@@ -279,6 +280,7 @@ class F1StandingsScraper:
                 "wins": _num(d.get("wins")),
                 "podiums": _num(d.get("podiums")),
                 "gained": _num(d.get("positionsGained")),
+                "color": colors.get(d.get("constructorId", ""), ""),
             })
         for t in teams:
             rows.append({
@@ -291,6 +293,7 @@ class F1StandingsScraper:
                 "wins": _num(t.get("wins")),
                 "podiums": _num(t.get("podiums")),
                 "gained": _num(t.get("positionsGained")),
+                "color": colors.get(t.get("id", ""), ""),
             })
 
         self.logger.info(
@@ -308,6 +311,7 @@ class F1StandingsScraper:
         raw = html.replace('\\"', '"')
         driver_zh = self._link_names(html, "drivers")
         team_zh = self._link_names(html, "teams")
+        colors = self._team_colors(html)
 
         rows = []
         for key, kind, zh_map, id_field in (
@@ -316,12 +320,15 @@ class F1StandingsScraper:
         ):
             for e in self._grab_array(raw, key):
                 ident = e.get(id_field) or e.get("id") or ""
+                # 車手用所屬車隊的顏色；車隊本身就是自己的顏色
+                team_id = e.get("constructorId") or (ident if kind == "constructor" else "")
                 rows.append({
                     "kind": kind,
                     "round": _num(e.get("round")),
                     "id": str(ident),
                     "name": zh_map.get(str(ident), "") or e.get("name", ""),
                     "points": _num(e.get("points")),
+                    "color": colors.get(str(team_id), ""),
                 })
 
         if rows:
@@ -352,6 +359,22 @@ class F1StandingsScraper:
         except ValueError as e:
             self.logger.error(f"f1-boxbox：{key} 解析失敗 {e}")
             return []
+
+    @staticmethod
+    def _team_colors(html: str) -> dict:
+        """
+        取出車隊代表色：頁面在車隊連結前放一個帶背景色的小色塊，
+
+            <i ... style="background-color:#00d7b6"></i><p><a href=".../teams/mercedes">梅賽德斯</a></p>
+
+        車手沿用所屬車隊的顏色（來源自己的圖例也是這樣）。
+        """
+        pattern = (r'background-color:(#[0-9a-fA-F]{3,8})"[^>]*></i>\s*<p[^>]*>\s*'
+                   r'<a href="/[^"]*/teams/([a-z0-9-]+)"')
+        out = {}
+        for m in re.finditer(pattern, html):
+            out.setdefault(m.group(2), m.group(1))
+        return out
 
     @staticmethod
     def _link_names(html: str, section: str) -> dict:

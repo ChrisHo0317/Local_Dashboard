@@ -86,7 +86,7 @@ def merge_schedule(rows: list[dict]) -> int:
 # ── 積分榜 ───────────────────────────────────────────────────
 STANDINGS_CSV = DATA_DIR / "f1_standings.csv"
 STANDINGS_COLUMNS = ["kind", "position", "name", "name_en", "team",
-                     "points", "wins", "podiums", "gained"]
+                     "points", "wins", "podiums", "gained", "color"]
 
 
 def load_standings() -> pd.DataFrame:
@@ -134,7 +134,7 @@ def load_all() -> dict:
 
 # ── 逐站累積積分（積分走勢圖用）──────────────────────────────
 SERIES_CSV = DATA_DIR / "f1_points_series.csv"
-SERIES_COLUMNS = ["kind", "round", "id", "name", "points"]
+SERIES_COLUMNS = ["kind", "round", "id", "name", "points", "color"]
 
 
 def load_points_series() -> pd.DataFrame:
