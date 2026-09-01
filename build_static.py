@@ -34,6 +34,8 @@ from calendar_data import CSV_PATH as CAL_CSV, load_events
 from calendar_render import panel_html as cal_panel_html, stats as cal_stats
 from chart import build_bond_figure, build_figure, build_gold_figure, series_colors
 from dram_data import BASE_DIR, CSV_PATH as DRAM_CSV, latest_date as dram_latest, load_dram
+from f1_data import CSV_PATH as F1_CSV, latest_date as f1_latest, load_schedule
+from f1_render import panel_html as f1_panel_html, stats as f1_stats
 from gold_data import CSV_PATH as GOLD_CSV, latest_date as gold_latest, load_gold
 from version import __version__
 
@@ -106,11 +108,31 @@ PANELS = [
         "source_url": "https://www.forexfactory.com/calendar",
         "csv": CAL_CSV,
         "load": load_events,
+        "render": cal_panel_html,
+        "stats": cal_stats,
         # 月曆圖示
         "icon": '<rect x="3" y="4.5" width="18" height="16" rx="2.5"/>'
                 '<line x1="3" y1="9.5" x2="21" y2="9.5"/>'
                 '<line x1="8" y1="2.5" x2="8" y2="6.5"/>'
                 '<line x1="16" y1="2.5" x2="16" y2="6.5"/>',
+    },
+    {
+        "id": "f1",
+        "kind": "calendar",
+        "tab": "F1",
+        "title": "F1 賽程表",
+        "meta": "資料來源：F1 Calendar　·　時間為台北時間（UTC+8）",
+        "source_name": "F1 Calendar",
+        "source_url": "https://f1calendar.com/zh-HK",
+        "csv": F1_CSV,
+        "load": load_schedule,
+        "render": f1_panel_html,
+        "stats": f1_stats,
+        # 方格旗圖示
+        "icon": '<path d="M5 3v18"/>'
+                '<path d="M5 4.5h14v10H5z"/>'
+                '<path d="M5 4.5h4.7v3.3H5zm9.3 0H19v3.3h-4.7zM9.7 7.8h4.6v3.3H9.7zM5 11.1h4.7v3.4H5zm9.3 0H19v3.4h-4.7z"'
+                ' fill="currentColor" stroke="none"/>',
     },
 ]
 
@@ -150,13 +172,13 @@ def _tabbar_html() -> str:
             + "\n".join(btns) + "\n  </nav>")
 
 
-def _panels_html(cal_df) -> str:
+def _panels_html(panel_data) -> str:
     """各分頁的內容。圖表分頁留空殼由 JS 繪製，行事曆分頁在此直接產生 HTML。"""
     out = []
     for i, p in enumerate(PANELS):
         hidden = "" if i == 0 else " hidden"
         if p.get("kind", "chart") == "calendar":
-            body = cal_panel_html(cal_df)
+            body = p["render"](panel_data[p["id"]])
         else:
             body = (f'    <div class="chart" id="chart-{p["id"]}"></div>\n'
                     f'    <div class="legend-bar" data-chart="{p["id"]}"></div>')
@@ -346,6 +368,7 @@ TPL = """<!doctype html>
   .cal-table .cal-imp  { width:18px; }
   .cal-table .cal-num  { width:56px; text-align:right; font-size:11px; color:var(--muted);
                          font-variant-numeric:tabular-nums; word-break:break-all; }
+  .cal-table .cal-sess { width:78px; text-align:right; font-size:11px; color:var(--muted); }
   /* 日期釘在表頭下方，捲到下一天才換掉 */
   .cal-day-row th { position:sticky; top:calc(var(--head-h,0px) + var(--thead-h,0px));
                     z-index:2; font-size:12px; font-weight:600; color:var(--fg);
@@ -373,8 +396,11 @@ TPL = """<!doctype html>
   .cal-empty { color:var(--muted); font-size:13px; }
 
   /* 底部標籤列 */
+  /* 分頁再增加時標籤列會塞不下，允許橫向捲動當保險（塞得下時不會出現捲軸）*/
   .tabbar { position:fixed; left:50%; bottom:calc(16px + env(safe-area-inset-bottom));
             transform:translateX(-50%); display:flex; gap:2px; padding:6px;
+            max-width:calc(100vw - 20px); overflow-x:auto;
+            scrollbar-width:none; -webkit-overflow-scrolling:touch;
             border-radius:999px; background:var(--bar-bg); border:1px solid var(--bar-border);
             backdrop-filter:blur(16px) saturate(1.6);
             -webkit-backdrop-filter:blur(16px) saturate(1.6);
@@ -390,6 +416,8 @@ TPL = """<!doctype html>
               background:var(--pill); pointer-events:none;
               transition:transform .32s cubic-bezier(.4,0,.2,1),
                          width .32s cubic-bezier(.4,0,.2,1); }
+  .tabbar::-webkit-scrollbar { display:none; }
+  .tab { flex:none; }
   .tab-pill.no-anim { transition:none; }
 
   @media (max-width:820px) {
@@ -400,10 +428,10 @@ TPL = """<!doctype html>
     .legend-list { grid-template-columns:1fr; }
     .card { max-width:none; }
     /* 分頁變多後，窄螢幕要縮小按鈕才不會超出畫面 */
-    .tab { width:68px; }
+    .tab { width:60px; }
   }
   @media (max-width:400px) {
-    .tab { width:62px; font-size:10px; letter-spacing:0; }
+    .tab { width:54px; font-size:10px; letter-spacing:0; }
     .tab svg { width:20px; height:20px; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -899,16 +927,20 @@ function initTouch(gd) {
     });
 }
 
-// ── 行事曆：影響程度篩選、標出今天、現在時間標示 ───────────
+// ── 行事曆／賽程表：篩選、標出今天、現在時間標示 ─────────────
+// 財經行事曆與 F1 賽程共用同一套表格結構，所以逐個 .cal-table 各自初始化。
 // 所有跟「現在」有關的東西都在瀏覽器端算，不在產生頁面時寫死 ——
 // 頁面會被 CDN 快取，寫死的話隔天再開就會標錯。
-(function () {
-  var table = document.querySelector('.cal-table');
-  if (!table) return;
-
+function initCalendarTable(table) {
   var days = Array.prototype.slice.call(table.querySelectorAll('.cal-day'));
-  var clock = document.getElementById('cal-clock');
-  var minImpact = 0;
+  var panel = table.closest('.panel');
+  var clock = panel ? panel.querySelector('.cal-clock') : null;
+  var chips = panel
+    ? Array.prototype.slice.call(panel.querySelectorAll('.cal-filter .chip'))
+    : [];
+  var cols = table.querySelectorAll('thead th').length;
+  var minRank = 0;
+  var nowRow = null;
 
   // 台北時間（UTC+8）：不論使用者裝置在哪個時區，顯示都與表格一致
   function taipei() {
@@ -936,13 +968,12 @@ function initTouch(gd) {
     return iso;
   }
 
-  var nowRow = null;
   function buildNowRow(text) {
     if (!nowRow) {
       nowRow = document.createElement('tr');
       nowRow.className = 'cal-now';
       var td = document.createElement('td');
-      td.colSpan = 5;
+      td.colSpan = cols;
       var line = document.createElement('div');
       line.className = 'now-line';
       var tag = document.createElement('span');
@@ -956,7 +987,7 @@ function initTouch(gd) {
     return nowRow;
   }
 
-  // 把標示線插到今天「已過去」與「還沒到」的事件之間
+  // 把標示線插到今天「已過去」與「還沒到」的項目之間
   function placeNow(iso) {
     var today = days.filter(function (d) { return d.dataset.date === iso; })[0];
     if (!today) { if (nowRow) nowRow.remove(); return; }
@@ -978,9 +1009,9 @@ function initTouch(gd) {
   function applyFilter() {
     days.forEach(function (d) {
       var shown = 0;
-      Array.prototype.slice.call(d.querySelectorAll('.cal-row')).forEach(function (r) {
-        var on = Number(r.dataset.impact) >= minImpact;
-        r.hidden = !on;
+      Array.prototype.slice.call(d.querySelectorAll('.cal-row')).forEach(function (row) {
+        var on = Number(row.dataset.impact) >= minRank;
+        row.hidden = !on;
         if (on) shown++;
       });
       d.hidden = (shown === 0);
@@ -991,25 +1022,27 @@ function initTouch(gd) {
     var iso = markDays();
     applyFilter();
     placeNow(iso);
-    var t = taipei();
-    clock.textContent = '現在 ' + (t.getMonth() + 1) + '/' + pad(t.getDate()) + ' ' +
-                        pad(t.getHours()) + ':' + pad(t.getMinutes()) + '（UTC+8）';
+    if (clock) {
+      var t = taipei();
+      clock.textContent = '現在 ' + (t.getMonth() + 1) + '/' + pad(t.getDate()) + ' ' +
+                          pad(t.getHours()) + ':' + pad(t.getMinutes()) + '（UTC+8）';
+    }
   }
 
-  Array.prototype.slice.call(document.querySelectorAll('.cal-filter .chip'))
-    .forEach(function (c) {
-      c.addEventListener('click', function () {
-        document.querySelectorAll('.cal-filter .chip').forEach(function (x) {
-          x.setAttribute('aria-pressed', String(x === c));
-        });
-        minImpact = Number(c.dataset.min);
-        refresh();
-      });
+  chips.forEach(function (c) {
+    c.addEventListener('click', function () {
+      chips.forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); });
+      minRank = Number(c.dataset.min);
+      refresh();
     });
+  });
 
   refresh();
   setInterval(refresh, 30000);   // 每半分鐘更新時鐘與標示線位置
-})();
+}
+
+Array.prototype.slice.call(document.querySelectorAll('.cal-table'))
+  .forEach(initCalendarTable);
 
 // ── 重新載入 ───────────────────────────────────────────────
 // GitHub Pages 的 CDN 會把頁面快取約 10 分鐘，單純 location.reload() 常常
@@ -1061,12 +1094,12 @@ def build() -> Path:
     stats = {}
     head = {}
 
-    cal_df = None
+    panel_data = {}
 
     for p in PANELS:
         if p.get("kind", "chart") == "calendar":
-            cal_df = p["load"]()
-            stats[p["id"]] = cal_stats(cal_df)
+            panel_data[p["id"]] = p["load"]()
+            stats[p["id"]] = p["stats"](panel_data[p["id"]])
             head[p["id"]] = {
                 "title": p["title"],
                 "meta": f'{p["meta"]}<br>最後更新日：{stats[p["id"]]["latest"]}',
@@ -1107,7 +1140,7 @@ def build() -> Path:
     first = PANELS[0]
 
     html = (
-        TPL.replace("__CHART_PANELS__", _panels_html(cal_df))
+        TPL.replace("__CHART_PANELS__", _panels_html(panel_data))
            .replace("__SETTINGS_CARDS__", _settings_cards(stats))
            .replace("__TABBAR__", _tabbar_html())
            .replace("__CHARTS__", json.dumps(charts, ensure_ascii=False, separators=(",", ":")))

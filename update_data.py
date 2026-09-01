@@ -18,6 +18,8 @@ from bond_scraper import MoneyDJBondScraper
 from calendar_data import CSV_PATH as CAL_CSV, merge_events
 from calendar_scraper import ForexFactoryCalendarScraper
 from dram_data import CSV_PATH as DRAM_CSV, merge_prices
+from f1_data import CSV_PATH as F1_CSV, merge_schedule
+from f1_scraper import F1CalendarScraper
 from gold_data import CSV_PATH as GOLD_CSV, merge_prices as merge_gold
 from gold_scraper import YahooGoldScraper
 from scraper import TrendForceScraper
@@ -91,8 +93,21 @@ def update_calendar() -> int:
     return added
 
 
+def update_f1() -> int:
+    """F1 賽程：來源一次提供整季，以最新抓到的為準（賽程會改期）。"""
+    rows = F1CalendarScraper(logger=log).fetch_schedule()
+    if not rows:
+        log.warning("F1：未取得任何場次（頁面可能改版），本次不更新")
+        return 0
+    changed = merge_schedule(rows)
+    log.info(f"F1：抓取 {len(rows)} 個場次，"
+             + (f"已更新 {F1_CSV.name}" if changed else "與現有資料相同"))
+    return changed
+
+
 def main() -> int:
-    added = update_dram() + update_bonds() + update_gold() + update_calendar()
+    added = (update_dram() + update_bonds() + update_gold()
+             + update_calendar() + update_f1())
 
     if added == 0:
         log.info("無新資料，略過重建 HTML")

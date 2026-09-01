@@ -46,6 +46,7 @@ event_time,country,title,impact,forecast,previous
 2026-09-01T10:00:00-04:00,USD,ISM Manufacturing Prices,Medium,70.5,71.1
 2026-09-01T10:00:00-04:00,USD,JOLTS Job Openings,Medium,7.33M,7.36M
 2026-09-01T10:00:00-04:00,USD,Construction Spending m/m,Low,0.0%,-0.1%
+2026-09-01T10:04:00-04:00,USD,RCM/TIPP Economic Optimism,Low,46.2,45.1
 2026-09-01T10:14:00-04:00,USD,RCM/TIPP Economic Optimism,Low,46.2,45.1
 2026-09-01T10:15:00-04:00,USD,Omdia Total Vehicle Sales,Low,16.3M,16.3M
 2026-09-01T10:51:00-04:00,NZD,GDT Price Index,Low,,2.3%

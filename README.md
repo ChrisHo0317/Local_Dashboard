@@ -1,6 +1,6 @@
 # Local_Dashboard — 市場走勢
 
-DRAM 現貨報價、美國公債殖利率、國際金價的歷史走勢圖，以及中文化的財經行事曆，資料每日自動更新。
+DRAM 現貨報價、美國公債殖利率、國際金價的歷史走勢圖，以及中文化的財經行事曆與 F1 賽程表，資料每日自動更新。
 
 **線上瀏覽：** https://chrisho0317.github.io/Local_Dashboard/
 
@@ -27,6 +27,7 @@ GitHub Pages 只能託管靜態檔案，無法執行 Dash 的伺服器端 callba
 | 美債殖利率 | 美國公債 1／2／5／10／20／30 年期殖利率（MoneyDJ）|
 | 黃金 | 國際金價 COMEX 近月期貨，USD／盎司（Yahoo Finance）|
 | 行事曆 | 財經事件行事曆，中文化、表格呈現（ForexFactory）|
+| F1 | F1 賽季賽程表，繁體中文（F1 Calendar）|
 | 設定 | 外觀（深色模式）、各資料集資訊與顯示開關、關於 |
 
 要新增圖表分頁，在 `build_static.py` 的 `PANELS` 加一筆即可 —— 標籤列、分頁、圖例、設定頁的資料卡片都會跟著生成，滑動指示器依按鈕實際位置計算，不需要改任何數值。
@@ -84,6 +85,9 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `calendar_scraper.py` | ForexFactory 行事曆爬蟲（官方 JSON feed）|
 | `calendar_i18n.py` | 事件名稱／國別／影響程度的中文化 |
 | `calendar_render.py` | 行事曆分頁的 HTML 產生 |
+| `f1_data.py` | 讀寫 `data/f1_schedule.csv` |
+| `f1_scraper.py` | f1calendar.com 賽程爬蟲 |
+| `f1_render.py` | F1 分頁的 HTML 產生（沿用行事曆的表格樣式）|
 | `chart.py` | `build_figure()` / `build_bond_figure()` — 唯一的圖表定義來源 |
 | `docs/` | 發佈目錄：`index.html`（產生）+ 圖示與 `manifest.webmanifest`（靜態） |
 | `scraper.py` | TrendForce DRAM 現貨報價爬蟲（僅提供當日快照）|
@@ -188,3 +192,22 @@ forexfactory.com 本站有 Cloudflare，直接抓會 403，但官方另外提供
 事件名稱組合性很強（`German Prelim CPI m/m` = 國別前綴 + 修飾語 + 核心指標 + 週期後綴），
 拆解後查表即可。查不到的核心詞會保留英文 —— 寧可顯示英文，也不要猜錯財經名詞。
 CSV 只存英文原名，改了對照表重跑 `build_static.py` 就會全部更新，不必重抓資料。
+
+## 關於 F1 賽程
+
+f1calendar.com 站上的表格只顯示「6 Mar 01:30」這種沒有年份、也沒標時區的字串，
+不能直接用。改取 Next.js RSC payload 裡的結構化資料 —— 時間是 UTC，另有輪次、
+地點與繁體中文對照表。
+
+三個要注意的地方：
+
+- 來源只有 **zh-HK** 版（zh-TW / zh-Hant 都會 307 轉址），用的是港式譯名。
+  `TW_TERMS` 只把用詞換成台灣寫法（意大利→義大利、卡塔爾→卡達、阿布扎比→阿布達比…），
+  其餘一律照來源。
+- 來源的 zh-HK 對照把 `sprint` 與 `sprintQualifying` **都寫成「衝刺排位賽」**，
+  兩者一個是週六的衝刺賽、一個是週五的排位賽，混在一起看不出差別。
+  偵測到多個代碼對到同一個名稱時就改用自己的名稱。
+- 當季新賽名（如 2026 的 Barcelona-Catalunya）來源可能還沒收錄中文，
+  由 `FALLBACK_RACES` 補上。
+
+賽程會改期，所以每次更新以最新抓到的整季資料為準，不像其他資料集是累積式的。
