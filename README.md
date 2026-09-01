@@ -67,7 +67,7 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 ## 加入 iPhone / Android 主畫面
 
 用 Safari 或 Chrome 開啟上方網址 → 分享選單 →「加入主畫面」。
-圖示會顯示 DRAM 模組與上升折線，名稱為「DRAM 報價」，開啟後為獨立視窗（無瀏覽器網址列）。
+圖示是 K 線與上升趨勢線，名稱為「市場走勢」，開啟後為獨立視窗（無瀏覽器網址列）。
 
 ---
 
@@ -91,7 +91,7 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `build_static.py` | 產生 `docs/index.html` |
 | `app.py` | 本地 Dash 版 |
 | `export_from_sqlite.py` | 自本機 SQLite 匯出初始 CSV |
-| `make_icons.py` | 產生 `docs/` 底下的網站圖示（需 Pillow） |
+| `make_icons.py` | 產生 `docs/` 底下的網站圖示：K 線 + 趨勢線（需 Pillow）|
 | `version.py` | 版本號，顯示於頁尾與本地 Dash 標頭 |
 
 ## 資料格式
