@@ -528,6 +528,8 @@ TPL = """<!doctype html>
   .news-body p { font-size:15px; line-height:1.8; margin:0 0 14px; }
   .news-nobody { color:var(--muted); font-size:13px; }
   .news-link { display:inline-block; margin-top:4px; font-size:13px; color:var(--accent); }
+  .news-more { display:block; width:100%; margin-top:14px; padding:12px;
+               font-size:13px; color:var(--muted); border-radius:10px; }
 
   /* 底部標籤列 */
   /* 分頁再增加時標籤列會塞不下，允許橫向捲動當保險（塞得下時不會出現捲軸）*/
@@ -1285,6 +1287,8 @@ Array.prototype.slice.call(document.querySelectorAll('.grandtabs')).forEach(func
 
 // ── 新聞：點標題看內文，返回鍵回清單 ───────────────────────
 // 清單與內文都是產生頁面時就寫好的靜態內容，切換只是顯示／隱藏。
+var FIRST_BATCH = 12;   // 一開始排幾則
+var BATCH = 10;         // 捲到底再接幾則
 Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(function (panel) {
   var list = panel.querySelector('.news-list');
   if (!list) return;
@@ -1292,18 +1296,44 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
 
   function show(key) {
     list.hidden = (key !== null);
+    // 「載入更多」在 ul 外面，看內文時要一起藏
+    if (sentinel) sentinel.hidden = (key !== null) || (shown >= items.length);
     articles.forEach(function (a) { a.hidden = (a.dataset.article !== key); });
     window.scrollTo(0, 0);
     syncSticky();
   }
 
-  Array.prototype.slice.call(list.querySelectorAll('.news-item')).forEach(function (li) {
+  var items = Array.prototype.slice.call(list.querySelectorAll('.news-item'));
+  items.forEach(function (li) {
     function open() { show(li.dataset.article); }
     li.addEventListener('click', open);
     li.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
     });
   });
+
+  // 捲到底自動接上後面的：全部都已經在頁面裡，只是先藏起來，
+  // 一次全顯示會讓清單長到難捲，也沒必要一開始就排版那麼多列。
+  var shown = FIRST_BATCH;
+  var sentinel = panel.querySelector('.news-more');
+  function reveal() {
+    items.forEach(function (li, i) { li.hidden = (i >= shown); });
+    if (sentinel) sentinel.hidden = (shown >= items.length);
+  }
+  function extend() {
+    if (shown >= items.length) return;
+    shown = Math.min(shown + BATCH, items.length);
+    reveal();
+  }
+  reveal();
+  if (sentinel) {
+    if (window.IntersectionObserver) {
+      new IntersectionObserver(function (entries) {
+        if (entries[0].isIntersecting) extend();
+      }, {rootMargin: '200px'}).observe(sentinel);
+    }
+    sentinel.addEventListener('click', extend);   // 沒有 IO 時仍可手動載入
+  }
 
   articles.forEach(function (a) {
     a.querySelector('.news-back').addEventListener('click', function () { show(null); });

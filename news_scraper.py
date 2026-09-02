@@ -10,9 +10,10 @@
 """
 import logging
 import re
+import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 from bs4 import BeautifulSoup
 from curl_cffi import requests as cffi_requests
@@ -33,6 +34,10 @@ BODY_SELECTORS = [
 
 # 抽到的文字短於這個長度就當成沒抓到（多半是導覽或版權字串）
 MIN_BODY = 100
+
+# 連續抓同一站的內文之間隔多久（秒）。單篇都抓得到、連抓卻空一半，
+# 就是被限流了 —— 間隔比事後重試有效得多。
+REQUEST_GAP = 0.5
 
 # 雜訊過濾只套用在短段落：長段落即使夾了一個關鍵字（文末的訂閱／廣告字樣）
 # 也是真正的內文，整段丟掉會把文章刪光。導覽與版權宣告都遠短於這個長度。
@@ -71,13 +76,24 @@ class NewsScraper:
     def fetch_source(self, source: dict) -> list[dict]:
         items = (self._from_rss(source) if source["kind"] == "rss"
                  else self._from_html(source))
-        items = items[:PER_SOURCE]
+        # 同一則新聞可能以不同網址在清單上出現兩次（不同分類或不同排版位置），
+        # 標題比網址可靠，用它再過一次。
+        seen, unique = set(), []
+        for item in items:
+            key = item["title"]
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(item)
+        items = unique[:PER_SOURCE]
         if not items:
             self.logger.warning(f"{source['label']}：清單沒有抓到任何文章")
             return []
 
         rows = []
         for order, item in enumerate(items):
+            if order:
+                time.sleep(REQUEST_GAP)     # 連抓幾十篇會被限流，隔一下
             body = self._fetch_body(item["url"])
             rows.append({
                 "source": source["id"],
@@ -144,12 +160,24 @@ class NewsScraper:
             title = " ".join(a.get_text(" ", strip=True).split())
             if len(title) < 10:                # 太短的多半是導覽或標籤
                 continue
-            url = urljoin(source["site_url"], href)
-            if url in seen:
+            url = self._normalize(urljoin(source["site_url"], href), source)
+            key = urlsplit(url)._replace(query="", fragment="").geturl()                 if source.get("dedupe") == "path" else url
+            if key in seen:
                 continue
-            seen.add(url)
+            seen.add(key)
             out.append({"title": title, "url": url, "published": ""})
         return out
+
+    @staticmethod
+    def _normalize(url: str, source: dict) -> str:
+        """把連結導回來源指定的網域（有些站會混用讀不到的子網域）。"""
+        host = source.get("host")
+        if not host:
+            return url
+        parts = urlsplit(url)
+        if parts.netloc == host:
+            return url
+        return parts._replace(netloc=host).geturl()
 
     # ── 內文 ────────────────────────────────────────────────
     def _fetch_body(self, url: str) -> str:
@@ -198,14 +226,19 @@ class NewsScraper:
 
     # ── 小工具 ──────────────────────────────────────────────
     def _get(self, url: str, quiet: bool = False) -> str:
-        try:
-            resp = self.session.get(url, headers=HEADERS, timeout=40)
-            resp.raise_for_status()
-            return resp.content.decode("utf-8", errors="replace")
-        except Exception as e:
-            if not quiet:
-                self.logger.error(f"讀取失敗 {url[:70]}: {e}")
-            return ""
+        # 連續抓幾十篇內文時偶爾會被斷線或限流，隔一下再試一次多半就過了。
+        for attempt in (1, 2):
+            try:
+                resp = self.session.get(url, headers=HEADERS, timeout=40)
+                resp.raise_for_status()
+                return resp.content.decode("utf-8", errors="replace")
+            except Exception as e:
+                if attempt == 1:
+                    time.sleep(1.5)
+                    continue
+                if not quiet:
+                    self.logger.error(f"讀取失敗 {url[:70]}: {e}")
+        return ""
 
     @staticmethod
     def _text(node, name: str) -> str:

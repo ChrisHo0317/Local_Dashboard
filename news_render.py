@@ -101,7 +101,9 @@ def _source_html(source: dict, part: pd.DataFrame) -> str:
             f'    </div>'
         )
 
+    # .news-more 同時是捲動哨兵與備援按鈕，超過首批則數時才會出現
     return ('    <ul class="news-list">\n' + "\n".join(items) + "\n    </ul>\n"
+            '    <button type="button" class="news-more" hidden>載入更多</button>\n'
             + "\n".join(articles))
 
 
