@@ -28,6 +28,7 @@ GitHub Pages 只能託管靜態檔案，無法執行 Dash 的伺服器端 callba
 | 黃金 | 國際金價 COMEX 近月期貨，USD／盎司（Yahoo Finance）|
 | 行事曆 | 財經事件行事曆，中文化、表格呈現（ForexFactory）|
 | F1 | 賽程（依大獎賽分組）／積分（車手、車隊：走勢圖 + 積分榜）（F1 Calendar、f1-boxbox）|
+| SpaceX | 發射排程，依月份分組、繁體中文（SpaceX 官方 API）|
 | 設定 | 外觀（深色模式）、各資料集資訊與顯示開關、關於 |
 
 要新增圖表分頁，在 `build_static.py` 的 `PANELS` 加一筆即可 —— 標籤列、分頁、圖例、設定頁的資料卡片都會跟著生成，滑動指示器依按鈕實際位置計算，不需要改任何數值。
@@ -88,6 +89,10 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `f1_data.py` | 讀寫 `data/f1_schedule.csv` |
 | `f1_scraper.py` | f1calendar.com 賽程爬蟲 + f1-boxbox 積分榜爬蟲 |
 | `f1_render.py` | F1 分頁的 HTML 產生：二／三階分頁 + 賽程表 + 積分榜 |
+| `spacex_data.py` | 讀寫 `data/spacex_launches.csv` |
+| `spacex_scraper.py` | SpaceX 官方 API 爬蟲 |
+| `spacex_i18n.py` | 火箭／任務類型／發射場／回收方式的中文化 |
+| `spacex_render.py` | SpaceX 分頁的 HTML 產生 |
 | `chart.py` | `build_figure()` / `build_bond_figure()` — 唯一的圖表定義來源 |
 | `docs/` | 發佈目錄：`index.html`（產生）+ 圖示與 `manifest.webmanifest`（靜態） |
 | `scraper.py` | TrendForce DRAM 現貨報價爬蟲（僅提供當日快照）|
@@ -247,3 +252,26 @@ F1 分頁的層次是：`賽程` 與 `積分` 兩個子分頁，`積分` 底下�
 兩個孫分頁，各自是「走勢圖 + 積分榜」。走勢圖是嵌在分頁裡的圖表（不自成一個主分頁），
 在 `build_static.py` 的 `EXTRA_CHARTS` 定義，並沿用同一套收合式圖例與延後繪製邏輯 ——
 圖表在隱藏的分頁裡量不到寬度，一定要顯示的當下才畫。
+
+## 關於 SpaceX 發射排程
+
+https://www.spacex.com/launches 是純前端渲染的空殼（HTML 只有 3KB），
+資料來自官網自己呼叫的 API：
+
+- `content.spacex.com/api/spacex-website/launches-page-tiles` — 整份清單（含歷史），
+  2006 年至今 720 筆
+- `sxcontent9668.azureedge.us/cms-assets/future_missions.json` — 即將發射任務的
+  精確時間（epoch 秒），以 `correlationId` 對應
+
+三個要注意的地方：
+
+- **官網一次只公布一場即將發射的任務**，而且那一筆的 `launchDate` 是 null，
+  精確時間得去 `future_missions.json` 取。所以這張表實際上是
+  「一場即將發射 + 近期發射紀錄」，不是完整的未來排程。
+- `launchDate` / `launchTime` 是分開的兩個欄位，而且**沒有標時區**。
+  硬猜會出錯，因此一律當成 UTC 存、由頁面統一換算顯示。
+- 任務名稱大小寫不一致（`Starlink Mission` / `STARLINK MISSION` / `starlink mission`
+  都有），中文化時會先正規化；`IM-2` 這類全大寫的專有名詞則保留原樣。
+
+720 筆裡有 421 筆是星鏈，全部混在一起會蓋掉其他任務，所以篩選提供「星鏈以外」。
+版面依月份分組並可摺疊，預設展開本月。

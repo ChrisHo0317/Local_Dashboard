@@ -2,7 +2,8 @@
 pandas>=2.2
 plotly>=6.7
 
-# 本地 Dash 版（app.py）；GitHub Actions 的更新流程不需要這兩個
+# 本地 Dash 版（app.py）。GitHub Actions 其實用不到，但排程直接安裝整份
+# requirements.txt，避免再發生「加了套件卻忘了同步 workflow」的問題。
 dash>=4.1
 dash-bootstrap-components>=2.0
 

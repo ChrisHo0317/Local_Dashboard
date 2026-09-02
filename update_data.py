@@ -24,6 +24,8 @@ from f1_scraper import F1CalendarScraper, F1StandingsScraper
 from gold_data import CSV_PATH as GOLD_CSV, merge_prices as merge_gold
 from gold_scraper import YahooGoldScraper
 from scraper import TrendForceScraper
+from spacex_data import CSV_PATH as SPACEX_CSV, merge_launches
+from spacex_scraper import SpaceXScraper
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 log = logging.getLogger("update_data")
@@ -128,9 +130,22 @@ def update_f1_standings() -> int:
     return changed + changed_series
 
 
+def update_spacex() -> int:
+    """SpaceX 發射：來源一次提供整份清單，發射時間常改期，以最新抓到的為準。"""
+    rows = SpaceXScraper(logger=log).fetch_launches()
+    if not rows:
+        log.warning("SpaceX：未取得任何資料（API 可能改版），本次不更新")
+        return 0
+    changed = merge_launches(rows)
+    log.info(f"SpaceX：抓取 {len(rows)} 筆，"
+             + (f"已更新 {SPACEX_CSV.name}" if changed else "與現有資料相同"))
+    return changed
+
+
 def main() -> int:
     added = (update_dram() + update_bonds() + update_gold()
-             + update_calendar() + update_f1() + update_f1_standings())
+             + update_calendar() + update_f1() + update_f1_standings()
+             + update_spacex())
 
     if added == 0:
         log.info("無新資料，略過重建 HTML")

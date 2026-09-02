@@ -21,8 +21,10 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        # 更新流程只需要爬蟲與繪圖，不需要 dash / dash-bootstrap-components
-        run: pip install pandas plotly curl_cffi beautifulsoup4
+        # 直接裝 requirements.txt，不要維護第二份清單 ——
+        # 之前寫死套件列表，加了 opencc 卻忘了同步，排程就默默把
+        # F1 車手名字寫成簡體（沒有 opencc 時 _to_tw 原樣回傳）。
+        run: pip install -r requirements.txt
 
       - name: Fetch latest prices and rebuild page
         run: python update_data.py

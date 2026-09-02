@@ -38,6 +38,8 @@ from dram_data import BASE_DIR, CSV_PATH as DRAM_CSV, latest_date as dram_latest
 from f1_data import CSV_PATH as F1_CSV, load_all as load_f1_all, load_points_series
 from f1_render import panel_html as f1_panel_html, stats as f1_stats
 from gold_data import CSV_PATH as GOLD_CSV, latest_date as gold_latest, load_gold
+from spacex_data import CSV_PATH as SPACEX_CSV, load_all as load_spacex_all
+from spacex_render import panel_html as spacex_panel_html, stats as spacex_stats
 from version import __version__
 
 DOCS_DIR = BASE_DIR / "docs"
@@ -135,6 +137,24 @@ PANELS = [
                 '<path d="M5 4.5h4.7v3.3H5zm9.3 0H19v3.3h-4.7zM9.7 7.8h4.6v3.3H9.7zM5 11.1h4.7v3.4H5zm9.3 0H19v3.4h-4.7z"'
                 ' fill="currentColor" stroke="none"/>',
     },
+    {
+        "id": "spacex",
+        "kind": "calendar",
+        "tab": "SpaceX",
+        "title": "SpaceX 發射排程",
+        "meta": "資料來源：SpaceX　·　時間為台北時間（UTC+8）",
+        "source_name": "SpaceX",
+        "source_url": "https://www.spacex.com/launches",
+        "csv": SPACEX_CSV,
+        "load": load_spacex_all,
+        "render": spacex_panel_html,
+        "stats": spacex_stats,
+        # 火箭圖示
+        "icon": '<path d="M12 2.5c2.6 2.2 4 5.5 4 9v4.5l-2 2h-4l-2-2V11.5c0-3.5 1.4-6.8 4-9z"/>'
+                '<circle cx="12" cy="10" r="1.7"/>'
+                '<path d="M8 13.5 5.5 16v3l2.5-1.6M16 13.5 18.5 16v3L16 17.4"/>'
+                '<path d="M10.6 20.2 12 22.5l1.4-2.3"/>',
+    },
 ]
 
 CHART_PANELS = [p for p in PANELS if p.get("kind", "chart") == "chart"]
@@ -216,7 +236,14 @@ def _settings_cards(stats: dict) -> str:
     for p in PANELS:
         s = stats[p["id"]]
         if p.get("kind", "chart") == "calendar":
-            middle = (f'      <div class="row"><span>事件筆數</span><b>{s["rows"]} 筆</b></div>\n'
+            # 各表格分頁的重點數字不同：F1 看站數、SpaceX 看即將發射場次
+            extra = ""
+            if "races" in s:
+                extra = f'      <div class="row"><span>賽事站數</span><b>{s["races"]} 站</b></div>\n'
+            elif "upcoming" in s:
+                extra = f'      <div class="row"><span>即將發射</span><b>{s["upcoming"]} 場</b></div>\n'
+            middle = (f'      <div class="row"><span>資料筆數</span><b>{s["rows"]} 筆</b></div>\n'
+                      f'{extra}'
                       f'      <div class="row"><span>本頁顯示</span><b>{s["shown"]} 筆</b></div>')
         else:
             middle = (f'      <div class="row"><span>資料筆數</span><b>{s["rows"]} 筆</b></div>\n'
@@ -376,6 +403,10 @@ TPL = """<!doctype html>
   .cal-table .cal-num  { width:56px; text-align:right; font-size:11px; color:var(--muted);
                          font-variant-numeric:tabular-nums; word-break:break-all; }
   .cal-table .cal-sess { width:78px; text-align:right; font-size:11px; color:var(--muted); }
+  /* SpaceX：即將發射／進行中的小標籤 */
+  .sx-tag { font-size:10px; font-weight:600; margin-left:6px; padding:1px 7px;
+            border-radius:999px; background:var(--accent); color:#fff;
+            vertical-align:1px; white-space:nowrap; }
   /* F1：日期與時間疊成兩行，一個賽事週末橫跨數天也看得清楚 */
   .cal-table .cal-when { width:76px; }
   .w-date { font-size:11px; color:var(--muted); line-height:1.3; }
@@ -481,10 +512,10 @@ TPL = """<!doctype html>
     .legend-list { grid-template-columns:1fr; }
     .card { max-width:none; }
     /* 分頁變多後，窄螢幕要縮小按鈕才不會超出畫面 */
-    .tab { width:60px; }
+    .tab { width:56px; }
   }
   @media (max-width:400px) {
-    .tab { width:54px; font-size:10px; letter-spacing:0; }
+    .tab { width:50px; font-size:10px; letter-spacing:0; }
     .tab svg { width:20px; height:20px; }
   }
   @media (prefers-reduced-motion: reduce) {

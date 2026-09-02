@@ -1,0 +1,721 @@
+launch_time,title,vehicle,launch_site,return_site,mission_type,status,link
+2006-03-24T02:00:00Z,FalconSAT-2 Mission,Falcon 1,Omelek Island,Expended,,final,falconsat2
+2007-03-21T13:10:00Z,DemoSat Mission,Falcon 1,Omelek Island,Expended,,final,demosat
+2008-08-03T15:34:00Z,Trailblazer Mission,Falcon 1,Omelek Island,Expended,,final,trailblazer
+2008-09-29T11:15:00Z,RatSat Mission,Falcon 1,Omelek Island,Expended,,final,ratsat
+2009-07-14T15:35:00Z,RazakSAT Mission,Falcon 1,Omelek Island,Expended,,final,razaksat
+2010-06-04T14:45:00Z,Falcon 9 Demo Mission,Falcon 9,"SLC-40, Florida",Expended,,final,falcon9demo
+2010-12-08T10:42:00Z,COTS 1 Mission,Falcon 9,"SLC-40, Florida",Expended,resupply,final,cots1
+2012-05-22T03:44:00Z,COTS 2+ Mission,Falcon 9,"SLC-40, Florida",Expended,resupply,final,cots2
+2012-10-07T20:34:00Z,CRS-1 Mission,Falcon 9,"SLC-40, Florida",Expended,resupply,final,crs1
+2013-03-01T10:10:00Z,CRS-2 Mission,Falcon 9,"SLC-40, Florida",Expended,resupply,final,crs2
+2013-09-29T09:00:00Z,Cassiope Mission,Falcon 9,"SLC-4E, California",Expended,science,final,cassiope
+2013-12-03T17:41:00Z,SES-8 Mission,Falcon 9,"SLC-40, Florida",Expended,commercialSatellite,final,ses8
+2014-01-06T17:06:00Z,Thaicom-6 Mission,Falcon 9,"SLC-40, Florida",Expended,commercialSatellite,final,thaicom6
+2014-04-18T15:25:00Z,CRS-3 Mission,Falcon 9,"SLC-40, Florida",Expended,resupply,final,crs3
+2014-07-14T11:15:00Z,Orbcomm-1 Mission,Falcon 9,"SLC-40, Florida",Expended,commercialSatellite,final,orbcomm1
+2014-08-05T04:00:00Z,AsiaSat 8 Mission,Falcon 9,"SLC-40, Florida",Expended,commercialSatellite,final,asiasat8
+2014-09-07T01:00:00Z,AsiaSat 6 Mission,Falcon 9,"SLC-40, Florida",Expended,commercialSatellite,final,asiasat6
+2014-09-21T01:52:00Z,CRS-4 Mission,Falcon 9,"SLC-40, Florida",Expended,resupply,final,crs4
+2015-01-10T16:47:00Z,CRS-5 Mission,Falcon 9,"SLC-40, Florida",Expended,resupply,final,crs5
+2015-02-11T18:03:00Z,DSCOVR Mission,Falcon 9,"SLC-40, Florida",Expended,science,final,discovr
+2015-03-01T22:50:00Z,ABS/Eutelsat-1 Mission,Falcon 9,"SLC-40, Florida",Expended,commercialSatellite,final,abs-eutelsat-1
+2015-04-14T20:10:00Z,CRS-6 Mission,Falcon 9,"SLC-40, Florida",Droneship,resupply,final,crs6
+2015-04-27T19:23:00Z,Thales Mission,Falcon 9,"SLC-40, Florida",Expended,commercialSatellite,final,thales
+2015-06-28T10:21:00Z,CRS-7 Mission,Falcon 9,"SLC-40, Florida",Expended,resupply,final,crs7
+2015-12-21T20:29:00Z,ORBCOMM-2 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,commercialSatellite,final,orbcomm2
+2016-01-17T10:42:00Z,Jason-3 Mission,Falcon 9,"SLC-4E, California",Expended,science,final,jason-3
+2016-03-04T18:35:00Z,SES-9 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,ses-9
+2016-04-08T20:43:00Z,CRS-8 Mission,Falcon 9,"SLC-40, Florida",Droneship,resupply,final,crs8
+2016-05-06T01:21:00Z,JCSAT-14 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,jcsat14
+2016-05-27T09:39:00Z,THAICOM 8 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,thaicom8
+2016-06-15T10:29:00Z,Eutelsat/ABS Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,eutelsatabs
+2016-07-18T00:45:00Z,CRS-9 Mission,Falcon 9,"SLC-40, Florida",Droneship,resupply,final,crs9
+2016-08-14T05:26:00Z,JCSAT-16 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,jcsat-16
+2017-01-14T09:54:00Z,Iridium-1 Mission,Falcon 9,"SLC-4E, California",Droneship,commercialSatellite,final,iridium-1
+2017-02-19T09:39:00Z,CRS-10 Mission,Falcon 9,"LC-39A, Florida",Droneship,resupply,final,crs10
+2017-03-16T02:00:00Z,EchoStar XXIII Mission,Falcon 9,"LC-39A, Florida",Droneship,commercialSatellite,final,echostarxxiii
+2017-03-30T18:27:00Z,SES-10 Mission,Falcon 9,"LC-39A, Florida",Droneship,commercialSatellite,final,ses10
+2017-05-01T19:15:00Z,NROL-76 Mission,Falcon 9,"LC-39A, Florida",Landing Zone,nssl,final,nrol76
+2017-05-15T19:20:00Z,Inmarsat-5 F4 Mission,Falcon 9,"LC-39A, Florida",Droneship,commercialSatellite,final,inmarsat-5f4
+2017-06-03T17:07:00Z,CRS-11 Mission,Falcon 9,"LC-39A, Florida",Droneship,resupply,final,crs11
+2017-06-23T15:10:00Z,BulgariaSat-1 Mission,Falcon 9,"LC-39A, Florida",Droneship,commercialSatellite,final,bulgariasat-1
+2017-06-25T13:25:00Z,Iridium-2 Mission,Falcon 9,"SLC-4E, California",Droneship,commercialSatellite,final,iridium-2
+2017-07-05T17:37:00Z,Intelsat 35e Mission,Falcon 9,"LC-39A, Florida",Droneship,commercialSatellite,final,intelsat35e
+2017-08-14T12:31:00Z,CRS-12 Mission,Falcon 9,"LC-39A, Florida",Droneship,resupply,final,crs12
+2017-08-24T11:51:00Z,FORMOSAT-5 Mission,Falcon 9,"SLC-4E, California",Droneship,commercialSatellite,final,formosat-5
+2017-09-07T10:00:00Z,Orbital Test Vehicle 5 (OTV-5) Mission,Falcon 9,"LC-39A, Florida",Landing Zone,commercialSatellite,final,otv-5
+2017-10-09T08:37:00Z,Iridium-3 Mission,Falcon 9,"SLC-4E, California",Droneship,commercialSatellite,final,iridium-3
+2017-10-11T18:53:00Z,EchoStar 105 / SES-11 Mission,Falcon 9,"LC-39A, Florida",Droneship,commercialSatellite,final,echostar105-ses11
+2017-10-30T15:34:00Z,Koreasat-5A Mission,Falcon 9,"LC-39A, Florida",Droneship,commercialSatellite,final,koreasat-5a
+2017-12-15T10:36:00Z,CRS-13 Mission,Falcon 9,"SLC-40, Florida",Droneship,resupply,final,crs13
+2017-12-23T20:27:00Z,Iridium-4 Mission,Falcon 9,"SLC-4E, California",Expended,commercialSatellite,final,iridium-4
+2018-01-07T20:00:00Z,Zuma Mission,Falcon 9,"SLC-40, Florida",Landing Zone,nssl,final,zuma
+2018-01-31T16:25:00Z,GovSat-1 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,govsat1
+2018-02-06T15:45:00Z,Falcon Heavy Demonstration Mission,Falcon Heavy,"LC-39A, Florida",Landing Zone,,final,fhdemo
+2018-02-22T06:17:00Z,PAZ Mission,Falcon 9,"SLC-4E, California",Droneship,commercialSatellite,final,paz
+2018-03-06T00:33:00Z,HISPASAT 30W-6 Mission,Falcon 9,"SLC-40, Florida",Expended,commercialSatellite,final,hispasat30w6
+2018-03-30T07:13:00Z,Iridium-5 Mission,Falcon 9,"SLC-4E, California",Expended,commercialSatellite,final,iridium5
+2018-04-02T16:30:00Z,CRS-14 Mission,Falcon 9,"SLC-40, Florida",Droneship,resupply,final,crs14
+2018-04-18T18:51:00Z,TESS Mission,Falcon 9,"SLC-40, Florida",Droneship,science,final,tess
+2018-05-11T16:14:00Z,Bangabandhu Satellite-1 Mission,Falcon 9,"LC-39A, Florida",Droneship,commercialSatellite,final,bangabandhusatellite1
+2018-05-22T12:47:00Z,Iridium-6/GRACE-FO Mission,Falcon 9,"SLC-4E, California",Expended,commercialSatellite,final,iridium6gracefo
+2018-06-04T00:45:00Z,SES-12 Mission,Falcon 9,"SLC-40, Florida",Expended,commercialSatellite,final,ses12
+2018-06-29T05:42:00Z,CRS-15 Mission,Falcon 9,"SLC-40, Florida",Expended,resupply,final,crs15
+2018-07-22T01:50:00Z,Telstar 19 VANTAGE Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,telstar19vintage
+2018-08-08T11:18:00Z,Merah Putih Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,merahputih
+2018-09-10T00:45:00Z,Telstar 18 VANTAGE Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,telstar18vantage
+2018-10-07T19:29:00Z,SAOCOM 1A Mission,Falcon 9,"SLC-4E, California",Landing Zone,commercialSatellite,final,saocom1a
+2018-11-15T15:46:00Z,Es'hail-2 Mission,Falcon 9,"LC-39A, Florida",Droneship,commercialSatellite,final,eshail2
+2018-12-03T15:26:00Z,Spaceflight-SSO-A Mission,Falcon 9,"SLC-4E, California",Droneship,commercialSatellite,final,spaceflightssoa
+2018-12-05T13:16:00Z,CRS-16 Mission,Falcon 9,"SLC-40, Florida",Droneship,resupply,final,crs16
+2018-12-23T08:51:00Z,GPS III Space Vehicle 01 Mission,Falcon 9,"SLC-40, Florida",Expended,nssl,final,gpsiiisv01
+2019-02-21T20:45:00Z,Nusantara Satu Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,nusantarasatu
+2019-03-02T02:49:00Z,Demo-1 Mission,Falcon 9,"LC-39A, Florida",Droneship,hsf,final,demo1
+2019-04-11T18:35:00Z,Arabsat-6A Mission,Falcon Heavy,"LC-39A, Florida","Landing Zone, Droneship",commercialSatellite,final,arabsat6a
+2019-05-04T02:49:00Z,CRS-17 Mission,Falcon 9,"SLC-40, Florida",Droneship,resupply,final,crs17
+2019-05-23T22:30:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,starlink
+2019-06-12T07:17:00Z,RADARSAT Constellation Mission,Falcon 9,"SLC-4E, California",Landing Zone,science,final,radarsatconstellation
+2019-06-25T02:30:00Z,STP-2 Mission,Falcon Heavy,"LC-39A, Florida",Landing Zone,commercialSatellite,final,stp2
+2019-07-25T18:01:00Z,CRS-18 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,resupply,final,crs18
+2019-08-06T19:23:00Z,Amos-17 Mission,Falcon 9,"SLC-40, Florida",Expended,commercialSatellite,final,amos17
+2019-11-11T09:56:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-1
+2019-12-05T12:29:00Z,CRS-19 Mission,Falcon 9,"SLC-40, Florida",Droneship,resupply,final,crs19
+2019-12-16T19:10:00Z,JCSAT-18/KACIFIC1 MISSION,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,jcsat18-kacific1
+2020-01-06T21:19:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-2
+2020-01-19T10:30:00Z,Dragon Launch Escape Demonstration,Falcon 9,"LC-39A, Florida",Droneship,hsf,final,dragoninflightabort
+2020-01-29T09:06:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-3
+2020-02-17T10:05:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Expended,starlink,final,sl-4
+2020-03-06T23:50:00Z,CRS-20 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,resupply,final,crs20
+2020-03-18T08:16:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Expended,starlink,final,sl-5
+2020-04-22T15:30:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-6
+2020-05-30T15:22:00Z,Demo-2 Mission,Falcon 9,"LC-39A, Florida",Droneship,hsf,final,demo2
+2020-06-03T21:25:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-7
+2020-06-13T05:21:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-8
+2020-06-30T16:10:00Z,GPS III Space Vehicle 03 MISSION,Falcon 9,"SLC-40, Florida",Droneship,nssl,final,gpsiiisv03
+2020-08-04T16:56:00Z,Starship Test - SN5,Starship,"Starbase, Texas",Landing Zone,starship,final,starship-sn5
+2020-08-07T01:12:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-9
+2020-08-18T10:31:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10
+2020-08-30T19:19:00Z,SAOCOM 1B Mission,Falcon 9,"SLC-40, Florida",Landing Zone,commercialSatellite,final,saocom1b
+2020-09-03T08:46:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-11
+2020-10-06T07:29:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-12
+2020-10-18T08:25:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-13
+2020-10-24T11:31:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-14
+2020-11-05T18:24:00Z,GPS III Space Vehicle 04 Mission,Falcon 9,"SLC-40, Florida",Droneship,nssl,final,gpsiiisv04
+2020-11-15T19:27:00Z,Crew-1 MISSION,Falcon 9,"LC-39A, Florida",Droneship,hsf,final,crew1
+2020-11-21T09:17:00Z,Sentinel-6 Michael Freilich,Falcon 9,"SLC-4E, California",Landing Zone,science,final,sentinel6
+2020-11-24T21:13:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-15
+2020-12-06T11:17:00Z,CRS-21 MISSION,Falcon 9,"SLC-40, Florida",Droneship,resupply,final,crs21
+2020-12-09T16:45:00Z,Starship High Altitude Test - SN8,Starship,"Starbase, Texas",Landing Zone,starship,final,starship-sn8
+2020-12-13T12:30:00Z,SXM-7 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,sxm7
+2020-12-19T09:00:00Z,NROL-108 Mission,Falcon 9,"LC-39A, Florida",Landing Zone,nssl,final,nrol108
+2021-01-07T21:15:00Z,Turksat 5A MISSION,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,turksat5a
+2021-01-20T08:02:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-16
+2021-01-24T10:00:00Z,Transporter-1 Misson,Falcon 9,"SLC-40, Florida",Droneship,rideshare,final,transporter1
+2021-02-02T14:25:00Z,Starship High Altitude Test - SN9,Starship,"Starbase, Texas",Landing Zone,starship,final,starship-sn9
+2021-02-04T01:19:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-18
+2021-02-15T22:59:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Expended,starlink,final,sl-19
+2021-03-03T17:14:00Z,Starship High Altitude Test - SN10,Starship,"Starbase, Texas",Landing Zone,starship,final,starship-sn10
+2021-03-04T03:24:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-17
+2021-03-11T03:13:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-20
+2021-03-14T06:01:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-21
+2021-03-24T04:28:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-22
+2021-03-30T08:00:00Z,Starship High Altitude Test - SN11,Starship,"Starbase, Texas",Landing Zone,starship,final,starship-sn11
+2021-04-07T12:34:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-23
+2021-04-23T05:49:00Z,Crew-2 MISSION,Falcon 9,"LC-39A, Florida",Droneship,hsf,final,crew2
+2021-04-28T23:44:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-24
+2021-05-04T15:01:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-25
+2021-05-05T17:24:00Z,Starship High Altitude Test - SN15,Starship,"Starbase, Texas",Landing Zone,starship,final,starship-sn15
+2021-05-09T02:42:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-27
+2021-05-15T18:56:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-26
+2021-05-26T14:59:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-28
+2021-06-03T13:29:00Z,CRS-22 MISSION,Falcon 9,"LC-39A, Florida",Droneship,resupply,final,crs22
+2021-06-06T00:26:00Z,SXM-8 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,sxm8
+2021-06-17T12:09:00Z,GPS III Space Vehicle 05 Mission,Falcon 9,"SLC-40, Florida",Droneship,nssl,final,gpsiii5
+2021-06-30T15:31:00Z,Transporter-2 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,rideshare,final,transporter2
+2021-08-29T13:29:00Z,CRS-23 MISSION,Falcon 9,"LC-39A, Florida",Droneship,resupply,final,crs23
+2021-09-13T20:55:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-2-1
+2021-09-15T22:02:00Z,Inspiration4 Mission,Falcon 9,"LC-39A, Florida",Droneship,hsf,final,inspiration4
+2021-11-10T21:03:00Z,CREW-3 MISSION,Falcon 9,"LC-39A, Florida",Droneship,hsf,final,crew3
+2021-11-13T07:19:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-4-1
+2021-11-23T22:21:00Z,DART,Falcon 9,"SLC-4E, California",Droneship,science,final,dart
+2021-12-02T18:12:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-4-3
+2021-12-09T01:00:00Z,IXPE,Falcon 9,"LC-39A, Florida",Droneship,science,final,ixpe
+2021-12-18T04:41:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-4-4
+2021-12-18T22:58:00Z,Turksat 5B Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,turksat5b
+2021-12-21T05:06:00Z,CRS-24 MISSION,Falcon 9,"LC-39A, Florida",Droneship,resupply,final,crs24
+2022-01-06T16:49:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-4-5
+2022-01-13T10:25:00Z,Transporter-3 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,rideshare,final,transporter3
+2022-01-18T21:02:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-4-6
+2022-01-31T18:11:00Z,COSMO-SkyMed Second Generation FM2 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,commercialSatellite,final,cosmoskymed
+2022-02-02T12:18:00Z,NROL-87 Mission,Falcon 9,"SLC-4E, California",Landing Zone,nssl,final,nrol87
+2022-02-03T13:13:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-4-7
+2022-02-21T09:44:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-4-8
+2022-02-25T09:12:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,SL-4-11
+2022-03-03T09:25:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-4-9
+2022-03-09T08:45:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-4-10
+2022-03-19T12:42:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-4-12
+2022-04-01T12:24:00Z,Transporter-4 Mission,Falcon 9,"SLC-40, Florida",Droneship,rideshare,final,transporter4
+2022-04-08T11:17:00Z,Ax-1 MISSION,Falcon 9,"LC-39A, Florida",Droneship,hsf,final,ax1
+2022-04-17T06:13:00Z,NROL-85 Mission,Falcon 9,"SLC-4E, California",Landing Zone,nssl,final,nrol85
+2022-04-21T13:51:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-4-14
+2022-04-27T03:52:00Z,CREW-4 MISSION,Falcon 9,"LC-39A, Florida",Droneship,hsf,final,crew4
+2022-04-29T17:27:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-4-16
+2022-05-06T05:42:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-4-17
+2022-05-13T15:07:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-4-13
+2022-05-14T16:40:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-4-15
+2022-05-18T06:59:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-4-18
+2022-05-25T14:35:00Z,Transporter-5 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,rideshare,final,transporter5
+2022-06-08T17:04:00Z,Nilesat 301 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,nilesat301
+2022-06-17T12:09:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-4-19
+2022-06-18T07:19:00Z,SARah-1 Mission,Falcon 9,"SLC-4E, California",Landing Zone,commercialSatellite,final,sarah1
+2022-06-19T00:27:00Z,Globalstar FM15 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,globalstarfm15
+2022-06-19T00:27:00Z,Globalstar FM15,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,globalstarfm15
+2022-06-29T17:04:00Z,SES-22 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,ses22
+2022-07-07T09:11:00Z,Starlink Missino,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-4-21
+2022-07-10T18:39:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-3-1
+2022-07-14T20:44:00Z,CRS-25 MISSION,Falcon 9,"LC-39A, Florida",Droneship,resupply,final,crs25
+2022-07-17T10:20:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-4-22
+2022-07-22T10:39:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-3-2
+2022-07-24T09:38:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-4-25
+2022-08-04T19:08:00Z,KPLO Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,kplo
+2022-08-09T22:14:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-4-26
+2022-08-12T14:20:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-3-3
+2022-08-19T15:21:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-4-27
+2022-08-27T23:41:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-4-23
+2022-08-30T22:40:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-3-4
+2022-09-04T22:09:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-4-20
+2022-09-10T21:20:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-4-2
+2022-09-18T20:18:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-4-34
+2022-09-24T19:32:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,SL-4-35
+2022-10-05T12:00:00Z,CREW-5 MISSION,Falcon 9,"LC-39A, Florida",Droneship,hsf,final,crew5
+2022-10-05T16:10:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-4-29
+2022-10-08T19:05:00Z,Intelsat G-33/G-34 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,intelsatg33g34
+2022-10-15T01:22:00Z,Eutelsat HOTBIRD 13F Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,eutelsathotbird13f
+2022-10-20T10:50:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-4-36
+2022-10-27T18:14:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-4-31
+2022-11-01T09:41:00Z,USSF-44,Falcon Heavy,"LC-39A, Florida",Landing Zone / Expended,nssl,final,ussf44
+2022-11-03T01:22:00Z,Eutelsat HOTBIRD 13G Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,eutelsathotbird13g
+2022-11-12T11:06:00Z,Intelsat G-31/G-32 Mission,Falcon 9,"SLC-40, Florida",Expended,commercialSatellite,final,intelsatg31g32
+2022-11-22T21:57:00Z,Eutelsat 10B Mission,Falcon 9,"SLC-40, Florida",Expended,commercialSatellite,final,eutelsat10b
+2022-11-26T14:20:00Z,CRS-26 MISSION,Falcon 9,"LC-39A, Florida",Droneship,resupply,final,crs26
+2022-12-08T17:27:00Z,OneWeb 1 Mission,Falcon 9,"LC-39A, Florida",Landing Zone,commercialSatellite,final,oneweb-1
+2022-12-11T02:38:00Z,iSpace's Hakuto-R Mission 1,Falcon 9,"SLC-40, Florida",Landing Zone,commercialSatellite,final,ispace-m1
+2022-12-16T03:46:00Z,NASA’s SWOT Mission,Falcon 9,"SLC-4E, California",Landing Zone,science,final,SWOT
+2022-12-16T17:48:00Z,SES O3b mPOWER Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,SES-O3b-mPOWER
+2022-12-17T16:32:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-4-37
+2022-12-28T04:34:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-5-1
+2022-12-29T23:38:00Z,ISI EROS C-3 Mission,Falcon 9,"SLC-4E, California",Landing Zone,commercialSatellite,final,ISI-EROS-C-3
+2023-01-03T09:56:00Z,TRANSPORTER-6 MISSION,Falcon 9,"SLC-40, Florida",Landing Zone,rideshare,final,transporter6
+2023-01-09T23:50:00Z,ONEWEB LAUNCH 16 MISSION,Falcon 9,"SLC-40, Florida",Landing Zone,commercialSatellite,final,oneweblaunch16
+2023-01-15T17:56:00Z,USSF-67 MISSION,Falcon Heavy,"LC-39A, Florida",Landing Zone / Expended,nssl,final,ussf67
+2023-01-18T07:24:00Z,GPS III Space Vehicle 06 Mission,Falcon 9,"SLC-40, Florida",Droneship,nssl,final,GPSiii6
+2023-01-19T07:43:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-2-4
+2023-01-26T04:22:00Z,STARLINK MISSION,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-5-2
+2023-01-31T08:15:00Z,STARLINK MISSION,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-2-6
+2023-02-02T02:43:00Z,STARLINK MISSION,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-5-3
+2023-02-06T20:32:00Z,HISPASAT AMAZONAS NEXUS MISSION,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,hispasat-amazonas-nexus
+2023-02-12T00:10:00Z,Starlink mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-5-4
+2023-02-17T11:12:00Z,STARLINK MISSION,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-2-5
+2023-02-17T22:59:00Z,Inmarsat’s I-6 F2 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,Inmarsat-I-6-F2
+2023-02-27T18:07:00Z,STARLINK MISSION,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-1
+2023-03-02T00:34:00Z,Crew-6 Mission,Falcon 9,"LC-39A, Florida",Droneship,hsf,final,crew6
+2023-03-03T10:38:00Z,starlink mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-2-7
+2023-03-09T14:13:00Z,ONEWEB LAUNCH 17 MISSION,Falcon 9,"SLC-40, Florida",Landing Zone,commercialSatellite,final,oneweblaunch17
+2023-03-14T20:30:00Z,CRS-27 Mission,Falcon 9,"LC-39A, Florida",Droneship,resupply,final,crs-27
+2023-03-17T12:21:00Z,Starlink Mission,Falcon 9,SLC-4E,Droneship,starlink,final,sl-2-8
+2023-03-17T19:38:00Z,SES-18 and SES-19 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,SES-18-SES-19
+2023-03-24T11:43:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl5-5
+2023-03-29T16:01:00Z,Starlink mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-5-10
+2023-04-02T07:29:00Z,SDA’s Tranche 0 Mission,Falcon 9,"SLC-4E, California",Landing Zone,nssl,final,SDA-Tranche0A
+2023-04-07T00:30:00Z,Intelsat IS-40e Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,intelsat-IS40e
+2023-04-14T23:44:00Z,Transporter-7 Mission,Falcon 9,"SLC-4E, California",Landing Zone,rideshare,final,transporter7
+2023-04-19T10:31:00Z,STARLINK MISSION,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-2
+2023-04-20T08:28:00Z,Starship Flight Test,Starship,"Pad 1, Starbase",Expended,starship,final,starship-flight-test
+2023-04-27T06:40:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl3-5
+2023-04-28T17:12:00Z,SES O3b mPOWER Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,SES-03b-mPOWERb
+2023-04-30T19:29:00Z,ViaSat-3 Americas Mission,Falcon Heavy,"LC-39A, Florida",Expended,commercialSatellite,final,ViaSat-3-Americas
+2023-05-04T03:31:00Z,STARLINK MISSION,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl5-6
+2023-05-10T13:09:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl2-9
+2023-05-14T01:03:00Z,STARLINK MISSION,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl5-9
+2023-05-19T00:30:00Z,starlink mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl6-3
+2023-05-20T06:16:00Z,Iridium OneWeb Mission,Falcon 9,"SLC-4E, California",Droneship,commercialSatellite,final,iridium-oneweb
+2023-05-21T17:37:00Z,Ax-2 Mission,Falcon 9,"LC-39A, Florida",Landing Zone,hsf,final,ax2
+2023-05-27T00:30:00Z,ARABSAT BADR-8 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,ARABSAT-BADR-8
+2023-05-30T20:02:00Z,STARLINK MISSION,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl2-10
+2023-06-04T05:58:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl6-4
+2023-06-05T11:47:00Z,CRS-28 Mission,Falcon 9,"LC-39A, Florida",Droneship,resupply,final,crs-28
+2023-06-12T03:10:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl5-11
+2023-06-12T14:19:00Z,Transporter-8 Mission,Falcon 9,"SLC-4E, California",Landing Zone,rideshare,final,transporter8
+2023-06-18T18:21:00Z,PSN SATRIA MISSION,Falcon 9,"SLC-40, Florida",Droneship,,final,psn-satria
+2023-06-22T00:19:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl5-7
+2023-06-23T11:35:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl5-12
+2023-07-01T11:12:00Z,ESA Euclid Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,euclid
+2023-07-07T12:32:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-5-13
+2023-07-09T23:58:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-5
+2023-07-15T23:50:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-5-15
+2023-07-19T21:40:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-6-15
+2023-07-23T20:50:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-6
+2023-07-28T00:01:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-7
+2023-07-28T23:04:00Z,Hughes JUPITER 3 Mission,Falcon Heavy,"LC-39A, Florida",Landing Zone / Expended,commercialSatellite,final,jupiter3
+2023-08-03T00:15:00Z,Intelsat G-37 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,intelsat-g-37
+2023-08-06T22:41:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-8
+2023-08-07T20:57:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl6-20
+2023-08-11T01:17:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-9
+2023-08-16T23:36:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-10
+2023-08-22T02:37:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-1
+2023-08-26T03:27:00Z,Crew-7 Mission,Falcon 9,"LC-39A, Florida",Landing Zone,hsf,final,crew7
+2023-08-26T21:05:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-11
+2023-08-31T19:28:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-13
+2023-09-02T07:56:00Z,SDA's Second Tranche 0 Mission,Falcon 9,"SLC-4E, California",Landing Zone,nssl,final,SDA-Tranche0B
+2023-09-03T22:47:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-6-12
+2023-09-08T23:12:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-14
+2023-09-11T23:57:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-2
+2023-09-15T23:38:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-16
+2023-09-19T22:22:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-17
+2023-09-23T23:38:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-18
+2023-09-25T01:48:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-3
+2023-09-29T22:00:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-19
+2023-10-05T01:36:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-21
+2023-10-09T00:23:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-4
+2023-10-13T10:19:00Z,Psyche Mission,Falcon Heavy,"LC-39A, Florida",Landing Zone / Expended,science,final,psyche
+2023-10-13T19:01:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-22
+2023-10-17T19:45:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-23
+2023-10-21T01:23:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-5
+2023-10-21T22:17:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-24
+2023-10-29T02:00:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-6
+2023-10-30T19:20:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-25
+2023-11-03T20:37:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-26
+2023-11-08T00:05:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-27
+2023-11-09T20:28:00Z,CRS-29 Mission,Falcon 9,"LC-39A, Florida",Landing Zone,resupply,final,crs-29
+2023-11-11T10:49:00Z,Transporter-9 Mission,Falcon 9,"SLC-4E, California",Landing Zone,rideshare,final,transporter-9
+2023-11-12T16:08:00Z,SES O3b mPOWER Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,mpower-c
+2023-11-18T00:05:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-28
+2023-11-18T07:00:00Z,Starship's Second Flight Test,Starship,"Pad 1, Starbase",Expended,starship,final,starship-flight-2
+2023-11-20T02:30:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-7
+2023-11-22T02:47:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-29
+2023-11-27T23:20:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-30
+2023-12-01T10:19:00Z,Korea 425 Mission,Falcon 9,"SLC-4E, California",Landing Zone,commercialSatellite,final,korea425
+2023-12-02T23:00:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-31
+2023-12-07T00:07:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-33
+2023-12-08T00:03:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-8
+2023-12-18T23:01:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-34
+2023-12-23T00:33:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-32
+2023-12-24T05:00:00Z,SARah-2 Mission,Falcon 9,"SLC-4E, California",Landing Zone,commercialSatellite,final,sarah-2
+2023-12-28T20:07:00Z,USSF-52 Mission,Falcon Heavy,"LC-39A, Florida",Landing Zone / Expended,nssl,final,ussf52
+2023-12-28T23:01:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-36
+2024-01-02T19:44:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-7-9
+2024-01-03T18:00:00Z,Ovzon 3 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,commercialSatellite,final,ovzon3
+2024-01-07T17:35:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-35
+2024-01-14T00:59:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-10
+2024-01-14T19:15:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-37
+2024-01-18T16:49:00Z,Ax-3 Mission,Falcon 9,"LC-39A, Florida",Landing Zone,hsf,final,ax3
+2024-01-23T16:35:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-11
+2024-01-28T20:10:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-38
+2024-01-29T01:57:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-7-12
+2024-01-30T12:07:00Z,NG-20 MISSION,Falcon 9,"SLC-40, Florida",Landing Zone,resupply,final,ng-20
+2024-02-08T01:33:00Z,PACE Mission,Falcon 9,"SLC-40, Florida",Landing Zone,science,final,pace
+2024-02-09T16:34:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-13
+2024-02-14T17:30:00Z,USSF-124 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,nssl,final,ussf124
+2024-02-15T01:05:00Z,Intuitive Machines IM-1 Mission,Falcon 9,"LC-39A, Florida",Landing Zone,science,final,im1
+2024-02-15T13:34:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-14
+2024-02-20T15:11:00Z,Telkomsat Merah Putih 2 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,merahputih2
+2024-02-22T20:11:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-15
+2024-02-25T17:06:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-39
+2024-02-29T10:30:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-40
+2024-03-03T22:53:00Z,Crew-8 Mission,Falcon 9,"LC-39A, Florida",Landing Zone,hsf,final,crew8
+2024-03-04T14:05:00Z,Transporter-10 Mission,Falcon 9,"SLC-4E, California",Landing Zone,rideshare,final,transporter10
+2024-03-04T18:56:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-41
+2024-03-10T19:05:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-43
+2024-03-10T21:09:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-17
+2024-03-14T07:00:00Z,Starship's Third Flight Test,Starship,"Pad 1, Starbase",Expended,starship,final,starship-flight-3
+2024-03-15T20:21:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-6-44
+2024-03-18T19:28:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-16
+2024-03-21T16:55:00Z,CRS-30 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,resupply,final,crs-30
+2024-03-23T23:09:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-42
+2024-03-25T19:42:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-46
+2024-03-30T17:52:00Z,EUTELSAT 36D Mission,Falcon 9,"LC-39A, Florida",Droneship,commercialSatellite,final,eutelsat36d
+2024-03-30T21:30:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-45
+2024-04-01T19:30:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-7-18
+2024-04-05T05:12:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-47
+2024-04-06T19:25:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-8-1
+2024-04-07T19:16:00Z,Bandwagon-1 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,rideshare,final,bandwagon-1
+2024-04-10T01:40:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-48
+2024-04-11T07:25:00Z,USSF-62,Falcon 9,"SLC-4E, California",Landing Zone,nssl,final,ussf62
+2024-04-12T21:22:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-49
+2024-04-17T17:26:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-6-51
+2024-04-18T18:40:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-52
+2024-04-23T18:17:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-53
+2024-04-27T20:34:00Z,Galileo L12 Mission,Falcon 9,"LC-39A, Florida",Expended,commercialSatellite,final,galileol12
+2024-04-28T18:08:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-54
+2024-05-02T11:36:00Z,Maxar 1 Mission,Falcon 9,"SLC-4E, California",Landing Zone,commercialSatellite,final,maxar1
+2024-05-02T22:37:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-55
+2024-05-06T14:14:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-57
+2024-05-08T14:42:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-6-56
+2024-05-09T20:20:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-8-2
+2024-05-12T20:53:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-58
+2024-05-14T11:39:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-8-7
+2024-05-17T20:32:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-59
+2024-05-22T01:00:00Z,NROL-146 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,final,nrol146
+2024-05-22T22:35:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-62
+2024-05-23T22:45:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-6-63
+2024-05-28T10:24:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-60
+2024-05-28T15:30:00Z,ESA EarthCARE Mission,Falcon 9,"SLC-4E, California",Landing Zone,commercialSatellite,final,earthcare
+2024-05-31T22:37:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-64
+2024-06-04T22:16:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-8-5
+2024-06-06T07:50:00Z,Starship's Fourth Flight Test,Starship,"Pad 1, Starbase",Expended,starship,final,starship-flight-4
+2024-06-07T21:56:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-1
+2024-06-08T05:58:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-8-8
+2024-06-18T20:40:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-9-1
+2024-06-20T17:35:00Z,ASTRA 1P Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,astra1p
+2024-06-23T13:15:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-2
+2024-06-23T20:47:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-9-2
+2024-06-25T17:26:00Z,GOES-U Mission,Falcon Heavy,"LC-39A, Florida",Landing Zone / Expended,science,final,goes-u
+2024-06-27T07:14:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-3
+2024-06-28T20:14:00Z,NROL-186 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,final,nrol186
+2024-07-03T04:55:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-8-9
+2024-07-08T17:41:00Z,Turksat 6A Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,turksat6a
+2024-07-11T19:35:00Z,STARLINK MISSION,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-9-3
+2024-07-27T01:45:00Z,STARLINK MISSION,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-10-9
+2024-07-28T01:09:00Z,STARLINK MISSION,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-4
+2024-07-28T02:22:00Z,STARLINK MISSION,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-9-4
+2024-08-02T00:19:00Z,STARLINK MISSION,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-10-6
+2024-08-04T00:24:00Z,STARLINK MISSION,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-1
+2024-08-04T11:02:00Z,NG-21 MISSION,Falcon 9,"SLC-40, Florida",Landing Zone,resupply,final,ng-21
+2024-08-10T08:50:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-8-3
+2024-08-11T22:07:00Z,ASBM Mission,Falcon 9,"SLC-4E, California",Droneship,commercialSatellite,final,asbm
+2024-08-12T06:37:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-10-7
+2024-08-15T09:00:00Z,MAXAR 2 MISSION,Falcon 9,"SLC-40, Florida",Landing Zone,commercialSatellite,final,maxar2
+2024-08-16T11:56:00Z,Transporter-11 Mission,Falcon 9,"SLC-4E, California",Landing Zone,rideshare,final,transporter11
+2024-08-20T09:20:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-5
+2024-08-28T03:48:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-8-6
+2024-08-31T01:48:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-9-5
+2024-08-31T03:43:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-8-10
+2024-09-05T11:33:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-8-11
+2024-09-05T20:20:00Z,NROL-113 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,final,nrol113
+2024-09-10T03:36:00Z,POLARIS DAWN,Falcon 9,"LC-39A, Florida",Droneship,hsf,final,polarisdawn
+2024-09-12T04:52:00Z,BlueBird 1-5 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,commercialSatellite,final,bluebird1-5
+2024-09-12T18:45:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-9-6
+2024-09-17T18:59:00Z,Galileo L13 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,galileol13
+2024-09-20T06:50:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-9-17
+2024-09-24T21:01:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-9-8
+2024-09-28T13:17:00Z,CREW-9 MISSION,Falcon 9,"SLC-40, Florida",Landing Zone,hsf,final,crew-9
+2024-10-07T10:52:00Z,Hera Mission,Falcon 9,"SLC-40, Florida",Expended,commercialSatellite,final,hera
+2024-10-13T07:25:00Z,Starship's Fifth Flight Test,Starship,"Pad 1, Starbase",Mechazilla,starship,final,starship-flight-5
+2024-10-14T12:06:00Z,Europa Clipper Mission,Falcon Heavy,"LC-39A, Florida",Expended,science,final,europa-clipper
+2024-10-15T01:21:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-9-7
+2024-10-15T02:10:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-10
+2024-10-18T19:31:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-8-19
+2024-10-19T23:54:00Z,OneWeb Launch 20 Mission,Falcon 9,"SLC-4E, California",Landing Zone,commercialSatellite,final,oneweblaunch20
+2024-10-23T17:47:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-61
+2024-10-24T10:13:00Z,NROL-167 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,final,nrol167
+2024-10-26T17:47:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-8
+2024-10-30T05:07:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-9-9
+2024-10-30T17:10:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-13
+2024-11-04T21:29:00Z,CRS-31 Mission,Falcon 9,"LC-39A, Florida",Landing Zone,resupply,final,crs-31
+2024-11-07T15:19:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-77
+2024-11-08T22:14:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-9-10
+2024-11-11T12:07:00Z,Koreasat-6A Mission,Falcon 9,"LC-39A, Florida",Landing Zone,commercialSatellite,final,koreasat-6a
+2024-11-11T16:28:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-69
+2024-11-13T21:23:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-9-11
+2024-11-14T08:21:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-68
+2024-11-17T17:28:00Z,TD7 Mission,Falcon 9,"LC-39A, Florida",Droneship,commercialSatellite,final,td7
+2024-11-17T21:53:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-9-12
+2024-11-18T13:31:00Z,NSIL GSAT-N2 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,gsat-n2
+2024-11-19T16:00:00Z,Starship's Sixth Flight Test,Starship,"Pad 1, Starbase",Expended,starship,final,starship-flight-6
+2024-11-21T11:07:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-66
+2024-11-23T21:25:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-9-13
+2024-11-25T05:02:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-1
+2024-11-26T23:41:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-6-76
+2024-11-30T00:00:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-65
+2024-11-30T00:10:00Z,NROL-126 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,final,nrol126
+2024-12-04T05:13:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-70
+2024-12-04T19:05:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-9-14
+2024-12-05T11:10:00Z,SXM-9 Mission,Falcon 9,"LC-39A, Florida",Droneship,commercialSatellite,final,sxm-9
+2024-12-08T00:12:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-5
+2024-12-13T13:55:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-2
+2024-12-16T19:52:00Z,RRT-1 Mission,Falcon 9,"SLC-40, Florida",Droneship,nssl,final,rrt-1
+2024-12-17T05:19:00Z,NROL-149 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,final,nrol149
+2024-12-17T17:26:00Z,SES O3b mPOWER Mission,Falcon 9,"LC-39A, Florida",Droneship,commercialSatellite,final,SES-O3b-mPOWER-e
+2024-12-21T03:34:00Z,Bandwagon-2 Mission,Falcon 9,"SLC-4E, California",Landing Zone,rideshare,final,bandwagon-2
+2024-12-23T00:35:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-12-2
+2024-12-28T17:58:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-3
+2024-12-29T00:00:00Z,Astranis: From One to Many Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,astranis-from-one-to-many
+2024-12-31T00:39:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-12-6
+2025-01-03T20:27:00Z,Thuraya 4 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,thuraya4
+2025-01-06T15:43:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-71
+2025-01-08T10:27:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-12-11
+2025-01-09T19:53:00Z,NROL-153 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,final,nrol153
+2025-01-10T14:11:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-12
+2025-01-13T11:47:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-4
+2025-01-14T10:49:00Z,Transporter-12 Mission,Falcon 9,"SLC-4E, California",Landing Zone,rideshare,final,transporter12
+2025-01-15T01:11:00Z,Firefly Blue Ghost Mission 1,Falcon 9,"LC-39A, Florida",Droneship,science,final,firefly-blueghost-mission-1
+2025-01-16T16:00:00Z,Starship's Seventh Flight Test,Starship,"Pad 1, Starbase",Mechazilla,starship,final,starship-flight-7
+2025-01-21T00:24:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-13-1
+2025-01-21T07:45:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-8
+2025-01-24T06:07:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-6
+2025-01-27T17:05:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-7
+2025-01-29T20:34:00Z,SpainSat NG I Mission,Falcon 9,"LC-39A, Florida",Expended,commercialSatellite,final,spainsatng1
+2025-02-01T15:02:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-4
+2025-02-04T05:15:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-3
+2025-02-04T18:07:00Z,Maxar 3 Mission,Falcon 9,"LC-39A, Florida",Landing Zone,commercialSatellite,final,maxar3
+2025-02-08T14:18:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-9
+2025-02-10T18:09:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-10
+2025-02-11T13:53:00Z,STARLINK MISSION,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-18
+2025-02-15T01:14:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-8
+2025-02-18T18:21:00Z,STARLINK MISSION,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-12
+2025-02-21T10:19:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-14
+2025-02-22T17:38:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-1
+2025-02-26T19:17:00Z,IM-2 MISSION,Falcon 9,"LC-39A, Florida",Droneship,science,final,im-2
+2025-02-26T22:34:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-13
+2025-03-02T21:24:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-20
+2025-03-06T17:30:00Z,Starship's Eighth Flight Test,Starship,"Pad 1, Starbase",Mechazilla,starship,final,starship-flight-8
+2025-03-11T20:10:00Z,SPHEREx Mission,Falcon 9,"SLC-4E, California",Landing Zone,science,final,spherex
+2025-03-12T22:35:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-21
+2025-03-14T19:03:00Z,CREW-10 MISSION,Falcon 9,"LC-39A, Florida",Landing Zone,hsf,final,crew10
+2025-03-14T23:39:00Z,Transporter-13 Mission,Falcon 9,"SLC-4E, California",Landing Zone,rideshare,final,transporter13
+2025-03-15T07:35:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-16
+2025-03-18T15:57:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-25
+2025-03-20T23:49:00Z,NROL-57 Mission,Falcon 9,"SLC-4E, California",Landing Zone,nssl,final,nrol57
+2025-03-24T13:48:00Z,NROL-69 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,nssl,final,nrol69
+2025-03-26T15:11:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-7
+2025-03-31T15:52:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-80
+2025-03-31T21:46:00Z,FRAM2 MISSION,Falcon 9,"LC-39A, Florida",Droneship,hsf,final,fram2
+2025-04-03T18:02:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-13
+2025-04-05T23:07:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-72
+2025-04-07T16:06:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-11
+2025-04-12T05:25:00Z,NROL-192 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,final,nrol192
+2025-04-12T20:53:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-12-17
+2025-04-14T00:00:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-73
+2025-04-20T05:29:00Z,NROL-145 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,final,nrol145
+2025-04-21T04:15:00Z,CRS-32 Mission,Falcon 9,"LC-39A, Florida",Landing Zone,resupply,final,crs-32
+2025-04-21T20:48:00Z,Bandwagon-3 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,rideshare,final,bandwagon-3
+2025-04-24T21:52:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-74
+2025-04-27T22:09:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-23
+2025-04-28T13:42:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-11-9
+2025-04-28T22:34:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-12-10
+2025-05-01T21:51:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-75
+2025-05-04T04:54:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-6-84
+2025-05-06T21:17:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-93
+2025-05-09T17:19:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-3
+2025-05-10T02:28:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-91
+2025-05-12T18:15:00Z,STARLINK MISSION,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-4
+2025-05-13T01:02:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-6-83
+2025-05-14T12:38:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-67
+2025-05-16T06:43:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-5
+2025-05-20T23:19:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-15
+2025-05-23T15:32:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-16
+2025-05-24T13:19:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-22
+2025-05-27T09:57:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-1
+2025-05-27T18:36:00Z,Starship's Ninth Flight Test,Starship,"Pad 1, Starbase",Expended,starship,final,starship-flight-9
+2025-05-28T09:30:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-10-32
+2025-05-30T13:37:00Z,GPS III-7 Mission,Falcon 9,"SLC-40, Florida",Droneship,nssl,final,gpsiii7
+2025-05-31T13:10:00Z,STARLINK MISSION,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-18
+2025-06-03T00:43:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-19
+2025-06-04T16:40:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-22
+2025-06-07T00:24:00Z,SXM-10 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,sxm10
+2025-06-08T07:20:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-8
+2025-06-10T09:05:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-24
+2025-06-12T18:54:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-6
+2025-06-13T11:29:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-12-26
+2025-06-16T20:36:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-9
+2025-06-18T01:55:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-18
+2025-06-23T01:58:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-23
+2025-06-23T14:19:00Z,Transporter-14 Mission,Falcon 9,"SLC-4E, California",Droneship,rideshare,final,transporter14
+2025-06-25T02:31:00Z,AX-4 MISSION,Falcon 9,"LC-39A, Florida",Landing Zone,hsf,final,ax4
+2025-06-25T15:54:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-16
+2025-06-28T00:26:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-34
+2025-06-28T10:13:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-15-7
+2025-07-01T17:03:00Z,MTG-S1 Mission,Falcon 9,"LC-39A, Florida",Droneship,commercialSatellite,final,mtgs1
+2025-07-02T02:28:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-25
+2025-07-08T04:21:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-28
+2025-07-13T01:04:00Z,Commercial GTO-1 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,commercial-gto-1
+2025-07-15T19:05:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-2
+2025-07-16T02:30:00Z,KF-01 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,kf-01
+2025-07-18T20:52:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-3
+2025-07-22T17:12:00Z,O3b mPOWER Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,mpower-d
+2025-07-23T11:13:00Z,TRACERS Mission,Falcon 9,"SLC-4E, California",Landing Zone,science,final,tracers
+2025-07-26T05:01:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-26
+2025-07-26T19:09:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-2
+2025-07-29T23:37:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-29
+2025-07-31T11:35:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-13-4
+2025-08-01T11:43:00Z,Crew-11 Mission,Falcon 9,"LC-39A, Florida",Landing Zone,hsf,final,crew11
+2025-08-04T03:57:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-30
+2025-08-11T08:35:00Z,KF-02 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,kf-02
+2025-08-13T22:05:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-4
+2025-08-14T08:29:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-20
+2025-08-18T09:26:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-5
+2025-08-21T23:50:00Z,USSF-36 Mission,Falcon 9,"LC-39A, Florida",Landing Zone,nssl,final,ussf36
+2025-08-22T08:44:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-6
+2025-08-24T02:45:00Z,CRS-33 Mission,Falcon 9,"SLC-40, Florida",Droneship,resupply,final,crs33
+2025-08-26T11:53:00Z,NAOS Mission,Falcon 9,"SLC-4E, California",Landing Zone,commercialSatellite,final,naos
+2025-08-26T18:30:00Z,Starship's Tenth Flight Test,Starship,"Pad 1, Starbase",Expended,starship,final,starship-flight-10
+2025-08-27T07:10:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-56
+2025-08-28T01:12:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-10-11
+2025-08-29T21:59:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-7
+2025-08-31T07:49:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-14
+2025-09-02T20:51:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-8
+2025-09-03T07:56:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-22
+2025-09-05T08:32:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-10-57
+2025-09-06T08:42:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-9
+2025-09-10T07:12:00Z,SDA's First Tranche 1 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,final,sda-t1tl-b
+2025-09-11T21:56:00Z,Nusantara Lima Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,nusantaralima
+2025-09-13T10:55:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-10
+2025-09-14T18:11:00Z,NG-23 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,resupply,final,ng23
+2025-09-18T05:30:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-61
+2025-09-19T09:31:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-12
+2025-09-21T05:20:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-27
+2025-09-22T10:38:00Z,NROL-48 Mission,Falcon 9,"SLC-4E, California",Landing Zone,nssl,final,nrol48
+2025-09-24T07:30:00Z,IMAP Mission,Falcon 9,"LC-39A, Florida",Droneship,science,final,imap
+2025-09-25T04:39:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-15
+2025-09-25T23:26:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-11
+2025-09-28T19:04:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-20
+2025-10-03T09:06:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-39
+2025-10-07T02:46:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-59
+2025-10-07T20:54:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-17
+2025-10-13T18:23:00Z,Starship's Eleventh Flight Test,Starship,"Pad 1, Starbase",Expended,starship,final,starship-flight-11
+2025-10-13T20:08:00Z,KF-03 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,kf-03
+2025-10-15T16:06:00Z,SDA's Tranche 1 Transport Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,final,sda-t1tl-c
+2025-10-16T05:27:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-52
+2025-10-19T13:37:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-17
+2025-10-19T14:24:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-19
+2025-10-22T07:16:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-5
+2025-10-23T21:30:00Z,SpainSat NG II Mission,Falcon 9,"SLC-40, Florida",Expended,commercialSatellite,final,spainsatngii
+2025-10-25T07:20:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-12
+2025-10-26T11:00:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-21
+2025-10-27T17:43:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-21
+2025-10-29T12:35:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-37
+2025-10-31T13:41:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-23
+2025-11-02T01:09:00Z,Bandwagon-4 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,rideshare,final,bandwagon-4
+2025-11-05T19:31:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-81
+2025-11-06T13:13:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-14
+2025-11-09T03:10:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-10-51
+2025-11-10T21:21:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-87
+2025-11-14T22:08:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-6-89
+2025-11-15T01:44:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-85
+2025-11-16T21:21:00Z,Sentinel-6B Mission,Falcon 9,"SLC-4E, California",Landing Zone,science,final,sentinel-6b
+2025-11-18T19:12:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-94
+2025-11-20T22:39:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-6-78
+2025-11-22T02:53:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-79
+2025-11-23T00:48:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-30
+2025-11-28T10:44:00Z,Transporter-15 Mission,Falcon 9,"SLC-4E, California",Droneship,rideshare,final,transporter15
+2025-12-01T02:44:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-6-86
+2025-12-01T21:28:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-10
+2025-12-02T16:18:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-95
+2025-12-04T15:42:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-25
+2025-12-07T09:58:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-11-15
+2025-12-08T17:26:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-6-92
+2025-12-09T14:16:00Z,NROL-77 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,nssl,final,nrol77
+2025-12-10T03:40:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-11
+2025-12-11T17:01:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-90
+2025-12-13T21:49:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-12
+2025-12-15T00:25:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-82
+2025-12-17T07:27:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-13
+2025-12-17T07:42:00Z,Starlink Mission,Falcon 9,"LC-39A, Florida",Droneship,starlink,final,sl-6-99
+2026-01-02T18:08:00Z,COSMO-SkyMed Second Generation Mission,Falcon 9,"SLC-4E, California",Landing Zone,commercialSatellite,final,cosmo-skymedfm3
+2026-01-04T01:48:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-88
+2026-01-09T16:41:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-96
+2026-01-11T05:44:00Z,Twilight Mission,Falcon 9,"SLC-4E, California",Landing Zone,rideshare,final,twilight
+2026-01-12T16:08:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-97
+2026-01-14T12:08:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-98
+2026-01-16T20:39:00Z,NROL-105 Mission,Falcon 9,"SLC-4E, California",Landing Zone,nssl,final,nrol105
+2026-01-18T18:31:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-100
+2026-01-21T21:47:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-30
+2026-01-25T09:30:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-20
+2026-01-27T23:53:00Z,GPS III-9 Mission,Falcon 9,"SLC-40, Florida",Droneship,nssl,final,gpsiii9
+2026-01-29T09:53:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-19
+2026-01-30T01:22:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-101
+2026-02-02T07:47:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-32
+2026-02-07T15:58:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-33
+2026-02-11T09:11:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-34
+2026-02-13T05:15:00Z,Crew-12 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,hsf,in-progress,crew12
+2026-02-14T17:59:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-13
+2026-02-16T02:59:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-103
+2026-02-19T20:41:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-36
+2026-02-21T01:04:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-25
+2026-02-21T21:47:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-104
+2026-02-24T18:04:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-110
+2026-02-25T06:17:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-26
+2026-02-27T07:16:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-6-108
+2026-03-01T02:10:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-23
+2026-03-01T21:56:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-41
+2026-03-04T05:52:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-40
+2026-03-08T07:00:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-18
+2026-03-10T00:19:00Z,EchoStar XXV Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,echostarxxv
+2026-03-13T10:57:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-31
+2026-03-14T07:37:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-48
+2026-03-16T22:19:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-24
+2026-03-17T09:27:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-46
+2026-03-19T10:20:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-33
+2026-03-20T14:51:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-15
+2026-03-22T09:47:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-62
+2026-03-26T16:03:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-17
+2026-03-30T04:02:00Z,Transporter-16 Mission,Falcon 9,"SLC-4E, California",Droneship,rideshare,final,transporter16
+2026-03-30T19:15:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-44
+2026-04-02T07:55:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-58
+2026-04-06T22:50:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-35
+2026-04-10T22:04:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-21
+2026-04-11T07:41:00Z,NG-24 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,resupply,final,ng24
+2026-04-14T05:33:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-24
+2026-04-14T21:29:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-27
+2026-04-19T09:03:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-22
+2026-04-21T02:53:00Z,GPS III-8 Mission,Falcon 9,"SLC-40, Florida",Droneship,nssl,final,gpsiii8
+2026-04-22T20:23:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-14
+2026-04-26T07:37:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-16
+2026-04-29T10:13:00Z,Viasat-3 F3 Mission,Falcon Heavy,"LC-39A, Florida",Landing Zone / Expended,commercialSatellite,final,viasat3f3
+2026-04-29T19:24:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-36
+2026-05-01T14:06:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-38
+2026-05-03T00:00:00Z,CAS500-2 Mission,Falcon 9,"SLC-4E, California",Landing Zone,rideshare,final,cas500-2
+2026-05-05T20:59:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-29
+2026-05-11T19:13:00Z,NROL-172 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,final,nrol172
+2026-05-15T18:05:00Z,CRS-34 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,resupply,final,crs34
+2026-05-19T19:42:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-42
+2026-05-21T06:04:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-31
+2026-05-22T17:30:00Z,Starship's Twelfth Flight Test,Starship,"Pad 2, Starbase",Expended,starship,final,starship-flight-12
+2026-05-25T07:48:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-47
+2026-05-26T09:50:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-37
+2026-05-29T08:57:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-53
+2026-05-30T10:25:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-41
+2026-06-03T08:40:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-47
+2026-06-04T06:26:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-43
+2026-06-07T00:24:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-43
+2026-06-08T06:13:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-35
+2026-06-11T08:05:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-44
+2026-06-12T08:27:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-54
+2026-06-15T08:34:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-54
+2026-06-17T02:39:00Z,Bluebird 8-10 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,bluebird8-10
+2026-06-19T01:50:00Z,NROL-179 Mission,Falcon 9,"SLC-4E, California",Landing Zone,commercialSatellite,final,nrol179
+2026-06-21T11:39:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-28
+2026-06-23T06:53:00Z,Starfall Demo Mission,Falcon 9,"SLC-40, Florida",Droneship,science,final,starfalldemo
+2026-06-24T20:30:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-45
+2026-06-28T00:09:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-40
+2026-06-28T22:25:00Z,SXM-11 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,sxm11
+2026-07-01T21:58:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-46
+2026-07-05T06:50:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-50
+2026-07-07T03:12:00Z,Transporter-17 Mission,Falcon 9,"SLC-4E, California",Droneship,rideshare,final,transporter17
+2026-07-09T05:25:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-42
+2026-07-10T20:01:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-48
+2026-07-13T20:28:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-14
+2026-07-14T05:10:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-45
+2026-07-16T16:32:00Z,SDA’s Third Tranche 1 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,final,sda-t1tl-e
+2026-07-21T07:49:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-39
+2026-07-21T17:15:00Z,MRV-MEP Mission,Falcon 9,"SLC-40, Florida",Expended,commercialSatellite,final,mrv-mep
+2026-07-24T17:51:00Z,Starship's Thirteenth Flight Test,Starship,"Pad 2, Starbase",Expended,starship,final,starship-flight-13
+2026-07-25T08:51:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-51
+2026-07-30T03:10:00Z,NROL-95 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,nssl,final,nrol95
+2026-07-31T20:08:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-52
+2026-08-04T10:05:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-53
+2026-08-05T03:49:00Z,BlueBird 11-13 Mission,Falcon 9,"SLC-40, Florida",Droneship,commercialSatellite,final,bluebird11-13
+2026-08-08T09:35:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-38
+2026-08-11T11:58:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-19
+2026-08-12T21:46:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-49
+2026-08-15T21:12:00Z,Globalstar 2-R Launch 1 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,commercialSatellite,final,globalstar2-rlaunch1
+2026-08-15T21:50:00Z,USSF-366 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,final,ussf366
+2026-08-18T21:01:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-17-50
+2026-08-21T11:04:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-39
+2026-08-22T00:25:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-20
+2026-08-25T05:33:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,sl-10-49
+2026-08-26T02:35:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-22
+2026-08-30T07:26:00Z,Roman Space Telescope Mission,Falcon Heavy,"LC-39A, Florida",Landing Zone / Expended,science,final,roman
+2026-09-02T01:42:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,sl-15-23
+2026-09-06T10:59:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,upcoming,sl-15-24
