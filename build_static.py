@@ -38,6 +38,8 @@ from dram_data import BASE_DIR, CSV_PATH as DRAM_CSV, latest_date as dram_latest
 from f1_data import CSV_PATH as F1_CSV, load_all as load_f1_all, load_points_series
 from f1_render import panel_html as f1_panel_html, stats as f1_stats
 from gold_data import CSV_PATH as GOLD_CSV, latest_date as gold_latest, load_gold
+from news_data import CSV_PATH as NEWS_CSV, load_all as load_news_all
+from news_render import panel_html as news_panel_html, stats as news_stats
 from spacex_data import CSV_PATH as SPACEX_CSV, load_all as load_spacex_all
 from spacex_render import panel_html as spacex_panel_html, stats as spacex_stats
 from version import __version__
@@ -155,6 +157,25 @@ PANELS = [
                 '<path d="M8 13.5 5.5 16v3l2.5-1.6M16 13.5 18.5 16v3L16 17.4"/>'
                 '<path d="M10.6 20.2 12 22.5l1.4-2.3"/>',
     },
+    {
+        "id": "news",
+        "kind": "calendar",
+        "tab": "新聞",
+        "title": "新聞",
+        "meta": "資料來源：各新聞網站　·　點標題可看內文",
+        "source_name": "各新聞網站",
+        "source_url": "https://technews.tw/",
+        "csv": NEWS_CSV,
+        "load": load_news_all,
+        "render": news_panel_html,
+        "stats": news_stats,
+        # 報紙圖示
+        "icon": '<path d="M4 5.5h13v13H4z"/>'
+                '<path d="M17 9h3v7.5a2 2 0 0 1-2 2H4"/>'
+                '<line x1="7" y1="9" x2="14" y2="9"/>'
+                '<line x1="7" y1="12" x2="14" y2="12"/>'
+                '<line x1="7" y1="15" x2="11" y2="15"/>',
+    },
 ]
 
 CHART_PANELS = [p for p in PANELS if p.get("kind", "chart") == "chart"]
@@ -238,7 +259,9 @@ def _settings_cards(stats: dict) -> str:
         if p.get("kind", "chart") == "calendar":
             # 各表格分頁的重點數字不同：F1 看站數、SpaceX 看即將發射場次
             extra = ""
-            if "races" in s:
+            if "sources" in s:
+                extra = f'      <div class="row"><span>來源數</span><b>{s["sources"]} 個</b></div>\n'
+            elif "races" in s:
                 extra = f'      <div class="row"><span>賽事站數</span><b>{s["races"]} 站</b></div>\n'
             elif "upcoming" in s:
                 extra = f'      <div class="row"><span>即將發射</span><b>{s["upcoming"]} 場</b></div>\n'
@@ -451,8 +474,12 @@ TPL = """<!doctype html>
   .cal-empty { color:var(--muted); font-size:13px; }
 
   /* 二階分頁 */
-  .subtabs { display:flex; gap:6px; margin-bottom:14px; }
-  .subtab { font-size:13px; padding:7px 16px; border-radius:999px; color:var(--muted); }
+  /* 來源多的時候（新聞有 5 個）橫向捲動，不要把標籤擠成直排 */
+  .subtabs { display:flex; gap:6px; margin-bottom:14px; overflow-x:auto;
+             scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .subtabs::-webkit-scrollbar { display:none; }
+  .subtab { flex:none; white-space:nowrap;
+            font-size:13px; padding:7px 16px; border-radius:999px; color:var(--muted); }
   .subtab[aria-selected="true"] { background:var(--pill); color:var(--fg); border-color:transparent;
                                   font-weight:600; }
 
@@ -480,6 +507,27 @@ TPL = """<!doctype html>
   .gain { font-size:10px; margin-left:3px; }
   .gain.up { color:#2f9e44; }
   .gain.down { color:#e03131; }
+
+  /* 新聞：條列清單 + 內文檢視 */
+  .news-list { list-style:none; margin:0; padding:0; }
+  .news-item { display:flex; gap:10px; align-items:baseline; padding:12px 2px;
+               box-shadow:inset 0 -1px 0 var(--border); cursor:pointer;
+               -webkit-tap-highlight-color:transparent; }
+  .news-item:hover { background:var(--hover); }
+  .news-no { flex:none; width:22px; text-align:right; font-size:12px; color:var(--muted);
+             font-variant-numeric:tabular-nums; }
+  .news-main { display:block; min-width:0; }
+  .news-title { display:block; font-size:14px; line-height:1.5; }
+  .news-meta { display:block; font-size:11px; color:var(--muted); margin-top:3px; }
+  .news-article { padding-top:2px; }
+  .news-back { font-size:13px; padding:6px 12px; border-radius:8px; color:var(--muted);
+               margin-bottom:14px; }
+  .news-back:hover { color:var(--fg); border-color:var(--muted); }
+  .news-h { font-size:18px; line-height:1.45; margin:0 0 6px; font-weight:600; }
+  .news-body { margin-top:14px; }
+  .news-body p { font-size:15px; line-height:1.8; margin:0 0 14px; }
+  .news-nobody { color:var(--muted); font-size:13px; }
+  .news-link { display:inline-block; margin-top:4px; font-size:13px; color:var(--accent); }
 
   /* 底部標籤列 */
   /* 分頁再增加時標籤列會塞不下，允許橫向捲動當保險（塞得下時不會出現捲軸）*/
@@ -1233,6 +1281,37 @@ Array.prototype.slice.call(document.querySelectorAll('.subtabs')).forEach(functi
 });
 Array.prototype.slice.call(document.querySelectorAll('.grandtabs')).forEach(function (bar) {
   initTabGroup(bar, 'grandtab', 'grandpanel', 'grand');
+});
+
+// ── 新聞：點標題看內文，返回鍵回清單 ───────────────────────
+// 清單與內文都是產生頁面時就寫好的靜態內容，切換只是顯示／隱藏。
+Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(function (panel) {
+  var list = panel.querySelector('.news-list');
+  if (!list) return;
+  var articles = Array.prototype.slice.call(panel.querySelectorAll('.news-article'));
+
+  function show(key) {
+    list.hidden = (key !== null);
+    articles.forEach(function (a) { a.hidden = (a.dataset.article !== key); });
+    window.scrollTo(0, 0);
+    syncSticky();
+  }
+
+  Array.prototype.slice.call(list.querySelectorAll('.news-item')).forEach(function (li) {
+    function open() { show(li.dataset.article); }
+    li.addEventListener('click', open);
+    li.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+    });
+  });
+
+  articles.forEach(function (a) {
+    a.querySelector('.news-back').addEventListener('click', function () { show(null); });
+  });
+
+  // 切走再回來時回到清單，不要停在上次看的那一篇
+  var subtab = document.querySelector('.subtab[data-sub="' + panel.dataset.sub + '"]');
+  if (subtab) subtab.addEventListener('click', function () { show(null); });
 });
 
 // ── 重新載入 ───────────────────────────────────────────────

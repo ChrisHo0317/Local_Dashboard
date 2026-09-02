@@ -23,6 +23,8 @@ from f1_data import (CSV_PATH as F1_CSV, SERIES_CSV, STANDINGS_CSV,
 from f1_scraper import F1CalendarScraper, F1StandingsScraper
 from gold_data import CSV_PATH as GOLD_CSV, merge_prices as merge_gold
 from gold_scraper import YahooGoldScraper
+from news_data import CSV_PATH as NEWS_CSV, merge_news
+from news_scraper import NewsScraper
 from scraper import TrendForceScraper
 from spacex_data import CSV_PATH as SPACEX_CSV, merge_launches
 from spacex_scraper import SpaceXScraper
@@ -142,10 +144,22 @@ def update_spacex() -> int:
     return changed
 
 
+def update_news() -> int:
+    """新聞：每天換一批，整批取代。單一來源失敗不影響其他來源。"""
+    rows = NewsScraper(logger=log).fetch_all()
+    if not rows:
+        log.warning("新聞：所有來源都沒有抓到文章，本次不更新")
+        return 0
+    changed = merge_news(rows)
+    log.info(f"新聞：抓取 {len(rows)} 則，"
+             + (f"已更新 {NEWS_CSV.name}" if changed else "與現有資料相同"))
+    return changed
+
+
 def main() -> int:
     added = (update_dram() + update_bonds() + update_gold()
              + update_calendar() + update_f1() + update_f1_standings()
-             + update_spacex())
+             + update_spacex() + update_news())
 
     if added == 0:
         log.info("無新資料，略過重建 HTML")

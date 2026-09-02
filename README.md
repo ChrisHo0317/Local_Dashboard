@@ -29,6 +29,7 @@ GitHub Pages 只能託管靜態檔案，無法執行 Dash 的伺服器端 callba
 | 行事曆 | 財經事件行事曆，中文化、表格呈現（ForexFactory）|
 | F1 | 賽程（依大獎賽分組）／積分（車手、車隊：走勢圖 + 積分榜）（F1 Calendar、f1-boxbox）|
 | SpaceX | 發射排程，依月份分組、繁體中文（SpaceX 官方 API）|
+| 新聞 | 五個財經／科技來源的最新報導，條列後可點開看內文 |
 | 設定 | 外觀（深色模式）、各資料集資訊與顯示開關、關於 |
 
 要新增圖表分頁，在 `build_static.py` 的 `PANELS` 加一筆即可 —— 標籤列、分頁、圖例、設定頁的資料卡片都會跟著生成，滑動指示器依按鈕實際位置計算，不需要改任何數值。
@@ -93,6 +94,10 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `spacex_scraper.py` | SpaceX 官方 API 爬蟲 |
 | `spacex_i18n.py` | 火箭／任務類型／發射場／回收方式的中文化 |
 | `spacex_render.py` | SpaceX 分頁的 HTML 產生 |
+| `news_sources.py` | 新聞來源清單（網址、抓取方式、每個來源取幾則）|
+| `news_data.py` | 讀寫 `data/news_articles.csv`，每次整批取代 |
+| `news_scraper.py` | 各新聞站的清單與內文抓取（RSS 或 HTML）|
+| `news_render.py` | 新聞分頁的 HTML 產生：清單 + 內文檢視 |
 | `chart.py` | `build_figure()` / `build_bond_figure()` — 唯一的圖表定義來源 |
 | `docs/` | 發佈目錄：`index.html`（產生）+ 圖示與 `manifest.webmanifest`（靜態） |
 | `scraper.py` | TrendForce DRAM 現貨報價爬蟲（僅提供當日快照）|
@@ -139,6 +144,18 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `impact` | High / Medium / Low / Holiday |
 | `forecast` / `previous` | 市場預估值與前值 |
 
+`data/news_articles.csv`
+
+| 欄位 | 說明 |
+|------|------|
+| `source` | 來源代碼：`ustv` / `yahoo` / `ltn` / `digitimes` / `technews` |
+| `order` | 該來源清單上的順序，0 起算 |
+| `title` / `url` | 標題與原文網址 |
+| `published` | 發布時間 ISO 8601（只有 RSS 來源有）|
+| `body` | 內文（截斷至 1200 字；抓不到時留空）|
+
+新聞每天換一批，舊的不保留，`update_data.py` 會整批覆寫這個檔案。
+
 ---
 
 ## 自動更新
@@ -156,7 +173,7 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 ## 版本
 
-目前 **v0.3.003**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
+目前 **v0.3.021**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
 
 格式 `vMAJOR.MINOR.PATCH`，PATCH 固定三位數。**一般改動一律只遞增 PATCH**；前兩組除非明確指示否則不變更。改 `version.py` 後重跑 `build_static.py` 即可。
 
@@ -164,7 +181,7 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 ---
 
-資料來源：[TrendForce 集邦科技](https://www.trendforce.com.tw/price/dram/dram_spot)　·　[MoneyDJ 債券](https://www.moneydj.com/bond/defaultBD.xdjhtm)　·　[Yahoo Finance](https://finance.yahoo.com/quote/GC%3DF/)　·　[ForexFactory](https://www.forexfactory.com/calendar)
+資料來源：[TrendForce 集邦科技](https://www.trendforce.com.tw/price/dram/dram_spot)　·　[MoneyDJ 債券](https://www.moneydj.com/bond/defaultBD.xdjhtm)　·　[Yahoo Finance](https://finance.yahoo.com/quote/GC%3DF/)　·　[ForexFactory](https://www.forexfactory.com/calendar)　·　[非凡新聞](https://news.ustv.com.tw/)　·　[Yahoo 財經](https://tw.news.yahoo.com/finance/)　·　[自由財經](https://ec.ltn.com.tw/)　·　[DIGITIMES](https://www.digitimes.com.tw/)　·　[TechNews](https://technews.tw/)
 
 ---
 
@@ -279,3 +296,12 @@ https://www.spacex.com/launches 是純前端渲染的空殼（HTML 只有 3KB）
 **進行中的任務**（如仍在軌的 Crew-12）獨立成一區置頂，比照官網的 Ongoing Missions，
 並顯示來源提供的預計返回時間。這一區不受顯示窗限制 —— 那是「現在的狀態」而不是歷史，
 Crew-12 是 2026-02 發射，照日期會被 90 天的窗濾掉。
+
+## 關於新聞的資料來源
+
+原本還指定了第六個來源「公開法說會」（alphamemo.ai/free-transcripts）。該頁在真實
+Chrome 中同樣是空的 —— 內容區只有標題與一行說明，沒有任何逐字稿連結，也沒有可用的
+XHR，判斷需登入才看得到清單，因此沒有納入。
+
+DIGITIMES 只公開文章的前導段落，所以內文較短；點「看原文 ↗」可到原站閱讀全文。
+非凡新聞有部分是影音報導，這類沒有可抽取的內文。
