@@ -39,13 +39,15 @@ from f1_data import CSV_PATH as F1_CSV, load_all as load_f1_all, load_points_ser
 from f1_render import panel_html as f1_panel_html, stats as f1_stats
 from gold_data import CSV_PATH as GOLD_CSV, latest_date as gold_latest, load_gold
 from news_data import CSV_PATH as NEWS_CSV, load_all as load_news_all
-from news_render import panel_html as news_panel_html, stats as news_stats
+from news_render import (bodies as news_bodies, panel_html as news_panel_html,
+                         stats as news_stats)
 from spacex_data import CSV_PATH as SPACEX_CSV, load_all as load_spacex_all
 from spacex_render import panel_html as spacex_panel_html, stats as spacex_stats
 from version import __version__
 
 DOCS_DIR = BASE_DIR / "docs"
 OUTPUT = DOCS_DIR / "index.html"
+NEWS_DIR = DOCS_DIR / "news"
 
 # 圖表分頁定義。新增一組資料只要在這裡加一筆。
 PANELS = [
@@ -1286,29 +1288,92 @@ Array.prototype.slice.call(document.querySelectorAll('.grandtabs')).forEach(func
 });
 
 // ── 新聞：點標題看內文，返回鍵回清單 ───────────────────────
-// 清單與內文都是產生頁面時就寫好的靜態內容，切換只是顯示／隱藏。
+// 清單寫在頁面裡，內文放在 news/{來源}.json，點開才抓、每個來源只抓一次。
 var FIRST_BATCH = 12;   // 一開始排幾則
 var BATCH = 10;         // 捲到底再接幾則
+var newsBodies = {};    // 來源 → {序號: 內文}
+var newsPending = {};   // 來源 → 進行中的請求
+
+function loadBodies(sourceId) {
+  if (newsBodies[sourceId]) return Promise.resolve(newsBodies[sourceId]);
+  if (!newsPending[sourceId]) {
+    newsPending[sourceId] = fetch('news/' + sourceId + '.json')
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      })
+      .then(function (data) { newsBodies[sourceId] = data; return data; })
+      .catch(function (e) { delete newsPending[sourceId]; throw e; });
+  }
+  return newsPending[sourceId];
+}
+
 Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(function (panel) {
   var list = panel.querySelector('.news-list');
   if (!list) return;
-  var articles = Array.prototype.slice.call(panel.querySelectorAll('.news-article'));
+  var sourceId = panel.dataset.sub;
+  var article = panel.querySelector('.news-article');
+  var box = article.querySelector('.news-body');
 
-  function show(key) {
-    list.hidden = (key !== null);
+  function note(text) {                 // 內文區的單行提示
+    box.textContent = '';
+    var p = document.createElement('p');
+    p.className = 'news-nobody';
+    p.textContent = text;
+    box.appendChild(p);
+  }
+
+  function fill(li) {
+    article.querySelector('.news-h').textContent =
+      li.querySelector('.news-title').textContent;
+    article.querySelector('.news-meta').textContent =
+      li.querySelector('.news-meta').textContent;
+    article.querySelector('.news-link').href = li.dataset.url;
+
+    if (li.dataset.body !== '1') {
+      note('這則新聞抓不到內文（可能是影音報導或需要訂閱），請點下方連結看原文。');
+      return;
+    }
+    note('載入內文中…');
+    var want = li.dataset.n;
+    loadBodies(sourceId).then(function (data) {
+      if (article.dataset.n !== want) return;   // 期間又點了別則就別覆蓋
+      var text = data[want];
+      if (!text) { note('這則新聞抓不到內文，請點下方連結看原文。'); return; }
+      box.textContent = '';
+      text.split(String.fromCharCode(10)).forEach(function (line) {
+        if (!line.trim()) return;
+        var p = document.createElement('p');
+        p.textContent = line;    // 來自新聞網站的文字，一律當純文字處理
+        box.appendChild(p);
+      });
+      syncSticky();
+    }).catch(function () {
+      // 離線、或用 file:// 直接開（會被 CORS 擋）時走到這裡
+      if (article.dataset.n === want) {
+        note('內文載入失敗，請確認網路連線，或點下方連結看原文。');
+      }
+    });
+  }
+
+  function show(li) {
+    list.hidden = !!li;
     // 「載入更多」在 ul 外面，看內文時要一起藏
-    if (sentinel) sentinel.hidden = (key !== null) || (shown >= items.length);
-    articles.forEach(function (a) { a.hidden = (a.dataset.article !== key); });
+    if (sentinel) sentinel.hidden = !!li || (shown >= items.length);
+    article.hidden = !li;
+    if (li) {
+      article.dataset.n = li.dataset.n;
+      fill(li);
+    }
     window.scrollTo(0, 0);
     syncSticky();
   }
 
   var items = Array.prototype.slice.call(list.querySelectorAll('.news-item'));
   items.forEach(function (li) {
-    function open() { show(li.dataset.article); }
-    li.addEventListener('click', open);
+    li.addEventListener('click', function () { show(li); });
     li.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(li); }
     });
   });
 
@@ -1335,12 +1400,10 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
     sentinel.addEventListener('click', extend);   // 沒有 IO 時仍可手動載入
   }
 
-  articles.forEach(function (a) {
-    a.querySelector('.news-back').addEventListener('click', function () { show(null); });
-  });
+  article.querySelector('.news-back').addEventListener('click', function () { show(null); });
 
   // 切走再回來時回到清單，不要停在上次看的那一篇
-  var subtab = document.querySelector('.subtab[data-sub="' + panel.dataset.sub + '"]');
+  var subtab = document.querySelector('.subtab[data-sub="' + sourceId + '"]');
   if (subtab) subtab.addEventListener('click', function () { show(null); });
 });
 
@@ -1470,7 +1533,24 @@ def build() -> Path:
 
     DOCS_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(html, encoding="utf-8")
+    _write_news_bodies(panel_data.get("news", {}))
     return OUTPUT
+
+
+def _write_news_bodies(data: dict) -> None:
+    """新聞內文另存 docs/news/{來源}.json，讀者點開某一則時才下載。"""
+    if not data:
+        return
+    NEWS_DIR.mkdir(parents=True, exist_ok=True)
+    written = set()
+    for source_id, bodies in news_bodies(data).items():
+        path = NEWS_DIR / f"{source_id}.json"
+        path.write_text(json.dumps(bodies, ensure_ascii=False, separators=(",", ":")),
+                        encoding="utf-8")
+        written.add(path.name)
+    for stale in NEWS_DIR.glob("*.json"):        # 來源移除後不要留著孤兒檔
+        if stale.name not in written:
+            stale.unlink()
 
 
 if __name__ == "__main__":

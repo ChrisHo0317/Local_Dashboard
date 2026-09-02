@@ -8,11 +8,13 @@
 不逐站寫死選擇器：那種寫法在對方改版時會安靜地抓到空字串，而通用策略
 至少會挑到「最像內文」的區塊。抽不到內文時就留空，頁面照樣列出標題與連結。
 """
+import json
 import logging
 import re
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
+from html import unescape
 from urllib.parse import urljoin, urlsplit
 
 from bs4 import BeautifulSoup
@@ -74,8 +76,8 @@ class NewsScraper:
         return rows
 
     def fetch_source(self, source: dict) -> list[dict]:
-        items = (self._from_rss(source) if source["kind"] == "rss"
-                 else self._from_html(source))
+        readers = {"rss": self._from_rss, "html": self._from_html, "wp": self._from_wp}
+        items = readers[source["kind"]](source)
         # 同一則新聞可能以不同網址在清單上出現兩次（不同分類或不同排版位置），
         # 標題比網址可靠，用它再過一次。
         seen, unique = set(), []
@@ -92,9 +94,12 @@ class NewsScraper:
 
         rows = []
         for order, item in enumerate(items):
-            if order:
-                time.sleep(REQUEST_GAP)     # 連抓幾十篇會被限流，隔一下
-            body = self._fetch_body(item["url"])
+            if "body" in item:              # WP API 已經把內文一起帶回來了
+                body = item["body"]
+            else:
+                if order:
+                    time.sleep(REQUEST_GAP)  # 連抓幾十篇會被限流，隔一下
+                body = self._fetch_body(item["url"])
             rows.append({
                 "source": source["id"],
                 "order": str(order),
@@ -112,7 +117,13 @@ class NewsScraper:
 
     # ── 清單 ────────────────────────────────────────────────
     def _from_rss(self, source: dict) -> list[dict]:
-        raw = self._get(source["list_url"])
+        out = []
+        for url in source["list_urls"]:
+            out.extend(self._one_rss(source, url))
+        return out
+
+    def _one_rss(self, source: dict, list_url: str) -> list[dict]:
+        raw = self._get(list_url)
         if not raw:
             return []
         try:
@@ -145,14 +156,47 @@ class NewsScraper:
             })
         return out
 
+    def _from_wp(self, source: dict) -> list[dict]:
+        """WordPress REST API：標題、連結、時間、內文一次到手。"""
+        out = []
+        for url in source["list_urls"]:
+            raw = self._get(url)
+            if not raw:
+                continue
+            try:
+                posts = json.loads(raw)
+            except ValueError as e:
+                self.logger.error(f"{source['label']}：JSON 解析失敗 {e}")
+                continue
+            for post in posts:
+                title = unescape(re.sub(r"<[^>]+>", "",
+                                        post.get("title", {}).get("rendered", ""))).strip()
+                link = post.get("link", "")
+                if not title or not link:
+                    continue
+                html = post.get("content", {}).get("rendered", "")
+                out.append({
+                    "title": title,
+                    "url": link,
+                    "published": self._iso(post.get("date_gmt", "") + "Z"),
+                    "body": self._clean_body(
+                        self._paragraphs(BeautifulSoup(html, "html.parser"))),
+                })
+        return out
+
     def _from_html(self, source: dict) -> list[dict]:
-        raw = self._get(source["list_url"])
+        out, seen = [], set()
+        for url in source["list_urls"]:
+            self._one_html(source, url, out, seen)
+        return out
+
+    def _one_html(self, source: dict, list_url: str, out: list, seen: set) -> None:
+        raw = self._get(list_url)
         if not raw:
-            return []
+            return
         soup = BeautifulSoup(raw, "html.parser")
         pattern = re.compile(source["link_pattern"])
 
-        out, seen = [], set()
         for a in soup.find_all("a", href=True):
             href = a["href"]
             if not pattern.search(href):
@@ -166,7 +210,6 @@ class NewsScraper:
                 continue
             seen.add(key)
             out.append({"title": title, "url": url, "published": ""})
-        return out
 
     @staticmethod
     def _normalize(url: str, source: dict) -> str:
@@ -190,21 +233,10 @@ class NewsScraper:
                          "figure", "iframe", "noscript"]):
             tag.decompose()
 
-        def paragraphs_of(scope) -> str:
-            out = []
-            for p in scope.find_all("p"):
-                text = " ".join(p.get_text(" ", strip=True).split())
-                if len(text) < 15:
-                    continue
-                if len(text) < NOISE_MAX_LEN and NOISE.search(text):
-                    continue
-                out.append(text)
-            return "\n".join(out)
-
         best = ""
         for selector in BODY_SELECTORS:
             for el in soup.select(selector):
-                text = paragraphs_of(el)
+                text = self._paragraphs(el)
                 if len(text) > len(best):
                     best = text
 
@@ -212,17 +244,34 @@ class NewsScraper:
         # 容器裡反而只有「■ 中文简体版 ■ English」這種導覽字串。
         # 因此不是「抓不到」才後備，而是「抓到的短到不可能是內文」就後備。
         if len(best) < MIN_BODY:
-            whole = paragraphs_of(soup)
+            whole = self._paragraphs(soup)
             if len(whole) > len(best):
                 best = whole
 
-        cut = PAYWALL.search(best)
-        if cut:
-            best = best[:cut.start()].rstrip(" .·…")
+        return self._clean_body(best)
 
-        if len(best) > BODY_LIMIT:
-            best = best[:BODY_LIMIT].rstrip() + "…"
-        return best
+    @staticmethod
+    def _paragraphs(scope) -> str:
+        """把一個容器裡像內文的段落串起來。"""
+        out = []
+        for p in scope.find_all("p"):
+            text = " ".join(p.get_text(" ", strip=True).split())
+            if len(text) < 15:
+                continue
+            if len(text) < NOISE_MAX_LEN and NOISE.search(text):
+                continue
+            out.append(text)
+        return "\n".join(out)
+
+    @staticmethod
+    def _clean_body(text: str) -> str:
+        """截掉導購文字、限制長度。"""
+        cut = PAYWALL.search(text)
+        if cut:
+            text = text[:cut.start()].rstrip(" .·…")
+        if len(text) > BODY_LIMIT:
+            text = text[:BODY_LIMIT].rstrip() + "…"
+        return text
 
     # ── 小工具 ──────────────────────────────────────────────
     def _get(self, url: str, quiet: bool = False) -> str:
