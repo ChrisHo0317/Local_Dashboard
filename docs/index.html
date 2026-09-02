@@ -163,6 +163,8 @@
                     background:var(--card); padding:7px 4px;
                     box-shadow:inset 0 1px 0 var(--border), inset 0 -1px 0 var(--border); }
   .cal-day.past { opacity:.6; }
+  /* 置頂區塊（進行中的任務）：標題不可點，也沒有摺疊箭頭 */
+  .cal-day.pinned .cal-day-row th { cursor:default; }
   .cal-day.today .cal-day-row th { color:var(--accent); }
   .cal-today-tag { font-size:11px; font-weight:500; margin-left:6px; padding:1px 7px;
                    border-radius:999px; background:var(--accent); color:#fff; }
@@ -274,7 +276,7 @@
           <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
         </svg>
       </button>
-      <span class="ver">v0.3.019</span>
+      <span class="ver">v0.3.020</span>
     </div>
   </header>
 
@@ -2455,6 +2457,28 @@
       <thead>
         <tr><th class="cal-when">日期時間</th><th class="cal-imp"><span class="sr">狀態</span></th><th class="cal-ev">任務</th><th class="cal-sess">回收</th></tr>
       </thead>
+      <tbody class="cal-day pinned" data-pinned="1">
+        <tr class="cal-day-row"><th colspan="4" scope="rowgroup">
+          <div class="grp-head">
+            <div>
+              <div class="grp-main">進行中的任務</div>
+              <div class="grp-sub">1 項任務執行中</div>
+            </div>
+          </div>
+        </th></tr>
+        <tr class="cal-row" data-impact="3" data-ts="1770959700000" data-day="2026-02-13">
+          <td class="cal-when">
+            <div class="w-date">2/13（五）</div>
+            <div class="w-time">13:15</div>
+          </td>
+          <td class="cal-imp"><span class="dot i-high" title="進行中"></span></td>
+          <td class="cal-ev">
+            <div class="cal-title">Crew-12 任務<span class="sx-tag">進行中</span></div>
+            <div class="cal-sub">獵鷹 9 號 · SLC-40，佛羅里達 · 預計返回 2026 年 10 月</div>
+          </td>
+          <td class="cal-sess">陸上著陸區</td>
+        </tr>
+      </tbody>
       <tbody class="cal-day collapsible" data-date="2026-06-29">
         <tr class="cal-day-row"><th colspan="4" scope="rowgroup" role="button" tabindex="0" aria-expanded="true">
           <div class="grp-head">
@@ -3105,8 +3129,8 @@
 
     <div class="card">
       <div class="card-h">關於</div>
-      <div class="row"><span>版本</span><b>v0.3.019</b></div>
-      <div class="row"><span>頁面產生時間</span><b>2026-09-02 20:31 (UTC+8)</b></div>
+      <div class="row"><span>版本</span><b>v0.3.020</b></div>
+      <div class="row"><span>頁面產生時間</span><b>2026-09-02 20:37 (UTC+8)</b></div>
       <div class="row"><span>原始碼</span>
         <a href="https://github.com/ChrisHo0317/Local_Dashboard"
            target="_blank" rel="noopener">GitHub</a></div>
@@ -3633,6 +3657,9 @@ function initCalendarTable(table) {
     var t = taipei();
     var iso = t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
     days.forEach(function (d) {
+      // 置頂區塊（SpaceX 的「進行中的任務」）不套今天／已過去 ——
+      // 那是現在的狀態，用發射日期判斷會被標成已過去而淡化
+      if (d.dataset.pinned) return;
       var rowDays = Array.prototype.slice.call(d.querySelectorAll('.cal-row'))
         .map(function (r) { return r.dataset.day || d.dataset.date; });
       var hasToday = rowDays.indexOf(iso) >= 0;

@@ -17,8 +17,8 @@ from html import escape
 
 import pandas as pd
 
-from spacex_i18n import (translate_launch_site, translate_return_site, translate_status,
-                         translate_title, translate_vehicle)
+from spacex_i18n import (translate_launch_site, translate_return_site, translate_return_time,
+                         translate_status, translate_title, translate_vehicle)
 
 TAIPEI = timezone(timedelta(hours=8))
 
@@ -85,6 +85,39 @@ def _subtabs_html() -> str:
             + "\n".join(btns) + "\n  </div>")
 
 
+def _row_html(e, rank: int) -> str:
+    """單一發射列。進行中的任務多顯示一行預計返回時間。"""
+    local = _local(e["_ts"])
+    day = f"{local.month}/{local.day:02d}（{WEEKDAYS[local.weekday()]}）"
+    dot = "i-high" if rank == 3 else ("i-mid" if rank == 2 else "i-low")
+
+    bits = [translate_vehicle(e["vehicle"]), translate_launch_site(e["launch_site"])]
+    if e["status"] == "in-progress" and e.get("return_time"):
+        bits.append("預計返回 " + translate_return_time(e["return_time"]))
+    sub = " · ".join(x for x in bits if x)
+
+    tag = (f'<span class="sx-tag">{escape(translate_status(e["status"]))}</span>'
+           if rank == 3 else "")
+
+    return (
+        f'        <tr class="cal-row" data-impact="{rank}"'
+        f' data-ts="{int(e["_ts"].timestamp() * 1000)}"'
+        f' data-day="{local.strftime("%Y-%m-%d")}">\n'
+        f'          <td class="cal-when">\n'
+        f'            <div class="w-date">{day}</div>\n'
+        f'            <div class="w-time">{local.strftime("%H:%M")}</div>\n'
+        f'          </td>\n'
+        f'          <td class="cal-imp"><span class="dot {dot}"'
+        f' title="{escape(translate_status(e["status"]))}"></span></td>\n'
+        f'          <td class="cal-ev">\n'
+        f'            <div class="cal-title">{escape(translate_title(e["title"]))}{tag}</div>\n'
+        f'            <div class="cal-sub">{escape(sub)}</div>\n'
+        f'          </td>\n'
+        f'          <td class="cal-sess">{escape(translate_return_site(e["return_site"]))}</td>\n'
+        f'        </tr>'
+    )
+
+
 def _schedule_html(df: pd.DataFrame) -> str:
     head = (
         '    <div class="cal-bar">\n'
@@ -97,12 +130,35 @@ def _schedule_html(df: pd.DataFrame) -> str:
         '    </div>'
     )
 
+    # 進行中的任務不受時間窗限制：那是「現在的狀態」而不是歷史。
+    # Crew-12 是 2026-02 發射、目前仍在軌，照日期會被 90 天的窗濾掉。
+    ongoing = df[df["status"] == "in-progress"].sort_values("_ts") if not df.empty else df
     view = window(df)
-    if view.empty:
+    if not view.empty:
+        view = view[view["status"] != "in-progress"]
+    if view.empty and ongoing.empty:
         return head + '\n    <p class="cal-empty">目前沒有發射資料。</p>'
 
     view = view.sort_values("_ts")
     bodies = []
+
+    # 進行中的任務獨立成一區置頂（官網也是分開列的），不摺疊、不套「已過去」淡化
+    if not ongoing.empty:
+        rows = [
+            '        <tr class="cal-day-row"><th colspan="4" scope="rowgroup">\n'
+            '          <div class="grp-head">\n'
+            '            <div>\n'
+            '              <div class="grp-main">進行中的任務</div>\n'
+            f'              <div class="grp-sub">{len(ongoing)} 項任務執行中</div>\n'
+            '            </div>\n'
+            '          </div>\n'
+            '        </th></tr>'
+        ]
+        rows += [_row_html(e, 3) for _, e in ongoing.iterrows()]
+        bodies.append(
+            '      <tbody class="cal-day pinned" data-pinned="1">\n'
+            + "\n".join(rows) + "\n      </tbody>"
+        )
     for (year, month), group in view.groupby(
             [view["_ts"].dt.tz_convert(TAIPEI).dt.year,
              view["_ts"].dt.tz_convert(TAIPEI).dt.month], sort=True):
@@ -121,33 +177,7 @@ def _schedule_html(df: pd.DataFrame) -> str:
             '        </th></tr>'
         ]
         for _, e in group.iterrows():
-            local = _local(e["_ts"])
-            rank = _rank(e)
-            day = f"{local.month}/{local.day:02d}（{WEEKDAYS[local.weekday()]}）"
-            dot = "i-high" if rank == 3 else ("i-mid" if rank == 2 else "i-low")
-
-            sub = " · ".join(x for x in (translate_vehicle(e["vehicle"]),
-                                         translate_launch_site(e["launch_site"])) if x)
-            tag = (f'<span class="sx-tag">{escape(translate_status(e["status"]))}</span>'
-                   if rank == 3 else "")
-
-            rows.append(
-                f'        <tr class="cal-row" data-impact="{rank}"'
-                f' data-ts="{int(e["_ts"].timestamp() * 1000)}"'
-                f' data-day="{local.strftime("%Y-%m-%d")}">\n'
-                f'          <td class="cal-when">\n'
-                f'            <div class="w-date">{day}</div>\n'
-                f'            <div class="w-time">{local.strftime("%H:%M")}</div>\n'
-                f'          </td>\n'
-                f'          <td class="cal-imp"><span class="dot {dot}"'
-                f' title="{escape(translate_status(e["status"]))}"></span></td>\n'
-                f'          <td class="cal-ev">\n'
-                f'            <div class="cal-title">{escape(translate_title(e["title"]))}{tag}</div>\n'
-                f'            <div class="cal-sub">{escape(sub)}</div>\n'
-                f'          </td>\n'
-                f'          <td class="cal-sess">{escape(translate_return_site(e["return_site"]))}</td>\n'
-                f'        </tr>'
-            )
+            rows.append(_row_html(e, _rank(e)))
 
         bodies.append(
             f'      <tbody class="cal-day collapsible" data-date="{last_day.isoformat()}">\n'

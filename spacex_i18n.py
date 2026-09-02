@@ -73,6 +73,25 @@ MISSION_TERMS = {
 
 _MISSION = re.compile(r"^(.*?)\s+Mission$", re.I)
 
+# 預計返回時間是自由文字，來源目前用「月份 + 年」的寫法
+_MONTHS = {
+    "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6,
+    "july": 7, "august": 8, "september": 9, "october": 10,
+    "november": 11, "december": 12,
+}
+_MONTH_YEAR = re.compile(r"^([A-Za-z]+)\s+(\d{4})$")
+
+
+def translate_return_time(value: str) -> str:
+    """「October 2026」→「2026 年 10 月」；認不出來就原樣保留。"""
+    raw = " ".join((value or "").split())
+    if not raw:
+        return ""
+    m = _MONTH_YEAR.match(raw)
+    if m and m.group(1).lower() in _MONTHS:
+        return f"{m.group(2)} 年 {_MONTHS[m.group(1).lower()]} 月"
+    return raw
+
 
 def translate_vehicle(value: str) -> str:
     return VEHICLES.get((value or "").strip(), value or "")

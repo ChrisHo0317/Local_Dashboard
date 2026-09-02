@@ -428,6 +428,8 @@ TPL = """<!doctype html>
                     background:var(--card); padding:7px 4px;
                     box-shadow:inset 0 1px 0 var(--border), inset 0 -1px 0 var(--border); }
   .cal-day.past { opacity:.6; }
+  /* 置頂區塊（進行中的任務）：標題不可點，也沒有摺疊箭頭 */
+  .cal-day.pinned .cal-day-row th { cursor:default; }
   .cal-day.today .cal-day-row th { color:var(--accent); }
   .cal-today-tag { font-size:11px; font-weight:500; margin-left:6px; padding:1px 7px;
                    border-radius:999px; background:var(--accent); color:#fff; }
@@ -1043,6 +1045,9 @@ function initCalendarTable(table) {
     var t = taipei();
     var iso = t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
     days.forEach(function (d) {
+      // 置頂區塊（SpaceX 的「進行中的任務」）不套今天／已過去 ——
+      // 那是現在的狀態，用發射日期判斷會被標成已過去而淡化
+      if (d.dataset.pinned) return;
       var rowDays = Array.prototype.slice.call(d.querySelectorAll('.cal-row'))
         .map(function (r) { return r.dataset.day || d.dataset.date; });
       var hasToday = rowDays.indexOf(iso) >= 0;

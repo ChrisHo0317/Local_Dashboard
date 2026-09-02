@@ -9,6 +9,7 @@ SpaceX 發射資料層
     return_site   回收方式
     mission_type  任務類型（starlink / resupply / hsf ...）
     status        upcoming / in-progress / final
+    return_time   進行中任務的預計返回時間（自由文字，如 "October 2026"）
     link          官網任務頁的網址片段
 
 以 (launch_time, title, launch_site) 為唯一鍵；時間待定的以 correlation_id 補足。
@@ -26,7 +27,7 @@ DATA_DIR = BASE_DIR / "data"
 CSV_PATH = DATA_DIR / "spacex_launches.csv"
 
 COLUMNS = ["launch_time", "title", "vehicle", "launch_site", "return_site",
-           "mission_type", "status", "link"]
+           "mission_type", "status", "return_time", "link"]
 
 
 def load_launches() -> pd.DataFrame:

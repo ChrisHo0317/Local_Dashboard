@@ -70,6 +70,8 @@ class SpaceXScraper:
                 "return_site": (t.get("returnSite") or "").strip(),
                 "mission_type": (t.get("missionType") or "").strip(),
                 "status": (t.get("missionStatus") or "").strip(),
+                # 進行中的任務會帶預計返回時間，但格式是自由文字（"October 2026"）
+                "return_time": (t.get("returnDateTime") or "").strip(),
                 "link": (t.get("link") or "").strip(),
             })
 
