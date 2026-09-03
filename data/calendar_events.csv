@@ -103,6 +103,7 @@ event_time,country,title,impact,forecast,previous
 2026-09-03T10:30:00-04:00,USD,Natural Gas Storage,Low,30B,15B
 2026-09-03T15:00:00-04:00,USD,FOMC Member Hammack Speaks,Low,,
 2026-09-03T15:05:00-04:00,USD,FOMC Member Goolsbee Speaks,Low,,
+2026-09-03T15:55:00-04:00,USD,FOMC Member Goolsbee Speaks,Low,,
 2026-09-03T19:30:00-04:00,JPY,Household Spending y/y,Low,-1.6%,-3.3%
 2026-09-04T02:00:00-04:00,EUR,German Factory Orders m/m,Low,0.3%,3.1%
 2026-09-04T04:00:00-04:00,EUR,Italian Retail Sales m/m,Low,0.2%,-0.1%
