@@ -13,7 +13,7 @@ import logging
 import re
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from html import unescape
 from urllib.parse import urljoin, urlsplit
 
@@ -23,6 +23,15 @@ from curl_cffi import requests as cffi_requests
 from news_sources import BODY_LIMIT, PER_SOURCE, SOURCES
 
 HEADERS = {"Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8"}
+
+TAIPEI = timezone(timedelta(hours=8))
+
+# 文章頁裡標示發布時間的 meta 名稱
+PUB_META = re.compile(r"(article:published_time|pubdate|publishdate|date|"
+                      r"datepublished|parsely-pub-date|sailthru\.date)")
+
+# 版面上直接印出來的日期時間，例如「2026-09-02 15:15」或「2026/09/02 15:15」
+PUB_TEXT = re.compile(r"20\d{2}[-/]\d{1,2}[-/]\d{1,2}[ T]\d{1,2}:\d{2}")
 
 # 依序試這些容器，取其中 <p> 文字最長的
 BODY_SELECTORS = [
@@ -94,18 +103,21 @@ class NewsScraper:
 
         rows = []
         for order, item in enumerate(items):
+            published = item.get("published", "")
             if "body" in item:              # WP API 已經把內文一起帶回來了
                 body = item["body"]
             else:
                 if order:
                     time.sleep(REQUEST_GAP)  # 連抓幾十篇會被限流，隔一下
-                body = self._fetch_body(item["url"])
+                body, found = self._fetch_article(item["url"])
+                # 清單上沒有時間的來源（HTML 清單），時間得從文章頁拿
+                published = published or found
             rows.append({
                 "source": source["id"],
                 "order": str(order),
                 "title": item["title"],
                 "url": item["url"],
-                "published": item.get("published", ""),
+                "published": published,
                 "body": body,
             })
 
@@ -223,12 +235,16 @@ class NewsScraper:
         return parts._replace(netloc=host).geturl()
 
     # ── 內文 ────────────────────────────────────────────────
-    def _fetch_body(self, url: str) -> str:
+    def _fetch_article(self, url: str) -> tuple[str, str]:
+        """抓文章頁，一併取回內文與發布時間（同一份 HTML，不多跑一趟）。"""
         raw = self._get(url, quiet=True)
         if not raw:
-            return ""
+            return "", ""
 
         soup = BeautifulSoup(raw, "html.parser")
+        published = self._find_published(soup, raw)
+
+        # 抽時間要用完整的 HTML，抽內文則要先把版面雜訊拿掉，順序不能顛倒
         for tag in soup(["script", "style", "nav", "header", "footer", "aside", "form",
                          "figure", "iframe", "noscript"]):
             tag.decompose()
@@ -248,18 +264,23 @@ class NewsScraper:
             if len(whole) > len(best):
                 best = whole
 
-        return self._clean_body(best)
+        return self._clean_body(best), published
 
     @staticmethod
     def _paragraphs(scope) -> str:
-        """把一個容器裡像內文的段落串起來。"""
-        out = []
+        """把一個容器裡像內文的段落串起來。
+
+        有些站會把同一段放在版面的兩處（例如摘要區與內文區各一份），
+        照抄就會讀到重複的段落，所以同樣的文字只留第一次出現的。
+        """
+        out, seen = [], set()
         for p in scope.find_all("p"):
             text = " ".join(p.get_text(" ", strip=True).split())
-            if len(text) < 15:
+            if len(text) < 15 or text in seen:
                 continue
             if len(text) < NOISE_MAX_LEN and NOISE.search(text):
                 continue
+            seen.add(text)
             out.append(text)
         return "\n".join(out)
 
@@ -298,16 +319,48 @@ class NewsScraper:
 
     @staticmethod
     def _iso(value: str) -> str:
-        """把 RSS 的時間字串轉成 ISO；認不出來就留空。"""
+        """把各種時間字串轉成 ISO；認不出來就留空。
+
+        沒帶時區的一律當台北時間 —— 這幾個站都是台灣媒體，
+        當成 UTC 會讓時間整整早八小時。
+        """
         if not value:
             return ""
+        value = value.strip().replace("/", "-")
         for fmt in ("%a, %d %b %Y %H:%M:%S %z", "%a, %d %b %Y %H:%M:%S %Z",
-                    "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ"):
+                    "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ",
+                    "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S",
+                    "%Y-%m-%d %H:%M", "%Y-%m-%d"):
             try:
                 dt = datetime.strptime(value, fmt)
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=timezone.utc)
-                return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             except ValueError:
                 continue
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=TAIPEI)
+            return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         return ""
+
+    def _find_published(self, soup, raw: str) -> str:
+        """從文章頁找發布時間 —— HTML 來源的清單上沒有時間可用。"""
+        for key in ("property", "name", "itemprop"):
+            for meta in soup.find_all("meta", attrs={key: True}):
+                if not PUB_META.fullmatch(meta.get(key, "").lower()):
+                    continue
+                stamp = self._iso(meta.get("content", ""))
+                if stamp:
+                    return stamp
+
+        for hit in re.findall(r'"datePublished"\s*:\s*"([^"]+)"', raw):
+            stamp = self._iso(hit)
+            if stamp:
+                return stamp
+
+        for node in soup.find_all("time"):
+            stamp = self._iso(node.get("datetime", "")) or self._iso(
+                " ".join(node.get_text(" ", strip=True).split()))
+            if stamp:
+                return stamp
+
+        # 最後才看內文文字：版面上通常就印著發布時間
+        hit = PUB_TEXT.search(soup.get_text(" ", strip=True))
+        return self._iso(hit.group(0)) if hit else ""

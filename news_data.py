@@ -46,7 +46,11 @@ def latest_date(df: pd.DataFrame) -> str:
 
 
 def merge_news(rows: list[dict]) -> int:
-    """整批取代，回傳「有異動」時的筆數。"""
+    """逐來源取代，回傳「有異動」時的筆數。
+
+    只換掉這次真的抓到東西的來源 —— 某個站臨時擋人（例如回 403）時，
+    整批取代會把它既有的新聞一起清空，頁面就會空一塊。
+    """
     if not rows:
         return 0
 
@@ -55,15 +59,22 @@ def merge_news(rows: list[dict]) -> int:
     if incoming.empty:
         return 0
 
+    fresh = set(incoming["source"])
     if CSV_PATH.exists():
         existing = pd.read_csv(CSV_PATH, dtype=str).fillna("")
-        existing = existing.reindex(columns=COLUMNS).reset_index(drop=True)
-        if existing.equals(incoming.reset_index(drop=True)):
-            return 0
+        existing = existing.reindex(columns=COLUMNS)
+        kept = existing[~existing["source"].isin(fresh)]
+        merged = pd.concat([incoming, kept], ignore_index=True)
+    else:
+        merged = incoming.reset_index(drop=True)
+
+    merged = merged.reset_index(drop=True)      # 排序交給 load_news
+    if CSV_PATH.exists() and existing.reset_index(drop=True).equals(merged):
+        return 0
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    incoming.to_csv(CSV_PATH, index=False, encoding="utf-8")
-    return len(incoming)
+    merged.to_csv(CSV_PATH, index=False, encoding="utf-8")
+    return len(merged)
 
 
 def load_all() -> dict:

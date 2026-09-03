@@ -93,7 +93,6 @@ def _source_html(source: dict, part: pd.DataFrame) -> str:
     return ('    <ul class="news-list">\n' + "\n".join(items) + "\n    </ul>\n"
             '    <button type="button" class="news-more" hidden>載入更多</button>\n'
             '    <div class="news-article" hidden>\n'
-            '      <button type="button" class="news-back">← 返回列表</button>\n'
             '      <h2 class="news-h"></h2>\n'
             '      <div class="news-meta"></div>\n'
             '      <div class="news-body"></div>\n'

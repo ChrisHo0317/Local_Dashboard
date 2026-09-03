@@ -41,6 +41,8 @@ from gold_data import CSV_PATH as GOLD_CSV, latest_date as gold_latest, load_gol
 from news_data import CSV_PATH as NEWS_CSV, load_all as load_news_all
 from news_render import (bodies as news_bodies, panel_html as news_panel_html,
                          stats as news_stats)
+from notes_render import (META as NOTES_META, panel_html as notes_panel_html,
+                          stats as notes_stats)
 from spacex_data import CSV_PATH as SPACEX_CSV, load_all as load_spacex_all
 from spacex_render import panel_html as spacex_panel_html, stats as spacex_stats
 from version import __version__
@@ -53,6 +55,7 @@ NEWS_DIR = DOCS_DIR / "news"
 PANELS = [
     {
         "id": "dram",
+        "group": "finance",
         "kind": "chart",
         "tab": "DRAM",
         "title": "DRAM 現貨報價趨勢",
@@ -71,6 +74,7 @@ PANELS = [
     },
     {
         "id": "bond",
+        "group": "finance",
         "kind": "chart",
         "tab": "美債",
         "title": "美國公債殖利率",
@@ -89,6 +93,7 @@ PANELS = [
     },
     {
         "id": "gold",
+        "group": "finance",
         "kind": "chart",
         "tab": "黃金",
         "title": "國際金價",
@@ -107,6 +112,7 @@ PANELS = [
     },
     {
         "id": "calendar",
+        "group": "finance",
         "kind": "calendar",
         "tab": "行事曆",
         "title": "財經行事曆",
@@ -125,6 +131,7 @@ PANELS = [
     },
     {
         "id": "f1",
+        "group": "sport",
         "kind": "calendar",
         "tab": "F1",
         "title": "F1 賽程表",
@@ -143,6 +150,7 @@ PANELS = [
     },
     {
         "id": "spacex",
+        "group": "finance",
         "kind": "calendar",
         "tab": "SpaceX",
         "title": "SpaceX 發射排程",
@@ -161,6 +169,7 @@ PANELS = [
     },
     {
         "id": "news",
+        "group": "finance",
         "kind": "calendar",
         "tab": "新聞",
         "title": "新聞",
@@ -178,6 +187,31 @@ PANELS = [
                 '<line x1="7" y1="12" x2="14" y2="12"/>'
                 '<line x1="7" y1="15" x2="11" y2="15"/>',
     },
+    {
+        "id": "notes",
+        "group": "finance",
+        "kind": "calendar",
+        "tab": "筆記",
+        "title": "筆記",
+        "meta": NOTES_META,
+        "source_name": "本機瀏覽器",
+        "source_url": "",
+        "csv": None,
+        "load": lambda: {},
+        "render": notes_panel_html,
+        "stats": notes_stats,
+        # 筆記本與筆的圖示
+        "icon": '<path d="M6 3.5h9l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19V5A1.5 1.5 0 0 1 6.5 3.5z"/>'
+                '<polyline points="14.5 3.8 14.5 8 18.8 8"/>'
+                '<line x1="8.5" y1="12" x2="15" y2="12"/>'
+                '<line x1="8.5" y1="15.5" x2="13" y2="15.5"/>',
+    },
+]
+
+# 分頁分成兩組，底部標籤列一次只顯示一組；「設定」不屬於任何一組，永遠在。
+GROUPS = [
+    {"id": "finance", "label": "財經"},
+    {"id": "sport", "label": "運動"},
 ]
 
 CHART_PANELS = [p for p in PANELS if p.get("kind", "chart") == "chart"]
@@ -201,10 +235,12 @@ SETTINGS_ICON = (
 )
 
 
-def _tab_button(tab_id: str, label: str, icon: str, selected: bool) -> str:
+def _tab_button(tab_id: str, label: str, icon: str, selected: bool,
+                group: str = "all") -> str:
     return (
         f'    <button class="tab" type="button" role="tab" data-tab="{tab_id}"\n'
-        f'            aria-selected="{"true" if selected else "false"}"'
+        f'            data-group="{group}"'
+        f' aria-selected="{"true" if selected else "false"}"'
         f' aria-controls="panel-{tab_id}">\n'
         f'      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"\n'
         f'           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{icon}</svg>\n'
@@ -214,11 +250,22 @@ def _tab_button(tab_id: str, label: str, icon: str, selected: bool) -> str:
 
 
 def _tabbar_html() -> str:
-    btns = [_tab_button(p["id"], p["tab"], p["icon"], i == 0)
+    btns = [_tab_button(p["id"], p["tab"], p["icon"], i == 0, p.get("group", "all"))
             for i, p in enumerate(PANELS)]
     btns.append(_tab_button("settings", "設定", SETTINGS_ICON, False))
     return ('<nav class="tabbar" role="tablist" aria-label="主要分頁">\n'
             '    <span class="tab-pill" id="tab-pill" aria-hidden="true"></span>\n'
+            + "\n".join(btns) + "\n  </nav>")
+
+
+def _groupbar_html() -> str:
+    btns = [
+        f'    <button type="button" class="grp" data-group="{g["id"]}"'
+        f' aria-selected="{"true" if i == 0 else "false"}">{g["label"]}</button>'
+        for i, g in enumerate(GROUPS)
+    ]
+    return ('<nav class="groupbar" role="tablist" aria-label="分類">\n'
+            '    <span class="grp-pill" id="grp-pill" aria-hidden="true"></span>\n'
             + "\n".join(btns) + "\n  </nav>")
 
 
@@ -258,6 +305,20 @@ def _settings_cards(stats: dict) -> str:
     cards = []
     for p in PANELS:
         s = stats[p["id"]]
+        if s.get("local"):
+            # 筆記存在讀者自己的瀏覽器，建置時沒有任何數字可寫；
+            # 筆數由頁面上的 JS 讀完 localStorage 後補上。
+            cards.append(f'''    <div class="card">
+      <div class="card-h">
+        <span>{p["title"]}</span>
+        <button class="switch sw-sm" type="button" role="switch" data-panel="{p["id"]}"
+                aria-checked="true" aria-label="顯示{p["tab"]}分頁"><span class="knob"></span></button>
+      </div>
+      <div class="row"><span>筆記則數</span><b id="notes-count">—</b></div>
+      <div class="row"><span>儲存位置</span><b>{s["range"]}</b></div>
+      <div class="row"><span>同步</span><b>不會上傳，換裝置看不到</b></div>
+    </div>''')
+            continue
         if p.get("kind", "chart") == "calendar":
             # 各表格分頁的重點數字不同：F1 看站數、SpaceX 看即將發射場次
             extra = ""
@@ -316,12 +377,12 @@ TPL = """<!doctype html>
   :root {
     --bg:#fff; --fg:#212529; --muted:#6c757d; --border:#dee2e6; --hover:rgba(0,0,0,.05);
     --card:#fbfbfc; --bar-bg:rgba(255,255,255,.82); --bar-border:rgba(0,0,0,.09);
-    --pill:rgba(0,0,0,.075); --tab-fg:#6c757d; --accent:#1f9d6b;
+    --pill:rgba(0,0,0,.075); --tab-fg:#6c757d; --accent:#1f9d6b; --danger:#c9453f;
   }
   html[data-theme="dark"] {
     --bg:#1e2130; --fg:#e8e8e8; --muted:#9aa0ac; --border:#333849; --hover:rgba(255,255,255,.07);
     --card:#242839; --bar-bg:rgba(42,47,69,.80); --bar-border:rgba(255,255,255,.10);
-    --pill:rgba(255,255,255,.13); --tab-fg:#9aa0ac; --accent:#4dd4ac;
+    --pill:rgba(255,255,255,.13); --tab-fg:#9aa0ac; --accent:#4dd4ac; --danger:#ff8a80;
   }
   * { box-sizing:border-box; }
   /* hidden 屬性的 UA 預設樣式會被元素自己的 display 規則蓋掉
@@ -347,6 +408,12 @@ TPL = """<!doctype html>
   h1 { font-size:20px; margin:0 0 4px; font-weight:600; }
   .meta { font-size:13px; color:var(--muted); line-height:1.6; }
   .head-right { display:flex; align-items:center; gap:8px; padding-top:1px; }
+  /* 看內文時標題列左邊出現返回鍵；標題列本身是 sticky，捲到哪都按得到 */
+  .head-left { display:flex; gap:8px; align-items:flex-start; min-width:0; }
+  .backbtn { flex:none; margin:-4px 0 0 -6px; padding:4px 6px; border-radius:8px;
+             color:var(--muted); border-color:transparent; background:transparent; }
+  .backbtn:hover { color:var(--fg); }
+  .backbtn svg { width:22px; height:22px; display:block; }
   .ver { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums;
          white-space:nowrap; }
   button { font-family:inherit; color:var(--fg); background:transparent;
@@ -475,6 +542,18 @@ TPL = """<!doctype html>
                       border-radius:999px; padding:1px 8px; font-variant-numeric:tabular-nums; }
   .cal-empty { color:var(--muted); font-size:13px; }
 
+  /* 分類切換：底部標籤列一次只顯示一組分頁 */
+  .groupbar { position:relative; display:flex; gap:4px; margin:0 0 16px;
+              padding:4px; border-radius:999px; background:var(--pill); width:max-content; }
+  .grp { position:relative; z-index:1; font-size:13px; font-weight:600; min-width:74px;
+         padding:6px 16px; border-radius:999px; color:var(--muted); border-color:transparent;
+         background:transparent; }
+  .grp[aria-selected="true"] { color:var(--fg); }
+  .grp-pill { position:absolute; top:4px; bottom:4px; left:0; width:0; border-radius:999px;
+              background:var(--bg); box-shadow:0 1px 3px rgba(0,0,0,.12);
+              transition:transform .22s cubic-bezier(.4,0,.2,1), width .22s cubic-bezier(.4,0,.2,1); }
+  .grp-pill.no-anim { transition:none; }
+
   /* 二階分頁 */
   /* 來源多的時候（新聞有 5 個）橫向捲動，不要把標籤擠成直排 */
   .subtabs { display:flex; gap:6px; margin-bottom:14px; overflow-x:auto;
@@ -522,9 +601,6 @@ TPL = """<!doctype html>
   .news-title { display:block; font-size:14px; line-height:1.5; }
   .news-meta { display:block; font-size:11px; color:var(--muted); margin-top:3px; }
   .news-article { padding-top:2px; }
-  .news-back { font-size:13px; padding:6px 12px; border-radius:8px; color:var(--muted);
-               margin-bottom:14px; }
-  .news-back:hover { color:var(--fg); border-color:var(--muted); }
   .news-h { font-size:18px; line-height:1.45; margin:0 0 6px; font-weight:600; }
   .news-body { margin-top:14px; }
   .news-body p { font-size:15px; line-height:1.8; margin:0 0 14px; }
@@ -532,6 +608,31 @@ TPL = """<!doctype html>
   .news-link { display:inline-block; margin-top:4px; font-size:13px; color:var(--accent); }
   .news-more { display:block; width:100%; margin-top:14px; padding:12px;
                font-size:13px; color:var(--muted); border-radius:10px; }
+
+  /* 筆記：清單與編輯 */
+  .notes-item { display:block; width:100%; text-align:left; padding:12px 2px;
+                box-shadow:inset 0 -1px 0 var(--border); border-color:transparent;
+                border-radius:0; -webkit-tap-highlight-color:transparent; }
+  .notes-item:hover { background:var(--hover); }
+  .notes-t { display:block; font-size:15px; line-height:1.5; }
+  .notes-sub { display:block; font-size:11px; color:var(--muted); margin-top:3px;
+               overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .notes-empty { color:var(--muted); font-size:13px; padding:18px 2px; }
+  .notes-new { width:100%; margin-top:14px; padding:12px; border-radius:10px;
+               font-size:14px; color:var(--accent); border-style:dashed; }
+  .notes-title { width:100%; font-size:18px; font-weight:600; padding:8px 10px;
+                 border-radius:10px; background:var(--bg); color:var(--fg);
+                 border:1px solid var(--border); }
+  .notes-body { width:100%; margin-top:10px; padding:10px; border-radius:10px;
+                font-size:15px; line-height:1.8; resize:vertical;
+                background:var(--bg); color:var(--fg); border:1px solid var(--border);
+                font-family:inherit; }
+  .notes-title:focus, .notes-body:focus { outline:none; border-color:var(--accent); }
+  .notes-foot { display:flex; align-items:center; justify-content:space-between;
+                gap:12px; margin-top:12px; }
+  .notes-saved { font-size:12px; color:var(--muted); }
+  .notes-del { font-size:13px; padding:7px 14px; border-radius:8px; color:var(--danger); }
+  .notes-del:hover { border-color:var(--danger); }
 
   /* 底部標籤列 */
   /* 分頁再增加時標籤列會塞不下，允許橫向捲動當保險（塞得下時不會出現捲軸）*/
@@ -581,9 +682,17 @@ TPL = """<!doctype html>
 <body>
 <div class="wrap">
   <header>
-    <div>
-      <h1 id="page-title">__TITLE0__</h1>
-      <div class="meta" id="page-meta">__META0__</div>
+    <div class="head-left">
+      <button id="back" class="backbtn" type="button" aria-label="返回列表" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
+      <div>
+        <h1 id="page-title">__TITLE0__</h1>
+        <div class="meta" id="page-meta">__META0__</div>
+      </div>
     </div>
     <div class="head-right">
       <button id="reload" class="iconbtn" type="button" title="重新載入" aria-label="重新載入">
@@ -596,6 +705,8 @@ TPL = """<!doctype html>
       <span class="ver">__VERSION__</span>
     </div>
   </header>
+
+  __GROUPBAR__
 
 __CHART_PANELS__
 
@@ -836,6 +947,20 @@ window.addEventListener('scroll', function () {
 
 window.addEventListener('resize', syncSticky);
 
+// ── 標題列的返回鍵 ─────────────────────────────────────────
+// 分頁內部有「進到某一則」的檢視時（新聞內文、筆記編輯）登記回去的動作，
+// 按鍵就跟著標題一起釘在畫面上方，捲到內文中段也按得到。
+var backBtn = document.getElementById('back');
+var backAction = null;
+
+function setBack(fn) {
+  backAction = fn;
+  backBtn.hidden = !fn;
+  syncSticky();
+}
+
+backBtn.addEventListener('click', function () { if (backAction) backAction(); });
+
 // ── 底部標籤列 ─────────────────────────────────────────────
 var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
 var pill = document.getElementById('tab-pill');
@@ -851,6 +976,7 @@ function movePill(btn, animate) {
 }
 
 function selectTab(name, animate) {
+  setBack(null);            // 換分頁就離開內文檢視
   tabs.forEach(function (t) {
     var on = t.dataset.tab === name;
     t.setAttribute('aria-selected', String(on));
@@ -885,6 +1011,35 @@ window.addEventListener('resize', function () {
   if (cur) movePill(cur, false);
 });
 
+// ── 分類（財經／運動）─────────────────────────────────────
+// 底部標籤列一次只顯示一組分頁；「設定」的 data-group 是 all，永遠在。
+var grps = Array.prototype.slice.call(document.querySelectorAll('.grp'));
+var grpPill = document.getElementById('grp-pill');
+var curGroup = grps.length ? grps[0].dataset.group : 'all';
+
+function inGroup(tab) {
+  return tab.dataset.group === 'all' || tab.dataset.group === curGroup;
+}
+
+function selectGroup(name, animate) {
+  curGroup = name;
+  grps.forEach(function (g) {
+    var on = g.dataset.group === name;
+    g.setAttribute('aria-selected', String(on));
+    if (on) {
+      if (!animate) grpPill.classList.add('no-anim');
+      grpPill.style.width = g.offsetWidth + 'px';
+      grpPill.style.transform = 'translateX(' + (g.offsetLeft - 4) + 'px)';
+      if (!animate) { void grpPill.offsetWidth; grpPill.classList.remove('no-anim'); }
+    }
+  });
+  applyVisibility(true);      // 換組後標籤列的內容變了，可能要換分頁
+}
+
+grps.forEach(function (g) {
+  g.addEventListener('click', function () { selectGroup(g.dataset.group, true); });
+});
+
 // ── 分頁顯示切換（設定分頁裡每張卡片右上角的開關）───────────
 var VIS_KEY = 'dash-visible';
 var visible = {};
@@ -897,7 +1052,7 @@ function applyVisibility(reselect) {
   PANEL_IDS.forEach(function (id) {
     var on = isVisible(id);
     var tab = document.querySelector('.tab[data-tab="' + id + '"]');
-    if (tab) tab.hidden = !on;
+    if (tab) tab.hidden = !on || !inGroup(tab);   // 關掉的、或不屬於這一組的
     var sw = document.querySelector('.switch[data-panel="' + id + '"]');
     if (sw) sw.setAttribute('aria-checked', String(on));
     if (!on) {
@@ -1365,6 +1520,7 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
       article.dataset.n = li.dataset.n;
       fill(li);
     }
+    setBack(li ? function () { show(null); } : null);
     window.scrollTo(0, 0);
     syncSticky();
   }
@@ -1400,12 +1556,167 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
     sentinel.addEventListener('click', extend);   // 沒有 IO 時仍可手動載入
   }
 
-  article.querySelector('.news-back').addEventListener('click', function () { show(null); });
-
   // 切走再回來時回到清單，不要停在上次看的那一篇
   var subtab = document.querySelector('.subtab[data-sub="' + sourceId + '"]');
   if (subtab) subtab.addEventListener('click', function () { show(null); });
 });
+
+// ── 筆記：存在 localStorage，不上傳 ─────────────────────────
+(function () {
+  var panel = document.getElementById('panel-notes');
+  if (!panel) return;
+
+  var KEY = 'dash-notes';
+  var listBox = panel.querySelector('.notes-list');
+  var emptyMsg = panel.querySelector('.notes-empty');
+  var newBtn = panel.querySelector('.notes-new');
+  var editBox = panel.querySelector('.notes-edit');
+  var titleIn = panel.querySelector('.notes-title');
+  var bodyIn = panel.querySelector('.notes-body');
+  var savedMsg = panel.querySelector('.notes-saved');
+  var delBtn = panel.querySelector('.notes-del');
+  var notes = [];
+  var editing = null;      // 正在編輯的筆記 id
+  var timer = null;
+
+  function load() {
+    try { notes = JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { notes = []; }
+    if (!Array.isArray(notes)) notes = [];
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(notes));
+      return true;
+    } catch (e) {
+      // 隱私模式或空間滿了
+      savedMsg.textContent = '存不進去（瀏覽器不允許或空間已滿）';
+      return false;
+    }
+  }
+
+  function stamp(ms) {
+    var d = new Date(ms);
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+    return (d.getMonth() + 1) + '/' + pad(d.getDate()) + ' ' +
+           pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function byId(id) {
+    for (var i = 0; i < notes.length; i++) { if (notes[i].id === id) return notes[i]; }
+    return null;
+  }
+
+  function renderCount() {
+    var el = document.getElementById('notes-count');
+    if (el) el.textContent = notes.length + ' 則';
+  }
+
+  function renderList() {
+    listBox.textContent = '';
+    notes.slice().sort(function (a, b) { return b.updated - a.updated; })
+      .forEach(function (n) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'notes-item';
+        var t = document.createElement('span');
+        t.className = 'notes-t';
+        t.textContent = n.title || '未命名筆記';
+        var sub = document.createElement('span');
+        sub.className = 'notes-sub';
+        var preview = (n.body || '').split(String.fromCharCode(10))[0];
+        sub.textContent = stamp(n.updated) + (preview ? '　' + preview : '');
+        btn.appendChild(t);
+        btn.appendChild(sub);
+        btn.addEventListener('click', function () { open(n.id); });
+        listBox.appendChild(btn);
+      });
+    emptyMsg.hidden = notes.length > 0;
+    renderCount();
+  }
+
+  function showList() {
+    editing = null;
+    if (timer) { clearTimeout(timer); timer = null; flush(); }
+    editBox.hidden = true;
+    listBox.hidden = false;
+    emptyMsg.hidden = notes.length > 0;
+    newBtn.hidden = false;
+    renderList();
+    setBack(null);
+    window.scrollTo(0, 0);
+    syncSticky();
+  }
+
+  function open(id) {
+    var n = byId(id);
+    if (!n) return;
+    editing = id;
+    titleIn.value = n.title || '';
+    bodyIn.value = n.body || '';
+    savedMsg.textContent = '上次編輯 ' + stamp(n.updated);
+    listBox.hidden = true;
+    emptyMsg.hidden = true;
+    newBtn.hidden = true;
+    editBox.hidden = false;
+    setBack(showList);
+    window.scrollTo(0, 0);
+    syncSticky();
+  }
+
+  function flush() {
+    var n = byId(editing);
+    if (!n) return;
+    n.title = titleIn.value;
+    n.body = bodyIn.value;
+    n.updated = Date.now();
+    if (save()) savedMsg.textContent = '已儲存 ' + stamp(n.updated);
+  }
+
+  function touched() {
+    if (!editing) return;
+    savedMsg.textContent = '編輯中…';
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(function () { timer = null; flush(); }, 500);
+  }
+
+  titleIn.addEventListener('input', touched);
+  bodyIn.addEventListener('input', touched);
+
+  newBtn.addEventListener('click', function () {
+    var n = {id: String(Date.now()) + Math.random().toString(36).slice(2, 7),
+             title: '', body: '', updated: Date.now()};
+    notes.push(n);
+    save();
+    open(n.id);
+    titleIn.focus();
+  });
+
+  delBtn.addEventListener('click', function () {
+    var n = byId(editing);
+    if (!n) return;
+    var name = n.title || '這則未命名筆記';
+    if (!window.confirm('確定要刪除「' + name + '」嗎？刪掉就找不回來了。')) return;
+    notes = notes.filter(function (x) { return x.id !== editing; });
+    editing = null;
+    if (timer) { clearTimeout(timer); timer = null; }
+    save();
+    showList();
+  });
+
+  // 換到別的分頁、或關掉頁面時，把還沒寫進去的內容存好
+  window.addEventListener('pagehide', function () { if (editing) flush(); });
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      if (editing) flush();
+      // 回到筆記分頁時從清單開始，不要停在上次編輯的那一則
+      if (t.dataset.tab === 'notes') showList();
+    });
+  });
+
+  load();
+  renderList();
+})();
 
 // ── 重新載入 ───────────────────────────────────────────────
 // GitHub Pages 的 CDN 會把頁面快取約 10 分鐘，單純 location.reload() 常常
@@ -1425,7 +1736,7 @@ try {
 
 document.querySelectorAll('.legend-bar').forEach(buildLegend);
 applyTheme();
-applyVisibility(false);
+selectGroup(curGroup, false);
 var firstTab = tabs.filter(function (t) { return !t.hidden; })[0];
 selectTab(firstTab ? firstTab.dataset.tab : 'settings', false);   // 只會畫出這一張圖
 syncSticky();
@@ -1485,10 +1796,10 @@ def build() -> Path:
         if p.get("kind", "chart") == "calendar":
             panel_data[p["id"]] = p["load"]()
             stats[p["id"]] = p["stats"](panel_data[p["id"]])
-            head[p["id"]] = {
-                "title": p["title"],
-                "meta": f'{p["meta"]}<br>最後更新日：{stats[p["id"]]["latest"]}',
-            }
+            # 本機資料（筆記）沒有「最後更新日」可寫
+            suffix = ("" if stats[p["id"]].get("local")
+                      else f'<br>最後更新日：{stats[p["id"]]["latest"]}')
+            head[p["id"]] = {"title": p["title"], "meta": f'{p["meta"]}{suffix}'}
             continue
 
         df = p["load"]()
@@ -1519,7 +1830,8 @@ def build() -> Path:
     first = PANELS[0]
 
     html = (
-        TPL.replace("__CHART_PANELS__", _panels_html(panel_data))
+        TPL.replace("__GROUPBAR__", _groupbar_html())
+           .replace("__CHART_PANELS__", _panels_html(panel_data))
            .replace("__SETTINGS_CARDS__", _settings_cards(stats))
            .replace("__TABBAR__", _tabbar_html())
            .replace("__CHARTS__", json.dumps(charts, ensure_ascii=False, separators=(",", ":")))
