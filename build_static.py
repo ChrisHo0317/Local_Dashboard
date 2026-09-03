@@ -967,6 +967,51 @@ function setBack(fn) {
 
 backBtn.addEventListener('click', function () { if (backAction) backAction(); });
 
+// 右滑等於按返回鍵 —— 只在有東西可返回時才理會。
+(function () {
+  var SWIPE = 70;        // 至少要滑這麼多 px 才算
+  var IN_FIELD = 130;    // 起點在輸入框裡就要滑更長 —— 那裡也可能是在移游標
+  var SLOPE = 1.6;       // 橫向位移要明顯大於縱向，避免捲動時誤觸
+  var LIMIT = 700;       // 超過這個時間就當成慢慢拖，不是滑動手勢
+  var x0 = 0, y0 = 0, t0 = 0, tracking = false, inField = false;
+
+  // 起點在會橫向捲動的東西上（標籤列、子分頁列）就讓它自己捲
+  function scrollsX(node) {
+    while (node && node !== document.body) {
+      if (node.scrollWidth > node.clientWidth + 4) {
+        var ov = getComputedStyle(node).overflowX;
+        if (ov === 'auto' || ov === 'scroll') return true;
+      }
+      node = node.parentElement;
+    }
+    return false;
+  }
+
+  document.addEventListener('touchstart', function (e) {
+    tracking = false;
+    if (!backAction || e.touches.length !== 1) return;
+    var el = e.target;
+    if (scrollsX(el)) return;
+    // 筆記編輯時畫面中央整片都是輸入框，完全不理會等於滑不動；
+    // 改成一樣可以滑，但門檻拉高，才不會跟移游標混在一起
+    inField = !!(el.closest && el.closest('input, textarea, select'));
+    x0 = e.touches[0].clientX;
+    y0 = e.touches[0].clientY;
+    t0 = Date.now();
+    tracking = true;
+  }, {passive: true});
+
+  document.addEventListener('touchend', function (e) {
+    if (!tracking) return;
+    tracking = false;
+    if (!backAction || Date.now() - t0 > LIMIT) return;
+    var t = e.changedTouches[0];
+    var dx = t.clientX - x0;
+    var dy = t.clientY - y0;
+    if (dx > (inField ? IN_FIELD : SWIPE) && dx > Math.abs(dy) * SLOPE) backAction();
+  }, {passive: true});
+})();
+
 // ── 底部標籤列 ─────────────────────────────────────────────
 var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
 var pill = document.getElementById('tab-pill');
