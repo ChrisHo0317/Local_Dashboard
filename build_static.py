@@ -507,13 +507,19 @@ TPL = """<!doctype html>
   .grp-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .grp-main { font-size:12px; font-weight:600; color:var(--fg); }
   .grp-sub { font-size:11px; font-weight:400; color:var(--muted); margin-top:1px; }
-  .grp-chev { font-size:10px; color:var(--muted); transition:transform .15s; flex:none; }
-  /* 可摺疊的分組：整列可點，收合時只留標題 */
-  .cal-day.collapsible .cal-day-row th { cursor:pointer; user-select:none;
-                                        -webkit-tap-highlight-color:transparent; }
-  .cal-day.collapsible .cal-day-row th[aria-expanded="false"] .grp-chev {
-    transform:rotate(-90deg); }
-  .cal-day.collapsed .cal-row, .cal-day.collapsed .cal-now { display:none; }
+  .grp-chev { font-size:15px; color:var(--muted); flex:none; }
+  /* 可鑽入的分組（F1）：清單模式只列大獎賽，點標題列才進到那一站 */
+  .cal-table.list-mode thead,
+  .cal-table.list-mode .cal-row,
+  .cal-table.list-mode .cal-now { display:none; }
+  .cal-table.list-mode .cal-day.drill .cal-day-row th {
+    cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent;
+    position:static; padding:13px 4px; }
+  .cal-table.list-mode .cal-day.drill .cal-day-row th:hover { background:var(--hover); }
+  .cal-table.list-mode .grp-main { font-size:14px; }
+  .cal-table.list-mode .grp-sub { font-size:12px; }
+  /* 進到某一站之後大獎賽名稱已經在頁面標頭上，表格裡就不用再寫一次 */
+  .cal-table:not(.list-mode) .cal-day.drill .cal-day-row { display:none; }
   /* 日期釘在表頭下方，捲到下一天才換掉 */
   .cal-day-row th { position:sticky; top:calc(var(--head-h,0px) + var(--thead-h,0px));
                     z-index:2; font-size:12px; font-weight:600; color:var(--fg);
@@ -1319,6 +1325,8 @@ function initCalendarTable(table) {
   }
 
   function applyFilter() {
+    // 清單模式（F1）看的是大獎賽標題，就算場次全被篩掉也要留著那一列
+    var listMode = table.classList.contains('list-mode');
     days.forEach(function (d) {
       var shown = 0;
       Array.prototype.slice.call(d.querySelectorAll('.cal-row')).forEach(function (row) {
@@ -1326,7 +1334,7 @@ function initCalendarTable(table) {
         row.hidden = !on;
         if (on) shown++;
       });
-      d.hidden = (shown === 0);
+      d.hidden = d.dataset.off === '1' || (!listMode && shown === 0);
     });
   }
 
@@ -1349,38 +1357,58 @@ function initCalendarTable(table) {
     });
   });
 
-  // ── 可摺疊的分組（F1 賽程用）──────────────────────────
-  // 預設只展開「進行中或下一場」那一組，整季 20 幾站才不會一次全部攤開。
-  var collapsible = days.filter(function (d) { return d.classList.contains('collapsible'); });
-  if (collapsible.length) {
-    collapsible.forEach(function (d) {
-      var th = d.querySelector('.cal-day-row th');
-      function toggle() {
-        var open = d.classList.toggle('collapsed') === false;
-        th.setAttribute('aria-expanded', String(open));
-        placeNow();
-        syncSticky();
+  // ── 可鑽入的分組（F1 賽程用）──────────────────────────
+  // 清單只列出每一場大獎賽，點進去才看那一站的場次表；整季 20 幾站
+  // 全部攤開在同一頁反而難找。用的是同一張表，切換的是要顯示哪些列。
+  var drill = days.filter(function (d) { return d.classList.contains('drill'); });
+  if (drill.length) {
+    var subtab = panel ? panel.querySelector('.subtab[data-sub="sched"]') : null;
+
+    var filterBar = panel ? panel.querySelector('.cal-filter') : null;
+
+    // 只切換要顯示哪些列。不動頁面標頭 —— 切到別的分頁時標頭已經由
+    // selectTab 換好了，這裡再寫一次會把它蓋掉。
+    function applyRace(target) {
+      table.classList.toggle('list-mode', !target);
+      drill.forEach(function (d) { d.dataset.off = (target && d !== target) ? '1' : ''; });
+      if (filterBar) filterBar.hidden = !target;   // 清單上沒有場次可篩
+      setBack(target ? function () { showRace(null); } : null);
+      refresh();
+    }
+
+    function showRace(target) {
+      applyRace(target);
+      var src = target || subtab;
+      if (src) {
+        document.getElementById('page-title').textContent = src.dataset.title;
+        document.getElementById('page-meta').innerHTML = src.dataset.meta;
       }
-      th.addEventListener('click', toggle);
+      window.scrollTo(0, 0);
+      syncSticky();
+    }
+
+    drill.forEach(function (d) {
+      var th = d.querySelector('.cal-day-row th');
+      th.addEventListener('click', function () {
+        if (table.classList.contains('list-mode')) showRace(d);
+      });
       th.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+        if ((e.key === 'Enter' || e.key === ' ') && table.classList.contains('list-mode')) {
+          e.preventDefault();
+          showRace(d);
+        }
       });
     });
 
-    var now = Date.now();
-    var target = null;
-    for (var gi = 0; gi < collapsible.length && !target; gi++) {
-      var rs = collapsible[gi].querySelectorAll('.cal-row');
-      for (var ri = 0; ri < rs.length; ri++) {
-        if (Number(rs[ri].dataset.ts) > now) { target = collapsible[gi]; break; }
-      }
-    }
-    if (!target) target = collapsible[collapsible.length - 1];   // 賽季已結束就開最後一站
-    collapsible.forEach(function (d) {
-      var open = (d === target);
-      d.classList.toggle('collapsed', !open);
-      d.querySelector('.cal-day-row th').setAttribute('aria-expanded', String(open));
+    // 切走再回來（換主分頁或子分頁）時回到清單
+    if (subtab) subtab.addEventListener('click', function () { showRace(null); });
+    tabs.forEach(function (t) {
+      t.addEventListener('click', function () {
+        if (!table.classList.contains('list-mode')) applyRace(null);
+      });
     });
+
+    applyRace(null);
   }
 
   refresh();

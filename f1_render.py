@@ -136,15 +136,16 @@ def _schedule_html(df: pd.DataFrame) -> str:
         if last_day != first_day:
             span += f" – {last_day.month}/{last_day.day:02d}"
 
+        # 標題列在清單模式是「進入這一站」的按鈕，詳細模式則是這一站的抬頭
         rows = [
             '        <tr class="cal-day-row"><th colspan="3" scope="rowgroup"'
-            ' role="button" tabindex="0" aria-expanded="true">\n'
+            ' role="button" tabindex="0">\n'
             '          <div class="grp-head">\n'
             '            <div>\n'
             f'              <div class="grp-main">R{escape(rnd)}　{escape(race)}</div>\n'
             f'              <div class="grp-sub">{escape(location)} · {span}</div>\n'
             '            </div>\n'
-            '            <span class="grp-chev">&#9660;</span>\n'
+            '            <span class="grp-chev">&#8250;</span>\n'
             '          </div>\n'
             '        </th></tr>'
         ]
@@ -168,13 +169,16 @@ def _schedule_html(df: pd.DataFrame) -> str:
             )
 
         # data-date 給「已過去」判斷用：整站最後一個場次的日期
+        # data-title / data-meta：進到這一站時要放到頁面標頭的字
         bodies.append(
-            f'      <tbody class="cal-day collapsible" data-date="{last_day.isoformat()}">\n'
+            f'      <tbody class="cal-day drill" data-date="{last_day.isoformat()}"'
+            f' data-title="R{escape(rnd)}　{escape(race)}"'
+            f' data-meta="{escape(location)} · {span}　·　時間為台北時間（UTC+8）">\n'
             + "\n".join(rows) + "\n      </tbody>"
         )
 
     table = (
-        '    <table class="cal-table">\n'
+        '    <table class="cal-table list-mode">\n'
         '      <thead>\n'
         '        <tr><th class="cal-when">日期時間</th>'
         '<th class="cal-imp"><span class="sr">場次類型</span></th>'
