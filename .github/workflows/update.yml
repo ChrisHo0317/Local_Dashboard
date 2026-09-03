@@ -27,7 +27,8 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Fetch latest prices and rebuild page
-        run: python update_data.py
+        # 新聞不在這裡跑，它有自己的十分鐘排程（news.yml）
+        run: python update_data.py dram bonds gold calendar f1 f1standings spacex
 
       - name: Commit if changed
         run: |

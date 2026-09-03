@@ -1,0 +1,55 @@
+name: Update news
+
+# 新聞跟行情不同，一天更新一次等於永遠在看昨天的頭條，所以獨立一個排程。
+# 只抓清單上新出現的文章的內文（看過的沿用 CSV），每次通常只有幾篇要抓。
+#
+# 注意：GitHub 的排程本來就不準，尤其這種高頻的 cron，實際間隔可能是
+# 十幾分鐘到半小時；加上 Pages 的 CDN 快取，手機上看到的還會再晚一些。
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# 上一輪還沒跑完就不要再開一輪
+concurrency:
+  group: update-news
+  cancel-in-progress: false
+
+jobs:
+  news:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch news and rebuild page
+        run: python update_data.py news
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- data/news_articles.csv docs/index.html docs/news; then
+            echo "無新新聞，略過 commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/news_articles.csv docs/index.html docs/news
+          git commit -m "chore: 更新新聞 ($(date -u +'%Y-%m-%d %H:%M') UTC)"
+          # 每日的行情排程可能同時在推。衝突就放棄這一輪 ——
+          # 十分鐘後會再跑一次，硬解衝突反而可能推出壞掉的頁面。
+          if ! git pull --rebase origin main; then
+            git rebase --abort || true
+            echo "與遠端衝突，本輪放棄"
+            exit 0
+          fi
+          git push

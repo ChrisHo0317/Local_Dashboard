@@ -72,19 +72,24 @@ class NewsScraper:
         self.session = cffi_requests.Session(impersonate="chrome124")
 
     # ── 對外 ────────────────────────────────────────────────
-    def fetch_all(self) -> list[dict]:
-        """抓所有來源，回傳合併後的文章列表。單一來源失敗不影響其他來源。"""
+    def fetch_all(self, known: dict | None = None) -> list[dict]:
+        """抓所有來源，回傳合併後的文章列表。單一來源失敗不影響其他來源。
+
+        known 是「已經抓過的文章」{網址: {body, published}}（見 news_data）。
+        清單上已經看過的就沿用舊內文，不再連文章頁 —— 排程每十分鐘跑一次，
+        每次都把兩百多篇重抓一遍，對方的站遲早會擋人。
+        """
         rows = []
         for source in SOURCES:
             try:
-                got = self.fetch_source(source)
+                got = self.fetch_source(source, known)
             except Exception as e:
                 self.logger.error(f"{source['label']}：抓取失敗 {e}")
                 continue
             rows.extend(got)
         return rows
 
-    def fetch_source(self, source: dict) -> list[dict]:
+    def fetch_source(self, source: dict, known: dict | None = None) -> list[dict]:
         readers = {"rss": self._from_rss, "html": self._from_html, "wp": self._from_wp}
         items = readers[source["kind"]](source)
         # 同一則新聞可能以不同網址在清單上出現兩次（不同分類或不同排版位置），
@@ -101,14 +106,20 @@ class NewsScraper:
             self.logger.warning(f"{source['label']}：清單沒有抓到任何文章")
             return []
 
-        rows = []
+        known = known or {}
+        rows, fetched = [], 0
         for order, item in enumerate(items):
             published = item.get("published", "")
+            seen_before = known.get(item["url"])
             if "body" in item:              # WP API 已經把內文一起帶回來了
                 body = item["body"]
+            elif seen_before and seen_before["body"]:
+                body = seen_before["body"]              # 抓過了，沿用
+                published = published or seen_before["published"]
             else:
-                if order:
+                if fetched:
                     time.sleep(REQUEST_GAP)  # 連抓幾十篇會被限流，隔一下
+                fetched += 1
                 body, found = self._fetch_article(item["url"])
                 # 清單上沒有時間的來源（HTML 清單），時間得從文章頁拿
                 published = published or found
@@ -123,7 +134,8 @@ class NewsScraper:
 
         with_body = sum(1 for r in rows if r["body"])
         self.logger.info(
-            f"{source['label']}：{len(rows)} 則（{with_body} 則取得內文）"
+            f"{source['label']}：{len(rows)} 則（{with_body} 則有內文，"
+            f"本次新抓 {fetched} 篇）"
         )
         return rows
 

@@ -176,7 +176,25 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 ## 自動更新
 
-`.github/workflows/update.yml` 每日 UTC 01:00（台灣 09:00）執行 `update_data.py`，有新報價才 commit。也可在 Actions 分頁手動觸發。
+兩個排程：
+
+| Workflow | 頻率 | 做什麼 |
+|----------|------|--------|
+| `update.yml` | 每日 UTC 01:00（台灣 09:00）| 行情、行事曆、F1、SpaceX |
+| `news.yml` | 每 10 分鐘 | 只更新新聞 |
+
+兩者都有新資料才 commit，也都可在 Actions 分頁手動觸發。
+
+新聞另外排程是因為一天更新一次等於永遠在看昨天的頭條。為了撐得起這個頻率，
+抓取是**增量**的：清單上已經看過的文章直接沿用 CSV 裡的內文，只有新出現的
+才連文章頁 —— 一輪通常只有幾篇要抓，十幾秒就跑完（第一次或整批換新時才會久）。
+
+`python update_data.py news` 可以只跑新聞；不帶參數則全跑。可用的項目有
+`dram bonds gold calendar f1 f1standings spacex news`。
+
+> GitHub 的排程本來就不準，高頻的 cron 尤其如此，實際間隔可能是十幾分鐘到半小時；
+> 加上 Pages 的 CDN 快取（約 10 分鐘），手機上看到的還會再晚一些。按右上角的
+> 重新載入圖示會帶一次性參數，可以繞過快取。
 
 > GitHub Actions 使用資料中心 IP，TrendForce 的 Cloudflare 有可能擋下請求。`update_data.py` 在抓不到資料時只印警告並正常結束，不會讓 workflow 變紅，也不會覆寫既有 CSV。若長期無法在雲端爬取，可改於本機排程執行 `update_data.py` 後推送。
 
@@ -189,7 +207,7 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 ## 版本
 
-目前 **v0.3.026**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
+目前 **v0.3.027**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
 
 格式 `vMAJOR.MINOR.PATCH`，PATCH 固定三位數。**一般改動一律只遞增 PATCH**；前兩組除非明確指示否則不變更。改 `version.py` 後重跑 `build_static.py` 即可。
 

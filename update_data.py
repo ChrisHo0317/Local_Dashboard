@@ -23,7 +23,7 @@ from f1_data import (CSV_PATH as F1_CSV, SERIES_CSV, STANDINGS_CSV,
 from f1_scraper import F1CalendarScraper, F1StandingsScraper
 from gold_data import CSV_PATH as GOLD_CSV, merge_prices as merge_gold
 from gold_scraper import YahooGoldScraper
-from news_data import CSV_PATH as NEWS_CSV, merge_news
+from news_data import CSV_PATH as NEWS_CSV, known_articles, merge_news
 from news_scraper import NewsScraper
 from scraper import TrendForceScraper
 from spacex_data import CSV_PATH as SPACEX_CSV, merge_launches
@@ -145,8 +145,12 @@ def update_spacex() -> int:
 
 
 def update_news() -> int:
-    """新聞：每天換一批，整批取代。單一來源失敗不影響其他來源。"""
-    rows = NewsScraper(logger=log).fetch_all()
+    """新聞：逐來源取代。單一來源失敗不影響其他來源。
+
+    只抓清單上新出現的文章的內文，看過的沿用 CSV 裡的 —— 這個排程
+    十分鐘跑一次，每次重抓兩百多篇會被對方當成濫用。
+    """
+    rows = NewsScraper(logger=log).fetch_all(known_articles())
     if not rows:
         log.warning("新聞：所有來源都沒有抓到文章，本次不更新")
         return 0
@@ -156,10 +160,32 @@ def update_news() -> int:
     return changed
 
 
-def main() -> int:
-    added = (update_dram() + update_bonds() + update_gold()
-             + update_calendar() + update_f1() + update_f1_standings()
-             + update_spacex() + update_news())
+# 命令列可以只跑其中一項：python update_data.py news
+JOBS = {
+    "dram": update_dram,
+    "bonds": update_bonds,
+    "gold": update_gold,
+    "calendar": update_calendar,
+    "f1": update_f1,
+    "f1standings": update_f1_standings,
+    "spacex": update_spacex,
+    "news": update_news,
+}
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = argv if argv is not None else sys.argv[1:]
+    if argv:
+        unknown = [a for a in argv if a not in JOBS]
+        if unknown:
+            log.error(f"不認得的項目：{' '.join(unknown)}；"
+                      f"可用的有 {' '.join(JOBS)}")
+            return 2
+        jobs = [JOBS[a] for a in argv]
+    else:
+        jobs = list(JOBS.values())
+
+    added = sum(job() for job in jobs)
 
     if added == 0:
         log.info("無新資料，略過重建 HTML")

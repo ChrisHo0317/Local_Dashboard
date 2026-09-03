@@ -45,6 +45,17 @@ def latest_date(df: pd.DataFrame) -> str:
     return stamps.max().strftime("%Y-%m-%d")
 
 
+def known_articles() -> dict:
+    """已經抓過的文章 {網址: {body, published}}，給爬蟲判斷哪些不必再抓。"""
+    df = load_news()
+    if df.empty:
+        return {}
+    return {
+        r["url"]: {"body": r["body"], "published": r["published"]}
+        for _, r in df.iterrows() if r["url"]
+    }
+
+
 def merge_news(rows: list[dict]) -> int:
     """逐來源取代，回傳「有異動」時的筆數。
 
