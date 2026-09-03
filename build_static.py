@@ -131,7 +131,7 @@ PANELS = [
     },
     {
         "id": "f1",
-        "group": "sport",
+        "group": "personal",
         "kind": "calendar",
         "tab": "F1",
         "title": "F1 賽程表",
@@ -189,7 +189,7 @@ PANELS = [
     },
     {
         "id": "notes",
-        "group": "finance",
+        "group": "personal",
         "kind": "calendar",
         "tab": "筆記",
         "title": "筆記",
@@ -211,7 +211,7 @@ PANELS = [
 # 分頁分成兩組，底部標籤列一次只顯示一組；「設定」不屬於任何一組，永遠在。
 GROUPS = [
     {"id": "finance", "label": "財經"},
-    {"id": "sport", "label": "運動"},
+    {"id": "personal", "label": "個人追蹤"},
 ]
 
 CHART_PANELS = [p for p in PANELS if p.get("kind", "chart") == "chart"]
@@ -1080,7 +1080,7 @@ function selectGroup(name, animate) {
     if (on) {
       if (!animate) grpPill.classList.add('no-anim');
       grpPill.style.width = g.offsetWidth + 'px';
-      grpPill.style.transform = 'translateX(' + (g.offsetLeft - 4) + 'px)';
+      grpPill.style.transform = 'translateX(' + g.offsetLeft + 'px)';
       if (!animate) { void grpPill.offsetWidth; grpPill.classList.remove('no-anim'); }
     }
   });
