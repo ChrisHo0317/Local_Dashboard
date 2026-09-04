@@ -15,11 +15,13 @@ from html import escape
 
 import pandas as pd
 
+from news_digest import build as build_digest
 from news_sources import SOURCES
 
 TAIPEI = timezone(timedelta(hours=8))
 
 META = "資料來源：各新聞網站　·　點標題可看內文"
+DIGEST_META = "五個來源合併去重、依重要性排序　·　點標題可看內文"
 
 
 def stats(data: dict) -> dict:
@@ -44,12 +46,16 @@ def stats(data: dict) -> dict:
 
 
 def _subtabs_html() -> str:
-    btns = []
-    for i, s in enumerate(SOURCES):
+    btns = [
+        '      <button type="button" class="subtab" data-sub="digest"'
+        f' data-title="今日重點" data-meta="{escape(DIGEST_META)}"'
+        ' aria-selected="true">重點</button>'
+    ]
+    for s in SOURCES:
         btns.append(
             f'      <button type="button" class="subtab" data-sub="{s["id"]}"'
             f' data-title="{escape(s["label"])}" data-meta="{escape(META)}"'
-            f' aria-selected="{"true" if i == 0 else "false"}">{escape(s["label"])}</button>'
+            f' aria-selected="false">{escape(s["label"])}</button>'
         )
     return ('  <div class="subtabs" role="tablist" aria-label="新聞來源">\n'
             + "\n".join(btns) + "\n  </div>")
@@ -112,16 +118,56 @@ def bodies(data: dict) -> dict:
     return out
 
 
+def _digest_html(df: pd.DataFrame) -> str:
+    """重點：跨來源合併去重、依重要性排序後的短清單。"""
+    events = build_digest(df) if not df.empty else []
+    if not events:
+        return ('  <div class="subpanel" data-sub="digest">\n'
+                '    <p class="cal-empty">目前沒有可整理的新聞。</p>\n  </div>')
+
+    items = []
+    for n, e in enumerate(events):
+        when = _when(e["published"])
+        tags = "".join(f'<span class="dg-tag">{escape(t)}</span>' for t in e["topics"])
+        srcs = "／".join(e["sources"])
+        meta = " · ".join(x for x in (when, srcs) if x)
+        summary = (f'          <span class="dg-sum">{escape(e["summary"])}</span>\n'
+                   if e["summary"] else "")
+        items.append(
+            f'      <li class="news-item dg-item" data-n="{e["n"]}"'
+            f' data-source="{e["source"]}"'
+            f' data-body="{"1" if e["hasBody"] else "0"}"'
+            f' data-url="{escape(e["url"])}" role="button" tabindex="0">\n'
+            f'        <span class="news-no">{n + 1}</span>\n'
+            f'        <span class="news-main">\n'
+            f'          <span class="news-title">{escape(e["title"])}</span>\n'
+            f'{summary}'
+            f'          <span class="news-meta">{escape(meta)}'
+            f'{" " + tags if tags else ""}</span>\n'
+            f'        </span>\n'
+            f'      </li>'
+        )
+
+    return ('  <div class="subpanel" data-sub="digest">\n'
+            '    <ul class="news-list">\n' + "\n".join(items) + "\n    </ul>\n"
+            '    <button type="button" class="news-more" hidden>載入更多</button>\n'
+            '    <div class="news-article" hidden>\n'
+            '      <h2 class="news-h"></h2>\n'
+            '      <div class="news-meta"></div>\n'
+            '      <div class="news-body"></div>\n'
+            '      <a class="news-link" target="_blank" rel="noopener">看原文 ↗</a>\n'
+            '    </div>\n  </div>')
+
+
 def panel_html(data: dict) -> str:
     """產生新聞分頁的內容（不含 <section> 外框）。"""
     df = data.get("news", pd.DataFrame())
 
-    body = []
-    for i, source in enumerate(SOURCES):
+    body = [_digest_html(df)]
+    for source in SOURCES:
         part = df[df["source"] == source["id"]] if not df.empty else df
-        hidden = "" if i == 0 else " hidden"
         body.append(
-            f'  <div class="subpanel" data-sub="{source["id"]}"{hidden}>\n'
+            f'  <div class="subpanel" data-sub="{source["id"]}" hidden>\n'
             f'{_source_html(source, part)}\n  </div>'
         )
 

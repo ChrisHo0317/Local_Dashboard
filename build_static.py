@@ -731,6 +731,12 @@ TPL = """<!doctype html>
   .news-title { display:block; font-size:14px; line-height:1.5; }
   .news-meta { display:block; font-size:11px; color:var(--muted); margin-top:3px; }
   .news-article { padding-top:2px; }
+  /* 重點清單：標題下多一句摘要，時間後面掛主題標籤 */
+  .dg-item .news-title { font-weight:500; }
+  .dg-sum { display:block; font-size:12px; line-height:1.6; color:var(--muted);
+            margin-top:5px; }
+  .dg-tag { display:inline-block; margin-left:6px; padding:1px 7px; border-radius:999px;
+            background:var(--pill); color:var(--muted); font-size:10px; }
   .news-h { font-size:18px; line-height:1.45; margin:0 0 6px; font-weight:600; }
   .news-body { margin-top:14px; }
   .news-body p { font-size:15px; line-height:1.8; margin:0 0 14px; }
@@ -2017,27 +2023,30 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
       li.querySelector('.news-meta').textContent;
     article.querySelector('.news-link').href = li.dataset.url;
 
+    // 重點清單混了各家來源，每一則自己說它是哪一家
+    var from = li.dataset.source || sourceId;
+
     if (li.dataset.body !== '1') {
       note('這則新聞抓不到內文（可能是影音報導或需要訂閱），請點下方連結看原文。');
       return;
     }
     note('載入內文中…');
     var want = li.dataset.n;
-    loadBodies(sourceId).then(function (data) {
-      if (article.dataset.n !== want) return;   // 期間又點了別則就別覆蓋
+    loadBodies(from).then(function (data) {
+      if (article.dataset.n !== want || article.dataset.from !== from) return;
       var text = data[want];
       if (!text) { note('這則新聞抓不到內文，請點下方連結看原文。'); return; }
       box.textContent = '';
       text.split(String.fromCharCode(10)).forEach(function (line) {
         if (!line.trim()) return;
         var p = document.createElement('p');
-        p.textContent = line;    // 來自新聞網站的文字，一律當純文字處理
+        p.textContent = line.trim();   // 來自新聞網站的文字，一律當純文字處理
         box.appendChild(p);
       });
       syncSticky();
     }).catch(function () {
       // 離線、或用 file:// 直接開（會被 CORS 擋）時走到這裡
-      if (article.dataset.n === want) {
+      if (article.dataset.n === want && article.dataset.from === from) {
         note('內文載入失敗，請確認網路連線，或點下方連結看原文。');
       }
     });
@@ -2050,6 +2059,7 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
     article.hidden = !li;
     if (li) {
       article.dataset.n = li.dataset.n;
+      article.dataset.from = li.dataset.source || sourceId;
       fill(li);
     }
     setBack(li ? function () { show(null); } : null);
@@ -2643,7 +2653,7 @@ function setStockFocus(target) {
         (r.body || '').split(String.fromCharCode(10)).forEach(function (line) {
           if (!line.trim()) return;
           var p = document.createElement('p');
-          p.textContent = line;
+          p.textContent = line.trim();
           body.appendChild(p);
         });
         if (!body.childElementCount) {
