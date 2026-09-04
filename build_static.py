@@ -208,11 +208,22 @@ PANELS = [
     },
 ]
 
-# 分頁分成兩組，底部標籤列一次只顯示一組；「設定」不屬於任何一組，永遠在。
+# 內建分組：使用者還沒自訂時的預設值。底部標籤列一次只顯示一組，
+# 「設定」不屬於任何一組，永遠在。分組與歸屬都可以在設定裡改，
+# 改完存在瀏覽器（localStorage），所以這裡只是出廠設定。
 GROUPS = [
     {"id": "finance", "label": "財經"},
     {"id": "personal", "label": "個人追蹤"},
 ]
+
+
+def _default_groups() -> list:
+    """把 PANELS 的 group 欄位攤成「分組 → 分頁清單」給前端當預設值。"""
+    return [
+        {"id": g["id"], "label": g["label"],
+         "tabs": [p["id"] for p in PANELS if p.get("group") == g["id"]]}
+        for g in GROUPS
+    ]
 
 CHART_PANELS = [p for p in PANELS if p.get("kind", "chart") == "chart"]
 
@@ -259,14 +270,10 @@ def _tabbar_html() -> str:
 
 
 def _groupbar_html() -> str:
-    btns = [
-        f'    <button type="button" class="grp" data-group="{g["id"]}"'
-        f' aria-selected="{"true" if i == 0 else "false"}">{g["label"]}</button>'
-        for i, g in enumerate(GROUPS)
-    ]
-    return ('<nav class="groupbar" role="tablist" aria-label="分類">\n'
+    # 按鈕由 JS 依使用者的分組設定產生，這裡只留外框與滑動指示器
+    return ('<nav class="groupbar" id="groupbar" role="tablist" aria-label="分類">\n'
             '    <span class="grp-pill" id="grp-pill" aria-hidden="true"></span>\n'
-            + "\n".join(btns) + "\n  </nav>")
+            '  </nav>')
 
 
 def _panels_html(panel_data) -> str:
@@ -560,6 +567,34 @@ TPL = """<!doctype html>
               transition:transform .22s cubic-bezier(.4,0,.2,1), width .22s cubic-bezier(.4,0,.2,1); }
   .grp-pill.no-anim { transition:none; }
 
+  /* 設定裡的分類編輯器 */
+  .ge-group { margin-top:12px; }
+  .ge-group:first-child { margin-top:4px; }
+  .ge-head { display:flex; align-items:center; justify-content:space-between;
+             gap:10px; padding:4px 0 6px; }
+  .ge-name { font-size:13px; font-weight:600; }
+  .ge-acts { display:flex; gap:6px; flex:none; }
+  .ge-btn { font-size:12px; padding:4px 10px; border-radius:8px; color:var(--muted); }
+  .ge-btn:hover { color:var(--fg); }
+  .ge-del:hover { color:var(--danger); border-color:var(--danger); }
+  .ge-list { min-height:38px; border-radius:10px; background:var(--hover); padding:4px; }
+  .ge-item { display:flex; align-items:center; gap:6px; padding:9px 8px;
+             border-radius:8px; background:var(--bg); margin:4px 0;
+             -webkit-tap-highlight-color:transparent; }
+  /* 把手要 touch-action:none，拖曳中的 pointermove 才會持續送到我們手上；
+     其餘區域維持預設，手指落在列上仍然可以正常捲頁面 */
+  .ge-handle { flex:none; color:var(--muted); font-size:16px; cursor:grab;
+               padding:2px 8px; margin:-2px 0; touch-action:none; }
+  .ge-label { font-size:13px; }
+  .ge-empty { margin:6px 4px; font-size:12px; color:var(--muted); }
+  .ge-dragging { opacity:.35; }
+  /* 跟著手指走的那一份 */
+  .ge-ghost { position:fixed; z-index:90; pointer-events:none; margin:0;
+              box-shadow:0 6px 20px rgba(0,0,0,.22); }
+  body.ge-nosel { user-select:none; -webkit-user-select:none; }
+  .ge-add { width:100%; margin-top:14px; padding:10px; border-radius:10px;
+            font-size:13px; color:var(--accent); border-style:dashed; }
+
   /* 二階分頁 */
   /* 來源多的時候（新聞有 5 個）橫向捲動，不要把標籤擠成直排 */
   .subtabs { display:flex; gap:6px; margin-bottom:14px; overflow-x:auto;
@@ -726,6 +761,13 @@ __CHART_PANELS__
       </div>
     </div>
 
+    <div class="card">
+      <div class="card-h">分類</div>
+      <p class="note">長按 ≡ 可以把分頁拖到別的分組，或調整組內順序。</p>
+      <div id="group-editor"></div>
+      <button type="button" class="ge-add" id="group-add">＋ 新增分組</button>
+    </div>
+
 __SETTINGS_CARDS__
 
     <div class="card">
@@ -748,6 +790,8 @@ __SETTINGS_CARDS__
 const CHARTS = __CHARTS__;
 const HEAD   = __HEAD__;           // 各分頁的標題與說明
 const PANEL_IDS = __PANEL_IDS__;   // 可切換顯示的分頁（設定分頁不可關）
+const DEFAULT_GROUPS = __GROUPS__; // 出廠的分組與歸屬（使用者可在設定裡改）
+const TAB_LABELS = __TAB_LABELS__; // 分頁 id → 標籤文字
 const MOBILE_Q = window.matchMedia('(max-width: 820px)');
 
 let dark = false;
@@ -1062,19 +1106,83 @@ window.addEventListener('resize', function () {
   if (cur) movePill(cur, false);
 });
 
-// ── 分類（財經／運動）─────────────────────────────────────
+// ── 分類 ───────────────────────────────────────────────────
 // 底部標籤列一次只顯示一組分頁；「設定」的 data-group 是 all，永遠在。
-var grps = Array.prototype.slice.call(document.querySelectorAll('.grp'));
+// 分組與歸屬都可以在設定裡改，存在 localStorage，所以分類列的按鈕
+// 是依設定產生的，不是產生頁面時寫死的。
+var GROUP_KEY = 'dash-groups';
+var groupBar = document.getElementById('groupbar');
 var grpPill = document.getElementById('grp-pill');
-var curGroup = grps.length ? grps[0].dataset.group : 'all';
+var groups = loadGroups();
+var curGroup = groups.length ? groups[0].id : 'all';
+
+function loadGroups() {
+  var saved = null;
+  try { saved = JSON.parse(localStorage.getItem(GROUP_KEY)); } catch (e) { saved = null; }
+  var list = (saved && Array.isArray(saved.groups)) ? saved.groups : null;
+  if (!list) list = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+
+  // 只留下真的存在的分頁，並確保每個分頁都有歸屬 ——
+  // 改版新增分頁時，舊的設定裡不會有它，沒有這段就會憑空消失。
+  var seen = {};
+  list = list.filter(function (g) { return g && g.id && Array.isArray(g.tabs); });
+  list.forEach(function (g) {
+    g.tabs = g.tabs.filter(function (id) {
+      if (PANEL_IDS.indexOf(id) < 0 || seen[id]) return false;
+      seen[id] = true;
+      return true;
+    });
+  });
+  if (!list.length) list = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+  PANEL_IDS.forEach(function (id) {
+    if (seen[id]) return;
+    var home = DEFAULT_GROUPS.filter(function (d) { return d.tabs.indexOf(id) >= 0; })[0];
+    var target = home && list.filter(function (g) { return g.id === home.id; })[0];
+    (target || list[0]).tabs.push(id);
+  });
+  return list;
+}
+
+function saveGroups() {
+  try { localStorage.setItem(GROUP_KEY, JSON.stringify({v: 1, groups: groups})); }
+  catch (e) { /* 隱私模式：這次改動有效，下次開就回到預設 */ }
+}
+
+function groupOf(id) {
+  for (var i = 0; i < groups.length; i++) {
+    if (groups[i].tabs.indexOf(id) >= 0) return groups[i].id;
+  }
+  return null;
+}
 
 function inGroup(tab) {
-  return tab.dataset.group === 'all' || tab.dataset.group === curGroup;
+  return tab.dataset.group === 'all' || groupOf(tab.dataset.tab) === curGroup;
+}
+
+// 依設定重畫分類列。只有一組時整列就沒有意義，直接不顯示。
+function renderGroupBar() {
+  Array.prototype.slice.call(groupBar.querySelectorAll('.grp'))
+    .forEach(function (b) { b.remove(); });
+  groupBar.hidden = groups.length < 2;
+  groups.forEach(function (g) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'grp';
+    b.dataset.group = g.id;
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', String(g.id === curGroup));
+    b.textContent = g.label;
+    b.addEventListener('click', function () { selectGroup(g.id, true); });
+    groupBar.appendChild(b);
+  });
 }
 
 function selectGroup(name, animate) {
+  if (!groups.filter(function (g) { return g.id === name; }).length) {
+    name = groups.length ? groups[0].id : 'all';
+  }
   curGroup = name;
-  grps.forEach(function (g) {
+  Array.prototype.slice.call(groupBar.querySelectorAll('.grp')).forEach(function (g) {
     var on = g.dataset.group === name;
     g.setAttribute('aria-selected', String(on));
     if (on) {
@@ -1084,12 +1192,211 @@ function selectGroup(name, animate) {
       if (!animate) { void grpPill.offsetWidth; grpPill.classList.remove('no-anim'); }
     }
   });
+  grpPill.hidden = groupBar.hidden;
   applyVisibility(true);      // 換組後標籤列的內容變了，可能要換分頁
 }
 
-grps.forEach(function (g) {
-  g.addEventListener('click', function () { selectGroup(g.dataset.group, true); });
-});
+// ── 設定裡的分類編輯器 ─────────────────────────────────────
+// 分組可以新增、改名、刪除；分頁用長按拖曳換組或調順序。
+// 觸控裝置沒有 HTML5 的拖放，所以用 pointer 事件自己做：長按才啟動，
+// 不然在清單上滑動會變成拖東西而不是捲頁面。
+(function () {
+  var box = document.getElementById('group-editor');
+  if (!box) return;
+  var addBtn = document.getElementById('group-add');
+  var HOLD = 250;          // 按住這麼久才進入拖曳
+  var MOVE_CANCEL = 8;     // 還沒進入拖曳就移動超過這個距離 = 想捲頁面
+
+  function newId() {
+    return 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  }
+
+  function commit() {
+    saveGroups();
+    render();
+    renderGroupBar();
+    selectGroup(curGroup, false);
+  }
+
+  function render() {
+    box.textContent = '';
+    groups.forEach(function (g, gi) {
+      var sec = document.createElement('div');
+      sec.className = 'ge-group';
+      sec.dataset.group = g.id;
+
+      var head = document.createElement('div');
+      head.className = 'ge-head';
+      var name = document.createElement('span');
+      name.className = 'ge-name';
+      name.textContent = g.label;
+      head.appendChild(name);
+
+      var acts = document.createElement('span');
+      acts.className = 'ge-acts';
+      var ren = document.createElement('button');
+      ren.type = 'button';
+      ren.className = 'ge-btn';
+      ren.textContent = '改名';
+      ren.addEventListener('click', function () {
+        var v = window.prompt('分組名稱', g.label);
+        if (v === null) return;
+        v = v.trim();
+        if (!v) return;
+        g.label = v.slice(0, 12);
+        commit();
+      });
+      acts.appendChild(ren);
+
+      if (groups.length > 1) {
+        var del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'ge-btn ge-del';
+        del.textContent = '刪除';
+        del.addEventListener('click', function () {
+          var moved = g.tabs.length;
+          if (!window.confirm('刪除分組「' + g.label + '」？' +
+              (moved ? '裡面的 ' + moved + ' 個分頁會移到第一個分組。' : ''))) return;
+          groups = groups.filter(function (x) { return x !== g; });
+          if (moved) groups[0].tabs = groups[0].tabs.concat(g.tabs);
+          if (curGroup === g.id) curGroup = groups[0].id;
+          commit();
+        });
+        acts.appendChild(del);
+      }
+      head.appendChild(acts);
+      sec.appendChild(head);
+
+      var list = document.createElement('div');
+      list.className = 'ge-list';
+      list.dataset.group = g.id;
+      if (!g.tabs.length) {
+        var empty = document.createElement('p');
+        empty.className = 'ge-empty';
+        empty.textContent = '這一組還沒有分頁，拖一個過來。';
+        list.appendChild(empty);
+      }
+      g.tabs.forEach(function (id) {
+        var row = document.createElement('div');
+        row.className = 'ge-item';
+        row.dataset.tab = id;
+        var handle = document.createElement('span');
+        handle.className = 'ge-handle';
+        handle.textContent = '≡';
+        handle.setAttribute('aria-hidden', 'true');
+        var label = document.createElement('span');
+        label.className = 'ge-label';
+        label.textContent = TAB_LABELS[id] || id;
+        row.appendChild(handle);
+        row.appendChild(label);
+        // 只有把手能拖：整列都能拖的話，手指落在列上想捲頁面會變成拖東西
+        handle.addEventListener('pointerdown', function (e) { press(e, row, id); });
+        list.appendChild(row);
+      });
+      sec.appendChild(list);
+      box.appendChild(sec);
+    });
+  }
+
+  // ── 長按拖曳 ────────────────────────────────────────────
+  var drag = null;
+
+  function press(e, row, id) {
+    if (e.button != null && e.button !== 0) return;
+    var startX = e.clientX, startY = e.clientY;
+    var timer = setTimeout(function () { begin(row, id, startX, startY); }, HOLD);
+
+    function moveBefore(ev) {
+      if (drag) return;
+      if (Math.abs(ev.clientX - startX) > MOVE_CANCEL ||
+          Math.abs(ev.clientY - startY) > MOVE_CANCEL) cleanup();
+    }
+    function cleanup() {
+      clearTimeout(timer);
+      document.removeEventListener('pointermove', moveBefore);
+      document.removeEventListener('pointerup', cleanup);
+      document.removeEventListener('pointercancel', cleanup);
+    }
+    document.addEventListener('pointermove', moveBefore);
+    document.addEventListener('pointerup', cleanup);
+    document.addEventListener('pointercancel', cleanup);
+  }
+
+  function begin(row, id, x, y) {
+    var rect = row.getBoundingClientRect();
+    var ghost = row.cloneNode(true);
+    ghost.className = 'ge-item ge-ghost';
+    ghost.style.width = rect.width + 'px';
+    ghost.style.left = rect.left + 'px';
+    ghost.style.top = rect.top + 'px';
+    document.body.appendChild(ghost);
+    row.classList.add('ge-dragging');
+    document.body.classList.add('ge-nosel');
+    drag = {row: row, id: id, ghost: ghost,
+            dx: x - rect.left, dy: y - rect.top};
+    if (navigator.vibrate) { try { navigator.vibrate(10); } catch (e) {} }
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onDrop);
+    document.addEventListener('pointercancel', onDrop);
+  }
+
+  function onMove(e) {
+    if (!drag) return;
+    e.preventDefault();
+    drag.ghost.style.left = (e.clientX - drag.dx) + 'px';
+    drag.ghost.style.top = (e.clientY - drag.dy) + 'px';
+
+    // 找出手指底下的那一組，以及要插在哪一列之前
+    var lists = Array.prototype.slice.call(box.querySelectorAll('.ge-list'));
+    var target = null;
+    lists.forEach(function (l) {
+      var r = l.getBoundingClientRect();
+      if (e.clientY >= r.top - 8 && e.clientY <= r.bottom + 8) target = l;
+    });
+    if (!target) return;
+    var after = null;
+    Array.prototype.slice.call(target.querySelectorAll('.ge-item')).forEach(function (it) {
+      if (it === drag.row) return;
+      var r = it.getBoundingClientRect();
+      if (e.clientY > r.top + r.height / 2) after = it;
+    });
+    var empty = target.querySelector('.ge-empty');
+    if (empty) empty.remove();
+    if (after) target.insertBefore(drag.row, after.nextSibling);
+    else target.insertBefore(drag.row, target.firstChild);
+  }
+
+  function onDrop() {
+    if (!drag) return;
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onDrop);
+    document.removeEventListener('pointercancel', onDrop);
+    drag.ghost.remove();
+    drag.row.classList.remove('ge-dragging');
+    document.body.classList.remove('ge-nosel');
+    drag = null;
+
+    // 以畫面上的實際排列為準寫回設定
+    groups.forEach(function (g) {
+      var list = box.querySelector('.ge-list[data-group="' + g.id + '"]');
+      if (!list) return;
+      g.tabs = Array.prototype.slice.call(list.querySelectorAll('.ge-item'))
+        .map(function (it) { return it.dataset.tab; });
+    });
+    commit();
+  }
+
+  addBtn.addEventListener('click', function () {
+    var v = window.prompt('新分組的名稱', '新分組');
+    if (v === null) return;
+    v = v.trim();
+    if (!v) return;
+    groups.push({id: newId(), label: v.slice(0, 12), tabs: []});
+    commit();
+  });
+
+  render();
+})();
 
 // ── 分頁顯示切換（設定分頁裡每張卡片右上角的開關）───────────
 var VIS_KEY = 'dash-visible';
@@ -1098,8 +1405,23 @@ try { visible = JSON.parse(localStorage.getItem(VIS_KEY)) || {}; } catch (e) { v
 
 function isVisible(id) { return visible[id] !== false; }   // 預設全開
 
+// 底部標籤列的排列跟著分組裡的順序走 —— 在設定裡把分頁往上拖，
+// 標籤列也應該跟著往左，不然拖了半天看不出差別。
+function orderTabs() {
+  var g = groups.filter(function (x) { return x.id === curGroup; })[0];
+  if (!g) return;
+  var bar = document.querySelector('.tabbar');
+  var settings = bar.querySelector('.tab[data-tab="settings"]');
+  g.tabs.forEach(function (id) {
+    var t = bar.querySelector('.tab[data-tab="' + id + '"]');
+    if (t) bar.appendChild(t);
+  });
+  if (settings) bar.appendChild(settings);   // 設定固定在最後
+}
+
 // reselect：由開關觸發時要處理「正在看的分頁被關掉」
 function applyVisibility(reselect) {
+  orderTabs();
   PANEL_IDS.forEach(function (id) {
     var on = isVisible(id);
     var tab = document.querySelector('.tab[data-tab="' + id + '"]');
@@ -1809,6 +2131,7 @@ try {
 
 document.querySelectorAll('.legend-bar').forEach(buildLegend);
 applyTheme();
+renderGroupBar();
 selectGroup(curGroup, false);
 var firstTab = tabs.filter(function (t) { return !t.hidden; })[0];
 selectTab(firstTab ? firstTab.dataset.tab : 'settings', false);   // 只會畫出這一張圖
@@ -1904,6 +2227,9 @@ def build() -> Path:
 
     html = (
         TPL.replace("__GROUPBAR__", _groupbar_html())
+           .replace("__GROUPS__", json.dumps(_default_groups(), ensure_ascii=False))
+           .replace("__TAB_LABELS__", json.dumps(
+               {p["id"]: p["tab"] for p in PANELS}, ensure_ascii=False))
            .replace("__CHART_PANELS__", _panels_html(panel_data))
            .replace("__SETTINGS_CARDS__", _settings_cards(stats))
            .replace("__TABBAR__", _tabbar_html())
