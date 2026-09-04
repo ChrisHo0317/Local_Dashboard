@@ -432,7 +432,7 @@
           <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
         </svg>
       </button>
-      <span class="ver">v0.3.032</span>
+      <span class="ver">v0.3.033</span>
     </div>
   </header>
 
@@ -5297,8 +5297,8 @@
 
     <div class="card">
       <div class="card-h">關於</div>
-      <div class="row"><span>版本</span><b>v0.3.032</b></div>
-      <div class="row"><span>頁面產生時間</span><b>2026-09-04 22:23 (UTC+8)</b></div>
+      <div class="row"><span>版本</span><b>v0.3.033</b></div>
+      <div class="row"><span>頁面產生時間</span><b>2026-09-04 22:50 (UTC+8)</b></div>
       <div class="row"><span>原始碼</span>
         <a href="https://github.com/ChrisHo0317/Local_Dashboard"
            target="_blank" rel="noopener">GitHub</a></div>
@@ -6076,11 +6076,15 @@ document.querySelectorAll('.switch[data-panel]').forEach(function (sw) {
 // 拖曳／點按處理接手 —— 否則指標會變成放開手指才出現，輕點也會被判成雙擊而重設縮放。
 // 落在時間軸縮圖與區間按鈕上的觸控則放行，那些仍由 Plotly 自己處理。
 // 桌機滑鼠完全不受影響。
-function initTouch(gd) {
+// opts.pan：單指拖曳要平移時間軸（個股查詢），而不是移動指標。
+// 兩種圖的差別只在單指拖曳那一段，其餘（雙指縮放、輕點開關指標、
+// 擋掉觸控後補送的相容滑鼠事件）完全一樣，所以共用同一份。
+function initTouch(gd, opts) {
   if (!window.matchMedia('(pointer: coarse)').matches) return;
+  var panMode = !!(opts && opts.pan);
 
   var pinch = null, shown = false, wasShown = false, moved = false, taken = false;
-  var sx = 0, sy = 0;
+  var sx = 0, sy = 0, pan = null;
   var TAP_SLOP = 6;
   var MIN_SPAN = 3 * 864e5;
 
@@ -6161,6 +6165,8 @@ function initTouch(gd) {
     moved = false;
     sx = e.touches[0].clientX;
     sy = e.touches[0].clientY;
+    pan = panMode ? {r0: xa.d2l(xa.range[0]), r1: xa.d2l(xa.range[1]), len: xa._length}
+                  : null;
     showAt(e.touches[0]);          // 按下當下就顯示，不等放開
   }, {capture: true, passive: true});
 
@@ -6185,6 +6191,21 @@ function initTouch(gd) {
     if (Math.abs(t.clientX - sx) > TAP_SLOP || Math.abs(t.clientY - sy) > TAP_SLOP) moved = true;
     e.stopPropagation();
     if (e.cancelable) e.preventDefault();
+
+    if (pan) {
+      if (!moved) return;
+      if (shown) hide();                       // 開始拖了就別留著指標
+      var span = pan.r1 - pan.r0;
+      var shift = -(t.clientX - sx) / pan.len * span;
+      var lo = pan.r0 + shift, hi = pan.r1 + shift;
+      var ext = fullExtent();
+      if (ext) {                               // 不要拖到資料以外的空白
+        if (lo < ext[0]) { lo = ext[0]; hi = lo + span; }
+        if (hi > ext[1]) { hi = ext[1]; lo = hi - span; }
+      }
+      Plotly.relayout(gd, {'xaxis.range': [lo, hi]});
+      return;
+    }
     showAt(t);
   }, {capture: true, passive: false});
 
@@ -6193,6 +6214,7 @@ function initTouch(gd) {
     if (e.touches.length > 0) return;
     e.stopPropagation();
     if (pinch) { pinch = null; taken = false; return; }
+    pan = null;
     if (wasShown && !moved) hide();
     taken = false;
   }, {capture: true, passive: true});
@@ -6918,7 +6940,6 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
       return d ? d.toISOString().slice(0, 10) : null;
     });
     var ys = rows.map(function (r) { return num(r[6]); });
-    var vols = rows.map(function (r) { return num(r[1]); });
 
     // 自己組 layout，不要拿 DRAM 的來改 —— 那份鎖著 DRAM 自己的
     // x 軸範圍與快速區間鈕，套過來會讓線只畫在圖的一角。
@@ -6933,14 +6954,18 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
       height: 300,
       margin: {l: 52, r: 12, t: 10, b: 34},
       showlegend: false,
+      dragmode: 'pan',          // 拖曳是往回看，不是框選放大
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: 'rgba(0,0,0,0)',
       font: {color: fg, size: 11},
       hovermode: 'x unified',
       hoverdistance: -1,
+      // 指標標籤的底色要跟著主題走，不然深色模式下是一塊白
+      hoverlabel: {bgcolor: dark ? '#242839' : '#ffffff', bordercolor: grid,
+                   font: {color: dark ? '#e8e8e8' : '#212529', size: 12}},
       // 前後各留一天，最後一天的線才不會貼著右邊界被切掉
       xaxis: {type: 'date', gridcolor: grid, linecolor: grid, zeroline: false,
-              tickformat: '%m/%d', automargin: true,
+              tickformat: '%m/%d', hoverformat: '%Y/%m/%d', automargin: true,
               range: [pad(xs[0], -1), pad(xs[xs.length - 1], 1)]},
       yaxis: {gridcolor: grid, linecolor: grid, zeroline: false,
               tickformat: ',.0f', automargin: true}
@@ -6954,12 +6979,16 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
     Plotly.react('chart-stockquery', [{
       type: 'scatter', mode: 'lines', x: xs, y: ys,
       line: {width: 2, color: dark ? '#4dd4ac' : '#1f9d6b'},
-      hovertemplate: '%{x|%m/%d}　%{y:,.2f}<extra></extra>',
-      customdata: vols
-    }], L, {displayModeBar: false, responsive: true});
+      // x unified 的標題已經是日期了，這裡只寫價格
+      hovertemplate: '收盤 %{y:,.2f}<extra></extra>'
+    }], L, {displayModeBar: false, responsive: true,
+            scrollZoom: false, doubleClick: false});
 
     syncSticky();
   }
+
+  // 觸控行為跟其他圖表同一套，只是單指拖曳改成平移時間軸
+  initTouch(document.getElementById('chart-stockquery'), {pan: true});
 
   // 換主題時把已經畫好的圖重畫一次
   window.addEventListener('dash-theme', function () { if (current) load(current); });

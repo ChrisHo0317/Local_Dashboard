@@ -223,7 +223,7 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 ## 版本
 
-目前 **v0.3.032**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
+目前 **v0.3.033**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
 
 格式 `vMAJOR.MINOR.PATCH`，PATCH 固定三位數。**一般改動一律只遞增 PATCH**；前兩組除非明確指示否則不變更。改 `version.py` 後重跑 `build_static.py` 即可。
 
@@ -363,7 +363,7 @@ DIGITIMES 只公開文章的前導段落，所以內文較短；點「看原文 
 
 | 子分頁 | 怎麼來的 |
 |--------|---------|
-| 查詢 | **即時**。`www.twse.com.tw/rwd/` 這組端點帶 `Access-Control-Allow-Origin: *`，頁面上的 JS 當場呼叫 —— 股號建議、逐月成交、本益比／殖利率／股價淨值比都是按下去才去要的 |
+| 查詢 | **即時**（走勢圖是單指拖曳往回看、雙指縮放、輕點顯示當日收盤，再點一次收起）。`www.twse.com.tw/rwd/` 這組端點帶 `Access-Control-Allow-Origin: *`，頁面上的 JS 當場呼叫 —— 股號建議、逐月成交、本益比／殖利率／股價淨值比都是按下去才去要的 |
 | 營收 / 重訊 / 財報 | 排程更新。證交所開放資料（`openapi.twse.com.tw`）沒有 CORS，只能由 GitHub Actions 抓下來存成 `docs/stock/*.json`，進子分頁時才載 |
 
 三份 JSON 加起來六百多 KB，所以不內嵌在 `index.html` 裡，跟新聞內文一樣按需下載。
