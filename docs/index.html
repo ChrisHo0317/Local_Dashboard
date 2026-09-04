@@ -103,6 +103,16 @@
   .card-h { display:flex; align-items:center; justify-content:space-between; gap:12px;
             font-size:12px; font-weight:600; letter-spacing:.06em; color:var(--muted);
             padding:11px 0 7px; }
+  /* 可摺疊的資料卡片：八張全攤開的話設定頁要捲很久 */
+  .card-t { display:flex; align-items:center; gap:7px; flex:1; min-width:0;
+            padding:0; border:0; background:none; color:inherit; font:inherit;
+            letter-spacing:inherit; text-align:left; cursor:pointer;
+            -webkit-tap-highlight-color:transparent; }
+  .card-chev { font-size:11px; transition:transform .15s; flex:none; }
+  .card-t[aria-expanded="true"] .card-chev { transform:rotate(90deg); }
+  .card.fold .card-body { display:none; }
+  .card.fold.open .card-body { display:block; }
+
   /* 分頁顯示開關放在卡片右上角，比外觀那顆小一點，才不會喧賓奪主 */
   .switch.sw-sm { width:38px; height:22px; }
   .switch.sw-sm .knob { width:16px; height:16px; }
@@ -385,7 +395,7 @@
           <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
         </svg>
       </button>
-      <span class="ver">v0.3.029</span>
+      <span class="ver">v0.3.030</span>
     </div>
   </header>
 
@@ -5027,68 +5037,92 @@
       <button type="button" class="ge-add" id="group-add">＋ 新增分組</button>
     </div>
 
-    <div class="card">
+    <div class="card fold" data-card="dram">
       <div class="card-h">
-        <span>DRAM 現貨報價趨勢　資料</span>
+        <button type="button" class="card-t" aria-expanded="false"
+                aria-controls="cardbody-dram">
+          <span class="card-chev">&#9656;</span><span>DRAM 現貨報價趨勢　資料</span>
+        </button>
         <button class="switch sw-sm" type="button" role="switch" data-panel="dram"
                 aria-checked="true" aria-label="顯示DRAM分頁"><span class="knob"></span></button>
       </div>
+      <div class="card-body" id="cardbody-dram">
       <div class="row"><span>最後更新日</span><b>2026-09-04</b></div>
       <div class="row"><span>資料筆數</span><b>931 筆</b></div>
       <div class="row"><span>型號數</span><b>9 項</b></div>
       <div class="row"><span>涵蓋區間</span><b>2025-11-04 ～ 2026-09-04</b></div>
       <div class="row"><span>資料來源</span>
         <a href="https://www.trendforce.com.tw/price/dram/dram_spot" target="_blank" rel="noopener">TrendForce</a></div>
+      </div>
     </div>
 
-    <div class="card">
+    <div class="card fold" data-card="bond">
       <div class="card-h">
-        <span>美國公債殖利率　資料</span>
+        <button type="button" class="card-t" aria-expanded="false"
+                aria-controls="cardbody-bond">
+          <span class="card-chev">&#9656;</span><span>美國公債殖利率　資料</span>
+        </button>
         <button class="switch sw-sm" type="button" role="switch" data-panel="bond"
                 aria-checked="true" aria-label="顯示美債分頁"><span class="knob"></span></button>
       </div>
+      <div class="card-body" id="cardbody-bond">
       <div class="row"><span>最後更新日</span><b>2026-09-03</b></div>
       <div class="row"><span>資料筆數</span><b>5513 筆</b></div>
       <div class="row"><span>年期數</span><b>6 項</b></div>
       <div class="row"><span>涵蓋區間</span><b>2023-01-03 ～ 2026-09-03</b></div>
       <div class="row"><span>資料來源</span>
         <a href="https://www.moneydj.com/bond/defaultBD.xdjhtm" target="_blank" rel="noopener">MoneyDJ</a></div>
+      </div>
     </div>
 
-    <div class="card">
+    <div class="card fold" data-card="gold">
       <div class="card-h">
-        <span>國際金價　資料</span>
+        <button type="button" class="card-t" aria-expanded="false"
+                aria-controls="cardbody-gold">
+          <span class="card-chev">&#9656;</span><span>國際金價　資料</span>
+        </button>
         <button class="switch sw-sm" type="button" role="switch" data-panel="gold"
                 aria-checked="true" aria-label="顯示黃金分頁"><span class="knob"></span></button>
       </div>
+      <div class="card-body" id="cardbody-gold">
       <div class="row"><span>最後更新日</span><b>2026-09-04</b></div>
       <div class="row"><span>資料筆數</span><b>1261 筆</b></div>
       <div class="row"><span>商品數</span><b>1 項</b></div>
       <div class="row"><span>涵蓋區間</span><b>2021-08-31 ～ 2026-09-04</b></div>
       <div class="row"><span>資料來源</span>
         <a href="https://finance.yahoo.com/quote/GC%3DF/" target="_blank" rel="noopener">Yahoo Finance</a></div>
+      </div>
     </div>
 
-    <div class="card">
+    <div class="card fold" data-card="calendar">
       <div class="card-h">
-        <span>財經行事曆　資料</span>
+        <button type="button" class="card-t" aria-expanded="false"
+                aria-controls="cardbody-calendar">
+          <span class="card-chev">&#9656;</span><span>財經行事曆　資料</span>
+        </button>
         <button class="switch sw-sm" type="button" role="switch" data-panel="calendar"
                 aria-checked="true" aria-label="顯示行事曆分頁"><span class="knob"></span></button>
       </div>
+      <div class="card-body" id="cardbody-calendar">
       <div class="row"><span>最後更新日</span><b>2026-09-04</b></div>
       <div class="row"><span>資料筆數</span><b>120 筆</b></div>
       <div class="row"><span>本頁顯示</span><b>107 筆</b></div>
       <div class="row"><span>涵蓋區間</span><b>2026-08-30 ～ 2026-09-04</b></div>
       <div class="row"><span>資料來源</span>
         <a href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener">ForexFactory</a></div>
+      </div>
     </div>
 
-    <div class="card">
+    <div class="card fold" data-card="f1">
       <div class="card-h">
-        <span>F1 賽程表　資料</span>
+        <button type="button" class="card-t" aria-expanded="false"
+                aria-controls="cardbody-f1">
+          <span class="card-chev">&#9656;</span><span>F1 賽程表　資料</span>
+        </button>
         <button class="switch sw-sm" type="button" role="switch" data-panel="f1"
                 aria-checked="true" aria-label="顯示F1分頁"><span class="knob"></span></button>
       </div>
+      <div class="card-body" id="cardbody-f1">
       <div class="row"><span>最後更新日</span><b>2026-12-06</b></div>
       <div class="row"><span>資料筆數</span><b>115 筆</b></div>
       <div class="row"><span>賽事站數</span><b>23 站</b></div>
@@ -5096,14 +5130,19 @@
       <div class="row"><span>涵蓋區間</span><b>2026-03-06 ～ 2026-12-06</b></div>
       <div class="row"><span>資料來源</span>
         <a href="https://f1calendar.com/zh-HK" target="_blank" rel="noopener">F1 Calendar</a></div>
+      </div>
     </div>
 
-    <div class="card">
+    <div class="card fold" data-card="spacex">
       <div class="card-h">
-        <span>SpaceX 發射排程　資料</span>
+        <button type="button" class="card-t" aria-expanded="false"
+                aria-controls="cardbody-spacex">
+          <span class="card-chev">&#9656;</span><span>SpaceX 發射排程　資料</span>
+        </button>
         <button class="switch sw-sm" type="button" role="switch" data-panel="spacex"
                 aria-checked="true" aria-label="顯示SpaceX分頁"><span class="knob"></span></button>
       </div>
+      <div class="card-body" id="cardbody-spacex">
       <div class="row"><span>最後更新日</span><b>2026-09-10</b></div>
       <div class="row"><span>資料筆數</span><b>721 筆</b></div>
       <div class="row"><span>即將發射</span><b>3 場</b></div>
@@ -5111,14 +5150,19 @@
       <div class="row"><span>涵蓋區間</span><b>2006-03-24 ～ 2026-09-10</b></div>
       <div class="row"><span>資料來源</span>
         <a href="https://www.spacex.com/launches" target="_blank" rel="noopener">SpaceX</a></div>
+      </div>
     </div>
 
-    <div class="card">
+    <div class="card fold" data-card="news">
       <div class="card-h">
-        <span>新聞　資料</span>
+        <button type="button" class="card-t" aria-expanded="false"
+                aria-controls="cardbody-news">
+          <span class="card-chev">&#9656;</span><span>新聞　資料</span>
+        </button>
         <button class="switch sw-sm" type="button" role="switch" data-panel="news"
                 aria-checked="true" aria-label="顯示新聞分頁"><span class="knob"></span></button>
       </div>
+      <div class="card-body" id="cardbody-news">
       <div class="row"><span>最後更新日</span><b>2026-09-04</b></div>
       <div class="row"><span>資料筆數</span><b>269 筆</b></div>
       <div class="row"><span>來源數</span><b>5 個</b></div>
@@ -5126,23 +5170,29 @@
       <div class="row"><span>涵蓋區間</span><b>2024-04-25 ～ 2026-09-04</b></div>
       <div class="row"><span>資料來源</span>
         <a href="https://technews.tw/" target="_blank" rel="noopener">各新聞網站</a></div>
+      </div>
     </div>
 
-    <div class="card">
+    <div class="card fold" data-card="notes">
       <div class="card-h">
-        <span>筆記</span>
+        <button type="button" class="card-t" aria-expanded="false"
+                aria-controls="cardbody-notes">
+          <span class="card-chev">&#9656;</span><span>筆記</span>
+        </button>
         <button class="switch sw-sm" type="button" role="switch" data-panel="notes"
                 aria-checked="true" aria-label="顯示筆記分頁"><span class="knob"></span></button>
       </div>
+      <div class="card-body" id="cardbody-notes">
       <div class="row"><span>筆記則數</span><b id="notes-count">—</b></div>
       <div class="row"><span>儲存位置</span><b>只存在這台裝置</b></div>
       <div class="row"><span>同步</span><b>不會上傳，換裝置看不到</b></div>
+      </div>
     </div>
 
     <div class="card">
       <div class="card-h">關於</div>
-      <div class="row"><span>版本</span><b>v0.3.029</b></div>
-      <div class="row"><span>頁面產生時間</span><b>2026-09-04 21:30 (UTC+8)</b></div>
+      <div class="row"><span>版本</span><b>v0.3.030</b></div>
+      <div class="row"><span>頁面產生時間</span><b>2026-09-04 21:39 (UTC+8)</b></div>
       <div class="row"><span>原始碼</span>
         <a href="https://github.com/ChrisHo0317/Local_Dashboard"
            target="_blank" rel="noopener">GitHub</a></div>
@@ -5620,6 +5670,30 @@ function selectGroup(name, animate) {
   grpPill.hidden = groupBar.hidden;
   applyVisibility(true);      // 換組後標籤列的內容變了，可能要換分頁
 }
+
+// ── 設定裡的資料卡片：可摺疊 ───────────────────────────────
+// 預設全部收起（八張攤開要捲很久），展開哪幾張記在 localStorage。
+(function () {
+  var KEY = 'dash-cards-open';
+  var open = {};
+  try { open = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { open = {}; }
+
+  Array.prototype.slice.call(document.querySelectorAll('.card.fold')).forEach(function (card) {
+    var id = card.dataset.card;
+    var btn = card.querySelector('.card-t');
+    function apply(on) {
+      card.classList.toggle('open', on);
+      btn.setAttribute('aria-expanded', String(on));
+    }
+    apply(open[id] === true);
+    btn.addEventListener('click', function () {
+      var on = !card.classList.contains('open');
+      apply(on);
+      open[id] = on;
+      try { localStorage.setItem(KEY, JSON.stringify(open)); } catch (e) { /* 隱私模式 */ }
+    });
+  });
+})();
 
 // ── 設定裡的分類編輯器 ─────────────────────────────────────
 // 分組可以新增、改名、刪除；分頁用長按拖曳換組或調順序。

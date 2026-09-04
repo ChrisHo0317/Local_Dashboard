@@ -315,15 +315,20 @@ def _settings_cards(stats: dict) -> str:
         if s.get("local"):
             # 筆記存在讀者自己的瀏覽器，建置時沒有任何數字可寫；
             # 筆數由頁面上的 JS 讀完 localStorage 後補上。
-            cards.append(f'''    <div class="card">
+            cards.append(f'''    <div class="card fold" data-card="{p["id"]}">
       <div class="card-h">
-        <span>{p["title"]}</span>
+        <button type="button" class="card-t" aria-expanded="false"
+                aria-controls="cardbody-{p["id"]}">
+          <span class="card-chev">&#9656;</span><span>{p["title"]}</span>
+        </button>
         <button class="switch sw-sm" type="button" role="switch" data-panel="{p["id"]}"
                 aria-checked="true" aria-label="顯示{p["tab"]}分頁"><span class="knob"></span></button>
       </div>
+      <div class="card-body" id="cardbody-{p["id"]}">
       <div class="row"><span>筆記則數</span><b id="notes-count">—</b></div>
       <div class="row"><span>儲存位置</span><b>{s["range"]}</b></div>
       <div class="row"><span>同步</span><b>不會上傳，換裝置看不到</b></div>
+      </div>
     </div>''')
             continue
         if p.get("kind", "chart") == "calendar":
@@ -341,17 +346,22 @@ def _settings_cards(stats: dict) -> str:
         else:
             middle = (f'      <div class="row"><span>資料筆數</span><b>{s["rows"]} 筆</b></div>\n'
                       f'      <div class="row"><span>{p["item_label"]}數</span><b>{s["items"]} 項</b></div>')
-        cards.append(f'''    <div class="card">
+        cards.append(f'''    <div class="card fold" data-card="{p["id"]}">
       <div class="card-h">
-        <span>{p["title"]}　資料</span>
+        <button type="button" class="card-t" aria-expanded="false"
+                aria-controls="cardbody-{p["id"]}">
+          <span class="card-chev">&#9656;</span><span>{p["title"]}　資料</span>
+        </button>
         <button class="switch sw-sm" type="button" role="switch" data-panel="{p["id"]}"
                 aria-checked="true" aria-label="顯示{p["tab"]}分頁"><span class="knob"></span></button>
       </div>
+      <div class="card-body" id="cardbody-{p["id"]}">
       <div class="row"><span>最後更新日</span><b>{s["latest"]}</b></div>
 {middle}
       <div class="row"><span>涵蓋區間</span><b>{s["range"]}</b></div>
       <div class="row"><span>資料來源</span>
         <a href="{p["source_url"]}" target="_blank" rel="noopener">{p["source_name"]}</a></div>
+      </div>
     </div>''')
     return "\n\n".join(cards)
 
@@ -461,6 +471,16 @@ TPL = """<!doctype html>
   .card-h { display:flex; align-items:center; justify-content:space-between; gap:12px;
             font-size:12px; font-weight:600; letter-spacing:.06em; color:var(--muted);
             padding:11px 0 7px; }
+  /* 可摺疊的資料卡片：八張全攤開的話設定頁要捲很久 */
+  .card-t { display:flex; align-items:center; gap:7px; flex:1; min-width:0;
+            padding:0; border:0; background:none; color:inherit; font:inherit;
+            letter-spacing:inherit; text-align:left; cursor:pointer;
+            -webkit-tap-highlight-color:transparent; }
+  .card-chev { font-size:11px; transition:transform .15s; flex:none; }
+  .card-t[aria-expanded="true"] .card-chev { transform:rotate(90deg); }
+  .card.fold .card-body { display:none; }
+  .card.fold.open .card-body { display:block; }
+
   /* 分頁顯示開關放在卡片右上角，比外觀那顆小一點，才不會喧賓奪主 */
   .switch.sw-sm { width:38px; height:22px; }
   .switch.sw-sm .knob { width:16px; height:16px; }
@@ -1195,6 +1215,30 @@ function selectGroup(name, animate) {
   grpPill.hidden = groupBar.hidden;
   applyVisibility(true);      // 換組後標籤列的內容變了，可能要換分頁
 }
+
+// ── 設定裡的資料卡片：可摺疊 ───────────────────────────────
+// 預設全部收起（八張攤開要捲很久），展開哪幾張記在 localStorage。
+(function () {
+  var KEY = 'dash-cards-open';
+  var open = {};
+  try { open = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { open = {}; }
+
+  Array.prototype.slice.call(document.querySelectorAll('.card.fold')).forEach(function (card) {
+    var id = card.dataset.card;
+    var btn = card.querySelector('.card-t');
+    function apply(on) {
+      card.classList.toggle('open', on);
+      btn.setAttribute('aria-expanded', String(on));
+    }
+    apply(open[id] === true);
+    btn.addEventListener('click', function () {
+      var on = !card.classList.contains('open');
+      apply(on);
+      open[id] = on;
+      try { localStorage.setItem(KEY, JSON.stringify(open)); } catch (e) { /* 隱私模式 */ }
+    });
+  });
+})();
 
 // ── 設定裡的分類編輯器 ─────────────────────────────────────
 // 分組可以新增、改名、刪除；分頁用長按拖曳換組或調順序。
