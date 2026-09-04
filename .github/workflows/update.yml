@@ -28,16 +28,16 @@ jobs:
 
       - name: Fetch latest prices and rebuild page
         # 新聞不在這裡跑，它有自己的十分鐘排程（news.yml）
-        run: python update_data.py dram bonds gold calendar f1 f1standings spacex
+        run: python update_data.py dram bonds gold calendar f1 f1standings spacex stock
 
       - name: Commit if changed
         run: |
-          if git diff --quiet -- data docs/index.html docs/news; then
+          if git diff --quiet -- data docs/index.html docs/news docs/stock; then
             echo "無變更，略過 commit"
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data docs/index.html docs/news
+          git add data docs/index.html docs/news docs/stock
           git commit -m "chore: 更新行情資料 ($(date -u +%Y-%m-%d))"
           git push

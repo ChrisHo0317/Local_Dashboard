@@ -26,6 +26,8 @@ from gold_scraper import YahooGoldScraper
 from news_data import CSV_PATH as NEWS_CSV, known_articles, merge_news
 from news_scraper import NewsScraper
 from scraper import TrendForceScraper
+from stock_data import merge as merge_stock
+from stock_scraper import StockScraper
 from spacex_data import CSV_PATH as SPACEX_CSV, merge_launches
 from spacex_scraper import SpaceXScraper
 
@@ -160,6 +162,18 @@ def update_news() -> int:
     return changed
 
 
+def update_stock() -> int:
+    """個股：三個資料集各自整批取代，抓不到的那個保留舊資料。"""
+    got = StockScraper(logger=log).fetch_all()
+    if not got:
+        log.warning("個股：三個資料集都沒抓到，本次不更新")
+        return 0
+    changed = sum(merge_stock(key, rows) for key, rows in got.items())
+    log.info(f"個股：更新 {len(got)} 個資料集，"
+             + (f"共 {changed} 筆有異動" if changed else "與現有資料相同"))
+    return changed
+
+
 # 命令列可以只跑其中一項：python update_data.py news
 JOBS = {
     "dram": update_dram,
@@ -170,6 +184,7 @@ JOBS = {
     "f1standings": update_f1_standings,
     "spacex": update_spacex,
     "news": update_news,
+    "stock": update_stock,
 }
 
 

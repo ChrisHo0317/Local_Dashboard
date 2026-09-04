@@ -43,6 +43,9 @@ from news_render import (bodies as news_bodies, panel_html as news_panel_html,
                          stats as news_stats)
 from notes_render import (META as NOTES_META, panel_html as notes_panel_html,
                           stats as notes_stats)
+from stock_data import CSV_PATHS as STOCK_CSVS, load_all as load_stock_all
+from stock_render import (META as STOCK_META, datasets as stock_datasets,
+                          panel_html as stock_panel_html, stats as stock_stats)
 from spacex_data import CSV_PATH as SPACEX_CSV, load_all as load_spacex_all
 from spacex_render import panel_html as spacex_panel_html, stats as spacex_stats
 from version import __version__
@@ -50,6 +53,7 @@ from version import __version__
 DOCS_DIR = BASE_DIR / "docs"
 OUTPUT = DOCS_DIR / "index.html"
 NEWS_DIR = DOCS_DIR / "news"
+STOCK_DIR = DOCS_DIR / "stock"
 
 # 圖表分頁定義。新增一組資料只要在這裡加一筆。
 PANELS = [
@@ -186,6 +190,24 @@ PANELS = [
                 '<line x1="7" y1="9" x2="14" y2="9"/>'
                 '<line x1="7" y1="12" x2="14" y2="12"/>'
                 '<line x1="7" y1="15" x2="11" y2="15"/>',
+    },
+    {
+        "id": "stock",
+        "group": "finance",
+        "kind": "calendar",
+        "tab": "個股",
+        "title": "個股",
+        "meta": STOCK_META,
+        "source_name": "臺灣證券交易所",
+        "source_url": "https://mops.twse.com.tw/mops/#/web/home",
+        "csv": STOCK_CSVS["revenue"],
+        "load": load_stock_all,
+        "render": stock_panel_html,
+        "stats": stock_stats,
+        # 放大鏡加一段走勢
+        "icon": '<circle cx="10.5" cy="10.5" r="6.5"/>'
+                '<line x1="15.4" y1="15.4" x2="20.5" y2="20.5"/>'
+                '<polyline points="7.6 12.2 9.6 9.6 11.6 11.2 13.6 8"/>',
     },
     {
         "id": "notes",
@@ -615,6 +637,41 @@ TPL = """<!doctype html>
   .ge-add { width:100%; margin-top:14px; padding:10px; border-radius:10px;
             font-size:13px; color:var(--accent); border-style:dashed; }
 
+  /* 個股：查詢框、建議、指標、清單 */
+  .sq-box { position:relative; margin-bottom:12px; }
+  .sq-input, .sl-filter { width:100%; padding:10px 12px; border-radius:10px;
+                          font-size:14px; background:var(--bg); color:var(--fg);
+                          border:1px solid var(--border); font-family:inherit; }
+  .sq-input:focus, .sl-filter:focus { outline:none; border-color:var(--accent); }
+  .sq-suggest { position:absolute; z-index:20; left:0; right:0; top:calc(100% + 4px);
+                background:var(--card); border:1px solid var(--border);
+                border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,.14); }
+  .sq-opt { display:block; width:100%; text-align:left; padding:10px 12px;
+            font-size:14px; border:0; border-radius:0; background:none; color:var(--fg); }
+  .sq-opt:hover { background:var(--hover); }
+  .sq-range { display:flex; gap:6px; margin-bottom:12px; }
+  .sq-hint { color:var(--muted); font-size:13px; padding:14px 2px; }
+  .sq-name { font-size:16px; font-weight:600; margin-bottom:10px; }
+  .sq-stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(104px, 1fr));
+              gap:8px; margin-bottom:6px; }
+  .sq-stat { padding:8px 10px; border-radius:10px; background:var(--hover); }
+  .sq-stat-l { display:block; font-size:11px; color:var(--muted); }
+  .sq-stat b { font-size:15px; font-variant-numeric:tabular-nums; }
+  .sq-chart { min-height:300px; }
+
+  .sl-item { padding:12px 2px; box-shadow:inset 0 -1px 0 var(--border); }
+  .sl-click { cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .sl-click:hover { background:var(--hover); }
+  .sl-head { display:block; margin-bottom:8px; }
+  .sl-title { display:block; font-size:14px; line-height:1.5; }
+  .sl-sub { display:block; font-size:11px; color:var(--muted); margin-top:3px; }
+  .sl-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+  .sl-cell { font-size:11px; color:var(--muted); }
+  .sl-v { display:block; font-size:14px; color:var(--fg); font-weight:500;
+          font-variant-numeric:tabular-nums; }
+  .sl-v.up { color:#e8590c; }
+  .sl-v.down { color:#1f9d6b; }
+
   /* 二階分頁 */
   /* 來源多的時候（新聞有 5 個）橫向捲動，不要把標籤擠成直排 */
   .subtabs { display:flex; gap:6px; margin-bottom:14px; overflow-x:auto;
@@ -913,6 +970,8 @@ function renderAll() {
   Object.keys(CHARTS).forEach(function (k) {
     if (CHARTS[k].rendered) { renderChart(k); } else { CHARTS[k].dirty = true; }
   });
+  // 個股查詢的圖不在 CHARTS 裡（資料是當場查來的），它自己重畫
+  window.dispatchEvent(new Event('dash-theme'));
 }
 
 // ── 收合式圖例（每張圖各一份，由 .legend-bar 就地生成）─────────
@@ -2157,6 +2216,488 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
   renderList();
 })();
 
+// ── 個股：即時查詢 ─────────────────────────────────────────
+// 證交所的 www.twse.com.tw/rwd/ 端點帶 Access-Control-Allow-Origin: *，
+// 所以這裡是真的當場去要資料，不是排程抓下來的快照。
+// （公開資訊觀測站自己的 API 沒有這個標頭，瀏覽器連不了，那幾類走 JSON。）
+(function () {
+  var panel = document.querySelector('#panel-stock .subpanel[data-sub="query"]');
+  if (!panel) return;
+
+  var TWSE = 'https://www.twse.com.tw/rwd/zh/';
+  var input = panel.querySelector('.sq-input');
+  var sug = panel.querySelector('.sq-suggest');
+  var rangeBar = panel.querySelector('.sq-range');
+  var hint = panel.querySelector('.sq-hint');
+  var result = panel.querySelector('.sq-result');
+  var nameBox = panel.querySelector('.sq-name');
+  var statsBox = panel.querySelector('.sq-stats');
+  var months = 3;
+  var current = null;      // {code, name}
+  var seq = 0;             // 丟掉過期回應用的序號
+
+  function say(text) {
+    hint.textContent = text;
+    hint.hidden = false;
+  }
+
+  function get(path) {
+    return fetch(TWSE + path).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    });
+  }
+
+  // 民國日期 115/09/01 → Date
+  function rocDate(text) {
+    // 用 [0-9] 這種寫法：這段 JS 住在 Python 的字串裡，反斜線會被吃掉
+    var m = String(text).match(/([0-9]+)[^0-9]+([0-9]+)[^0-9]+([0-9]+)/);
+    if (!m) return null;
+    return new Date(Number(m[1]) + 1911, Number(m[2]) - 1, Number(m[3]));
+  }
+
+  function num(text) {
+    var v = parseFloat(String(text).replace(/,/g, ''));
+    return isFinite(v) ? v : null;
+  }
+
+  function ymd(d) {
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+    return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate());
+  }
+
+  // ── 股號建議 ──────────────────────────────────────────
+  var sugTimer = null;
+  input.addEventListener('input', function () {
+    var q = input.value.trim();
+    if (sugTimer) clearTimeout(sugTimer);
+    if (!q) { sug.hidden = true; return; }
+    sugTimer = setTimeout(function () {
+      get('api/codeQuery?query=' + encodeURIComponent(q)).then(function (d) {
+        var list = (d && d.suggestions) || [];
+        sug.textContent = '';
+        list.slice(0, 8).forEach(function (line) {
+          var parts = String(line).split('\t');
+          if (parts.length < 2) return;
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'sq-opt';
+          b.setAttribute('role', 'option');
+          b.textContent = parts[0] + '　' + parts[1];
+          b.addEventListener('click', function () {
+            sug.hidden = true;
+            input.value = parts[0] + ' ' + parts[1];
+            load({code: parts[0], name: parts[1]});
+          });
+          sug.appendChild(b);
+        });
+        sug.hidden = !sug.childElementCount;
+      }).catch(function () { sug.hidden = true; });
+    }, 220);
+  });
+
+  input.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    var first = sug.querySelector('.sq-opt');
+    if (first) { first.click(); return; }
+    var code = input.value.trim().split(/[ 	]+/)[0];
+    if (code) load({code: code, name: ''});
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!panel.contains(e.target)) sug.hidden = true;
+  });
+
+  Array.prototype.slice.call(rangeBar.querySelectorAll('.chip')).forEach(function (c) {
+    c.addEventListener('click', function () {
+      Array.prototype.slice.call(rangeBar.querySelectorAll('.chip'))
+        .forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); });
+      months = Number(c.dataset.months);
+      if (current) load(current);
+    });
+  });
+
+  // ── 查詢 ──────────────────────────────────────────────
+  function load(target) {
+    current = target;
+    var my = ++seq;
+    sug.hidden = true;
+    rangeBar.hidden = false;
+    result.hidden = true;
+    say('查詢中…');
+
+    // 一次只能查一個月，所以要往回逐月要
+    var dates = [];
+    var d = new Date();
+    d.setDate(1);
+    for (var i = 0; i < months; i++) {
+      dates.push(ymd(d));
+      d.setMonth(d.getMonth() - 1);
+    }
+
+    var jobs = dates.map(function (day) {
+      return get('afterTrading/STOCK_DAY?date=' + day + '&stockNo=' +
+                 encodeURIComponent(target.code) + '&response=json')
+        .catch(function () { return null; });
+    });
+    jobs.push(get('afterTrading/BWIBBU?date=' + dates[0] + '&stockNo=' +
+                  encodeURIComponent(target.code) + '&response=json')
+      .catch(function () { return null; }));
+
+    Promise.all(jobs).then(function (res) {
+      if (my !== seq) return;                 // 期間又查了別的
+      var value = res.slice(0, months);
+      var ratio = res[months];
+      var rows = [];
+      value.forEach(function (r) {
+        if (!r || r.stat !== 'OK' || !r.data) return;
+        r.data.forEach(function (row) { rows.push(row); });
+      });
+      if (!rows.length) {
+        say('查不到「' + target.code + '」的成交資料。可能是代號有誤，或這一段期間沒有交易。');
+        result.hidden = true;
+        return;
+      }
+      rows.sort(function (a, b) { return rocDate(a[0]) - rocDate(b[0]); });
+      draw(target, rows, ratio);
+    }).catch(function () {
+      if (my !== seq) return;
+      say('查詢失敗，可能是網路問題或證交所暫時無法連線。');
+    });
+  }
+
+  function stat(label, value) {
+    var box = document.createElement('div');
+    box.className = 'sq-stat';
+    var l = document.createElement('span');
+    l.className = 'sq-stat-l';
+    l.textContent = label;
+    var v = document.createElement('b');
+    v.textContent = value;
+    box.appendChild(l);
+    box.appendChild(v);
+    return box;
+  }
+
+  function draw(target, rows, ratio) {
+    var last = rows[rows.length - 1];
+    var close = num(last[6]);
+    var diff = num(last[7]);
+    var name = target.name || (rows.length ? '' : '');
+    nameBox.textContent = target.code + (name ? '　' + name : '');
+
+    statsBox.textContent = '';
+    statsBox.appendChild(stat('收盤', close == null ? '—' : close.toLocaleString()));
+    if (diff != null) {
+      var pct = (close && close - diff) ? (diff / (close - diff) * 100) : null;
+      statsBox.appendChild(stat('漲跌',
+        (diff > 0 ? '+' : '') + diff.toFixed(2) +
+        (pct == null ? '' : '（' + (pct > 0 ? '+' : '') + pct.toFixed(2) + '%）')));
+    }
+    statsBox.appendChild(stat('成交股數', last[1]));
+    if (ratio && ratio.stat === 'OK' && ratio.data && ratio.data.length) {
+      var r = ratio.data[ratio.data.length - 1];
+      statsBox.appendChild(stat('本益比', r[3] || '—'));
+      statsBox.appendChild(stat('殖利率', (r[1] || '—') + '%'));
+      statsBox.appendChild(stat('股價淨值比', r[4] || '—'));
+    }
+
+    var xs = rows.map(function (r) {
+      var d = rocDate(r[0]);
+      return d ? d.toISOString().slice(0, 10) : null;
+    });
+    var ys = rows.map(function (r) { return num(r[6]); });
+    var vols = rows.map(function (r) { return num(r[1]); });
+
+    // 自己組 layout，不要拿 DRAM 的來改 —— 那份鎖著 DRAM 自己的
+    // x 軸範圍與快速區間鈕，套過來會讓線只畫在圖的一角。
+    var grid = dark ? '#333849' : '#dee2e6';
+    var fg = dark ? '#9aa0ac' : '#6c757d';
+    function pad(iso, days) {
+      var d = new Date(iso + 'T00:00:00Z');
+      d.setUTCDate(d.getUTCDate() + days);
+      return d.toISOString().slice(0, 10);
+    }
+    var L = {
+      height: 300,
+      margin: {l: 52, r: 12, t: 10, b: 34},
+      showlegend: false,
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      font: {color: fg, size: 11},
+      hovermode: 'x unified',
+      hoverdistance: -1,
+      // 前後各留一天，最後一天的線才不會貼著右邊界被切掉
+      xaxis: {type: 'date', gridcolor: grid, linecolor: grid, zeroline: false,
+              tickformat: '%m/%d', automargin: true,
+              range: [pad(xs[0], -1), pad(xs[xs.length - 1], 1)]},
+      yaxis: {gridcolor: grid, linecolor: grid, zeroline: false,
+              tickformat: ',.0f', automargin: true}
+    };
+
+    Plotly.react('chart-stockquery', [{
+      type: 'scatter', mode: 'lines', x: xs, y: ys,
+      line: {width: 2, color: dark ? '#4dd4ac' : '#1f9d6b'},
+      hovertemplate: '%{x|%m/%d}　%{y:,.2f}<extra></extra>',
+      customdata: vols
+    }], L, {displayModeBar: false, responsive: true});
+
+    hint.hidden = true;
+    result.hidden = false;
+    syncSticky();
+  }
+
+  // 換主題時把已經畫好的圖重畫一次
+  window.addEventListener('dash-theme', function () { if (current) load(current); });
+})();
+
+// ── 個股：營收／重訊／財報（排程抓下來的 JSON）─────────────
+(function () {
+  var panel = document.getElementById('panel-stock');
+  if (!panel) return;
+  var cache = {};
+
+  function money(text) {          // 千元 → 億元，看得懂比精確重要
+    var v = parseFloat(text);
+    if (!isFinite(v)) return '—';
+    return (v / 100000).toFixed(2) + ' 億';
+  }
+  function pct(text) {
+    var v = parseFloat(text);
+    if (!isFinite(v)) return '—';
+    return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
+  }
+  function cls(text) {
+    var v = parseFloat(text);
+    if (!isFinite(v) || v === 0) return '';
+    return v > 0 ? ' up' : ' down';
+  }
+  function rocMonth(v) { return String(v).length === 5 ? v.slice(0, 3) + '/' + v.slice(3) : v; }
+  function rocDate(v) {
+    v = String(v);
+    return v.length === 7 ? v.slice(0, 3) + '/' + v.slice(3, 5) + '/' + v.slice(5) : v;
+  }
+
+  // 每個資料集怎麼變成一列
+  var VIEWS = {
+    revenue: {
+      match: function (r) { return r.name + r.code + r.industry; },
+      sort: function (a, b) { return (parseFloat(b.yoy) || -1e9) - (parseFloat(a.yoy) || -1e9); },
+      row: function (r) {
+        return {title: r.code + '　' + r.name,
+                sub: r.industry + '　·　' + rocMonth(r.month),
+                cells: [['當月營收', money(r.revenue), ''],
+                        ['年增', pct(r.yoy), cls(r.yoy)],
+                        ['月增', pct(r.mom), cls(r.mom)]]};
+      }
+    },
+    income: {
+      match: function (r) { return r.name + r.code; },
+      sort: function (a, b) { return (parseFloat(b.revenue) || 0) - (parseFloat(a.revenue) || 0); },
+      row: function (r) {
+        return {title: r.code + '　' + r.name,
+                sub: r.year + ' 年第 ' + r.quarter + ' 季',
+                cells: [['營收', money(r.revenue), ''],
+                        ['營業利益', money(r.operating), ''],
+                        ['EPS', (r.eps || '—') + ' 元', cls(r.eps)]]};
+      }
+    }
+  };
+
+  function renderRows(box, rows, view) {
+    box.textContent = '';
+    if (!rows.length) {
+      var none = document.createElement('p');
+      none.className = 'cal-empty';
+      none.textContent = '沒有符合的資料。';
+      box.appendChild(none);
+      return;
+    }
+    rows.slice(0, 200).forEach(function (r) {
+      var item = view.row(r);
+      var card = document.createElement('div');
+      card.className = 'sl-item';
+      var head = document.createElement('div');
+      head.className = 'sl-head';
+      var t = document.createElement('span');
+      t.className = 'sl-title';
+      t.textContent = item.title;
+      var sb = document.createElement('span');
+      sb.className = 'sl-sub';
+      sb.textContent = item.sub;
+      head.appendChild(t);
+      head.appendChild(sb);
+      card.appendChild(head);
+      var grid = document.createElement('div');
+      grid.className = 'sl-grid';
+      item.cells.forEach(function (c) {
+        var cell = document.createElement('div');
+        cell.className = 'sl-cell';
+        var l = document.createElement('span');
+        l.textContent = c[0];
+        var v = document.createElement('b');
+        v.className = 'sl-v' + c[2];
+        v.textContent = c[1];
+        cell.appendChild(l);
+        cell.appendChild(v);
+        grid.appendChild(cell);
+      });
+      card.appendChild(grid);
+      box.appendChild(card);
+    });
+    if (rows.length > 200) {
+      var more = document.createElement('p');
+      more.className = 'cal-empty';
+      more.textContent = '另有 ' + (rows.length - 200) + ' 筆，用上面的搜尋框縮小範圍。';
+      box.appendChild(more);
+    }
+  }
+
+  // 重大訊息：清單 + 全文，動線跟新聞一樣
+  function renderAnnounce(box, rows, sp) {
+    box.textContent = '';
+    var list = document.createElement('div');
+    var article = document.createElement('div');
+    article.className = 'news-article';
+    article.hidden = true;
+
+    function show(r) {
+      list.hidden = !!r;
+      article.hidden = !r;
+      if (r) {
+        article.textContent = '';
+        var h = document.createElement('h2');
+        h.className = 'news-h';
+        h.textContent = r.subject;
+        var meta = document.createElement('div');
+        meta.className = 'news-meta';
+        meta.textContent = r.code + '　' + r.name + '　·　' + rocDate(r.date) +
+                           (r.clause ? '　·　' + r.clause : '');
+        var body = document.createElement('div');
+        body.className = 'news-body';
+        (r.body || '').split(String.fromCharCode(10)).forEach(function (line) {
+          if (!line.trim()) return;
+          var p = document.createElement('p');
+          p.textContent = line;
+          body.appendChild(p);
+        });
+        if (!body.childElementCount) {
+          var p2 = document.createElement('p');
+          p2.className = 'news-nobody';
+          p2.textContent = '這則公告沒有說明內容。';
+          body.appendChild(p2);
+        }
+        var link = document.createElement('a');
+        link.className = 'news-link';
+        link.href = 'https://mops.twse.com.tw/mops/#/web/home';
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = '到公開資訊觀測站 ↗';
+        article.appendChild(h);
+        article.appendChild(meta);
+        article.appendChild(body);
+        article.appendChild(link);
+      }
+      setBack(r ? function () { show(null); } : null);
+      window.scrollTo(0, 0);
+      syncSticky();
+    }
+
+    if (!rows.length) {
+      var none = document.createElement('p');
+      none.className = 'cal-empty';
+      none.textContent = '沒有符合的公告。';
+      list.appendChild(none);
+    }
+    rows.slice(0, 200).forEach(function (r) {
+      var card = document.createElement('div');
+      card.className = 'sl-item sl-click';
+      card.setAttribute('role', 'button');
+      card.tabIndex = 0;
+      var head = document.createElement('div');
+      head.className = 'sl-head';
+      var t = document.createElement('span');
+      t.className = 'sl-title';
+      t.textContent = r.subject;
+      var sb = document.createElement('span');
+      sb.className = 'sl-sub';
+      sb.textContent = r.code + '　' + r.name + '　·　' + rocDate(r.date);
+      head.appendChild(t);
+      head.appendChild(sb);
+      card.appendChild(head);
+      card.addEventListener('click', function () { show(r); });
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(r); }
+      });
+      list.appendChild(card);
+    });
+    box.appendChild(list);
+    box.appendChild(article);
+    sp._reset = function () { show(null); };
+  }
+
+  function fill(sp) {
+    var set = sp.dataset.sub;
+    var box = sp.querySelector('.sl-body');
+    var filter = sp.querySelector('.sl-filter');
+    var rows = cache[set];
+    var q = filter.value.trim().toLowerCase();
+    var view = VIEWS[set];
+    var shown = rows;
+    if (q) {
+      shown = rows.filter(function (r) {
+        var hay = set === 'announce' ? (r.code + r.name + r.subject) : view.match(r);
+        return hay.toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    if (set === 'announce') {
+      shown = shown.slice().sort(function (a, b) {
+        return (b.date + b.time).localeCompare(a.date + a.time);
+      });
+      renderAnnounce(box, shown, sp);
+    } else {
+      renderRows(box, shown.slice().sort(view.sort), view);
+    }
+  }
+
+  function ensure(sp) {
+    var set = sp.dataset.sub;
+    if (cache[set]) { fill(sp); return; }
+    var box = sp.querySelector('.sl-body');
+    fetch('stock/' + set + '.json').then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }).then(function (data) {
+      cache[set] = data;
+      fill(sp);
+    }).catch(function () {
+      box.textContent = '';
+      var p = document.createElement('p');
+      p.className = 'cal-empty';
+      p.textContent = '資料載入失敗，請確認網路連線後重新載入頁面。';
+      box.appendChild(p);
+    });
+  }
+
+  Array.prototype.slice.call(panel.querySelectorAll('.subpanel')).forEach(function (sp) {
+    var filter = sp.querySelector('.sl-filter');
+    if (!filter) return;
+    var timer = null;
+    filter.addEventListener('input', function () {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(function () { if (cache[sp.dataset.sub]) fill(sp); }, 200);
+    });
+    var subtab = panel.querySelector('.subtab[data-sub="' + sp.dataset.sub + '"]');
+    if (subtab) {
+      subtab.addEventListener('click', function () {
+        if (sp._reset) sp._reset();
+        ensure(sp);
+      });
+    }
+  });
+})();
+
 // ── 重新載入 ───────────────────────────────────────────────
 // GitHub Pages 的 CDN 會把頁面快取約 10 分鐘，單純 location.reload() 常常
 // 拿回同一份舊的。改成帶時間戳重新導向，強制取得最新版；用 replace 避免
@@ -2289,7 +2830,28 @@ def build() -> Path:
     DOCS_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(html, encoding="utf-8")
     _write_news_bodies(panel_data.get("news", {}))
+    _write_stock_data(panel_data.get("stock", {}))
     return OUTPUT
+
+
+def _write_stock_data(data: dict) -> None:
+    """個股的三個資料集另存 docs/stock/{資料集}.json，進子分頁時才載。
+
+    三份加起來三百多 KB，塞進 index.html 會讓每個人打開首頁都先扛這些，
+    但真正會去看的人不多。
+    """
+    if not data:
+        return
+    STOCK_DIR.mkdir(parents=True, exist_ok=True)
+    written = set()
+    for key, rows in stock_datasets(data).items():
+        path = STOCK_DIR / f"{key}.json"
+        path.write_text(json.dumps(rows, ensure_ascii=False, separators=(",", ":")),
+                        encoding="utf-8")
+        written.add(path.name)
+    for stale in STOCK_DIR.glob("*.json"):
+        if stale.name not in written:
+            stale.unlink()
 
 
 def _write_news_bodies(data: dict) -> None:

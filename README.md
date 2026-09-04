@@ -40,6 +40,7 @@ GitHub Pages 只能託管靜態檔案，無法執行 Dash 的伺服器端 callba
 | 財經 | 行事曆 | 財經事件行事曆，中文化、表格呈現（ForexFactory）|
 | 個人追蹤 | F1 | 賽程（清單列出每場大獎賽，點進去看該站場次）／積分（車手、車隊：走勢圖 + 積分榜）（F1 Calendar、f1-boxbox）|
 | 財經 | SpaceX | 發射排程，依月份分組、繁體中文（SpaceX 官方 API）|
+| 財經 | 個股 | 查詢（即時向證交所查行情與本益比／殖利率／股價淨值比）／營收／重訊／財報（公開資訊觀測站開放資料）|
 | 財經 | 新聞 | 五個財經／科技來源各 60 則最新報導（非凡新聞 30 則），標題下方標示發布時間，捲到底自動接續，點任一則看內文 |
 | 個人追蹤 | 筆記 | 純本機的文字筆記，存在瀏覽器的 localStorage，不上傳也不進 repo |
 | — | 設定 | 外觀（深色模式）、各資料集資訊與顯示開關、關於 |
@@ -117,6 +118,10 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `news_scraper.py` | 各新聞站的清單與內文抓取（RSS 或 HTML）|
 | `news_render.py` | 新聞分頁的 HTML 產生：清單 + 內文檢視 |
 | `notes_render.py` | 筆記分頁的空殼 HTML（內容全在 localStorage，由頁面 JS 繪製）|
+| `stock_sources.py` | 個股三個資料集的端點與欄位對照 |
+| `stock_scraper.py` | 證交所開放資料爬蟲（月營收、重大訊息、季報損益）|
+| `stock_data.py` | 讀寫 `data/stock_*.csv`，整批取代 |
+| `stock_render.py` | 個股分頁的 HTML 空殼與 JSON 輸出 |
 | `chart.py` | `build_figure()` / `build_bond_figure()` — 唯一的圖表定義來源 |
 | `docs/` | 發佈目錄：`index.html`（產生）+ 圖示與 `manifest.webmanifest`（靜態） |
 | `scraper.py` | TrendForce DRAM 現貨報價爬蟲（僅提供當日快照）|
@@ -218,7 +223,7 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 ## 版本
 
-目前 **v0.3.030**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
+目前 **v0.3.031**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
 
 格式 `vMAJOR.MINOR.PATCH`，PATCH 固定三位數。**一般改動一律只遞增 PATCH**；前兩組除非明確指示否則不變更。改 `version.py` 後重跑 `build_static.py` 即可。
 
@@ -350,3 +355,15 @@ XHR，判斷需登入才看得到清單，因此沒有納入。
 
 DIGITIMES 只公開文章的前導段落，所以內文較短；點「看原文 ↗」可到原站閱讀全文。
 非凡新聞有部分是影音報導，這類沒有可抽取的內文。
+
+## 關於個股的即時查詢
+
+公開資訊觀測站（MOPS）自己的 API 沒有 `Access-Control-Allow-Origin` 標頭，
+瀏覽器不能直接呼叫，靜態頁面又沒有後端可以代打，所以「即時」只做得到一半：
+
+| 子分頁 | 怎麼來的 |
+|--------|---------|
+| 查詢 | **即時**。`www.twse.com.tw/rwd/` 這組端點帶 `Access-Control-Allow-Origin: *`，頁面上的 JS 當場呼叫 —— 股號建議、逐月成交、本益比／殖利率／股價淨值比都是按下去才去要的 |
+| 營收 / 重訊 / 財報 | 排程更新。證交所開放資料（`openapi.twse.com.tw`）沒有 CORS，只能由 GitHub Actions 抓下來存成 `docs/stock/*.json`，進子分頁時才載 |
+
+三份 JSON 加起來六百多 KB，所以不內嵌在 `index.html` 裡，跟新聞內文一樣按需下載。
