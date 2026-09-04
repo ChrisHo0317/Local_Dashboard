@@ -7,7 +7,9 @@ name: Update news
 # 十幾分鐘到半小時；加上 Pages 的 CDN 快取，手機上看到的還會再晚一些。
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    # 刻意避開整點與 10 的倍數：GitHub 的排程佇列在那些時刻最擠，
+    # 錯開幾分鐘通常能少等一點。
+    - cron: "3,13,23,33,43,53 * * * *"
   workflow_dispatch:
 
 permissions:
