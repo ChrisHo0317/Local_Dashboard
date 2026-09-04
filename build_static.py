@@ -639,8 +639,10 @@ TPL = """<!doctype html>
 
   /* 個股：查詢框、建議、指標、清單 */
   .sq-box { position:relative; margin-bottom:12px; }
+  /* 輸入框一律 16px：iOS Safari 遇到比 16px 小的欄位，一聚焦就會
+     自動把整頁放大，之後還得自己縮回來 */
   .sq-input, .sl-filter { width:100%; padding:10px 12px; border-radius:10px;
-                          font-size:14px; background:var(--bg); color:var(--fg);
+                          font-size:16px; background:var(--bg); color:var(--fg);
                           border:1px solid var(--border); font-family:inherit; }
   .sq-input:focus, .sl-filter:focus { outline:none; border-color:var(--accent); }
   .sq-suggest { position:absolute; z-index:20; left:0; right:0; top:calc(100% + 4px);
@@ -744,7 +746,7 @@ TPL = """<!doctype html>
                  border-radius:10px; background:var(--bg); color:var(--fg);
                  border:1px solid var(--border); }
   .notes-body { width:100%; margin-top:10px; padding:10px; border-radius:10px;
-                font-size:15px; line-height:1.8; resize:vertical;
+                font-size:16px; line-height:1.75; resize:vertical;
                 background:var(--bg); color:var(--fg); border:1px solid var(--border);
                 font-family:inherit; }
   .notes-title:focus, .notes-body:focus { outline:none; border-color:var(--accent); }
