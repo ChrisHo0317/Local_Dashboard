@@ -663,6 +663,14 @@ TPL = """<!doctype html>
   .sq-chart { min-height:300px; max-width:100%; overflow:hidden; }
   .sq-chart .svg-container, .sq-chart svg { max-width:100%; }
 
+  /* 鎖定某一檔時的提示晶片 */
+  .sl-focus { display:flex; align-items:center; justify-content:space-between;
+              gap:10px; margin-bottom:12px; padding:8px 10px 8px 14px;
+              border-radius:999px; background:var(--pill); font-size:13px; }
+  .sl-clear { flex:none; padding:2px 8px; border-radius:999px; font-size:13px;
+              color:var(--muted); border-color:transparent; background:transparent; }
+  .sl-clear:hover { color:var(--fg); }
+
   .sl-item { padding:12px 2px; box-shadow:inset 0 -1px 0 var(--border); }
   .sl-click { cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .sl-click:hover { background:var(--hover); }
@@ -2242,6 +2250,17 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
   renderList();
 })();
 
+// ── 個股：目前鎖定的公司 ───────────────────────────────────
+// 查過某一檔之後，營收／重訊／財報就只看那一檔 —— 想查台積電的人
+// 切過去還要再篩一次很煩。清單上會有一個晶片可以解除。
+var stockFocus = null;                 // {code, name}
+var stockFocusWatchers = [];
+
+function setStockFocus(target) {
+  stockFocus = target;
+  stockFocusWatchers.forEach(function (fn) { fn(); });
+}
+
 // ── 個股：即時查詢 ─────────────────────────────────────────
 // 證交所的 www.twse.com.tw/rwd/ 端點帶 Access-Control-Allow-Origin: *，
 // 所以這裡是真的當場去要資料，不是排程抓下來的快照。
@@ -2412,6 +2431,7 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
     var diff = num(last[7]);
     var name = target.name || (rows.length ? '' : '');
     nameBox.textContent = target.code + (name ? '　' + name : '');
+    setStockFocus({code: target.code, name: name});   // 其他子分頁跟著只看這一檔
 
     statsBox.textContent = '';
     statsBox.appendChild(stat('收盤', close == null ? '—' : close.toLocaleString()));
@@ -2682,6 +2702,27 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
     sp._reset = function () { show(null); };
   }
 
+  // 鎖定某一檔時，清單上方掛一個可以解除的晶片
+  function focusChip(sp) {
+    var old = sp.querySelector('.sl-focus');
+    if (old) old.remove();
+    if (!stockFocus) return;
+    var chip = document.createElement('div');
+    chip.className = 'sl-focus';
+    var label = document.createElement('span');
+    label.textContent = '只看 ' + stockFocus.code +
+                        (stockFocus.name ? '　' + stockFocus.name : '');
+    var clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'sl-clear';
+    clear.setAttribute('aria-label', '顯示全部公司');
+    clear.textContent = '✕';
+    clear.addEventListener('click', function () { setStockFocus(null); });
+    chip.appendChild(label);
+    chip.appendChild(clear);
+    sp.insertBefore(chip, sp.querySelector('.sl-body'));
+  }
+
   function fill(sp) {
     var set = sp.dataset.sub;
     var box = sp.querySelector('.sl-body');
@@ -2690,8 +2731,13 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
     var q = filter.value.trim().toLowerCase();
     var view = VIEWS[set];
     var shown = rows;
+
+    focusChip(sp);
+    if (stockFocus) {
+      shown = shown.filter(function (r) { return r.code === stockFocus.code; });
+    }
     if (q) {
-      shown = rows.filter(function (r) {
+      shown = shown.filter(function (r) {
         var hay = set === 'announce' ? (r.code + r.name + r.subject) : view.match(r);
         return hay.toLowerCase().indexOf(q) >= 0;
       });
@@ -2703,6 +2749,11 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
       renderAnnounce(box, shown, sp);
     } else {
       renderRows(box, shown.slice().sort(view.sort), view);
+    }
+    // 鎖定的公司在這份資料裡沒有東西時，講清楚是哪一種空
+    if (stockFocus && !shown.length) {
+      var note = box.querySelector('.cal-empty');
+      if (note) note.textContent = stockFocus.code + ' 在這份資料裡沒有資料。';
     }
   }
 
@@ -2740,6 +2791,10 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
         ensure(sp);
       });
     }
+    // 查了別檔或解除鎖定時，正在看的那一頁要立刻跟著換
+    stockFocusWatchers.push(function () {
+      if (!sp.hidden && cache[sp.dataset.sub]) fill(sp);
+    });
   });
 })();
 
