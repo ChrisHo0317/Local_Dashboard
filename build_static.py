@@ -657,7 +657,9 @@ TPL = """<!doctype html>
   .sq-stat { padding:8px 10px; border-radius:10px; background:var(--hover); }
   .sq-stat-l { display:block; font-size:11px; color:var(--muted); }
   .sq-stat b { font-size:15px; font-variant-numeric:tabular-nums; }
-  .sq-chart { min-height:300px; }
+  /* 保險：就算 Plotly 又量錯寬度，也不要把整頁撐寬 */
+  .sq-chart { min-height:300px; max-width:100%; overflow:hidden; }
+  .sq-chart .svg-container, .sq-chart svg { max-width:100%; }
 
   .sl-item { padding:12px 2px; box-shadow:inset 0 -1px 0 var(--border); }
   .sl-click { cursor:pointer; -webkit-tap-highlight-color:transparent; }
@@ -2436,6 +2438,11 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
               tickformat: ',.0f', automargin: true}
     };
 
+    // 先讓結果區顯示出來再畫：容器還藏著的話 Plotly 量不到寬度，
+    // 會退回預設的 700px，把整個版面撐寬。
+    hint.hidden = true;
+    result.hidden = false;
+
     Plotly.react('chart-stockquery', [{
       type: 'scatter', mode: 'lines', x: xs, y: ys,
       line: {width: 2, color: dark ? '#4dd4ac' : '#1f9d6b'},
@@ -2443,8 +2450,6 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
       customdata: vols
     }], L, {displayModeBar: false, responsive: true});
 
-    hint.hidden = true;
-    result.hidden = false;
     syncSticky();
   }
 
@@ -2477,6 +2482,13 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
   function rocDate(v) {
     v = String(v);
     return v.length === 7 ? v.slice(0, 3) + '/' + v.slice(3, 5) + '/' + v.slice(5) : v;
+  }
+  // 發言時間是 HHMMSS，早上的會少掉開頭那個 0（70003 就是 07:00:03）
+  function hhmm(v) {
+    v = String(v || '');
+    if (!v) return '';
+    while (v.length < 6) v = '0' + v;
+    return v.slice(0, 2) + ':' + v.slice(2, 4);
   }
 
   // 每個資料集怎麼變成一列
@@ -2572,7 +2584,8 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
         h.textContent = r.subject;
         var meta = document.createElement('div');
         meta.className = 'news-meta';
-        meta.textContent = r.code + '　' + r.name + '　·　' + rocDate(r.date) +
+        meta.textContent = r.code + '　' + r.name + '　·　' +
+                           rocDate(r.date) + ' ' + hhmm(r.time) +
                            (r.clause ? '　·　' + r.clause : '');
         var body = document.createElement('div');
         body.className = 'news-body';
@@ -2622,7 +2635,8 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
       t.textContent = r.subject;
       var sb = document.createElement('span');
       sb.className = 'sl-sub';
-      sb.textContent = r.code + '　' + r.name + '　·　' + rocDate(r.date);
+      sb.textContent = r.code + '　' + r.name + '　·　' +
+                       rocDate(r.date) + ' ' + hhmm(r.time);
       head.appendChild(t);
       head.appendChild(sb);
       card.appendChild(head);
