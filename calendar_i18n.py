@@ -172,7 +172,7 @@ TERMS = {
     "Overseas Trade Index": "海外貿易指數",
     "Official Cash Rate": "官方現金利率",
     "Overnight Rate": "隔夜拆款利率",
-    "Beige Book": "聯準會褐皮書",
+    "Beige Book": "褐皮書",
     "Bank Holiday": "銀行假日",
     "G20 Meetings": "G20 會議",
     "JOLTS Job Openings": "JOLTS 職缺數",
@@ -197,10 +197,15 @@ TERMS = {
     "Rate Statement": "利率聲明",
     "Press Conference": "記者會",
     "Monetary Policy Statement": "貨幣政策聲明",
+    "Monetary Policy Review": "貨幣政策檢討",
+    "Monetary Policy Meeting Minutes": "貨幣政策會議紀要",
+    "Monetary Policy Report": "貨幣政策報告",
 }
 
 # 完整名稱的例外對照（規則拼不出來、或習慣譯法不同的）
 TITLES = {
+    # 單獨出現（沒有 Fed 前綴）時仍要看得懂
+    "Beige Book": "聯準會褐皮書",
     "BOC Rate Statement": "加拿大央行利率聲明",
     "BOC Press Conference": "加拿大央行記者會",
     "RBNZ Rate Statement": "紐西蘭央行利率聲明",
@@ -251,6 +256,7 @@ INSTITUTIONS = {
     "BOJ": "日本央行",
 }
 
+_CJK = re.compile(r"[一-鿿]")
 _AUCTION = re.compile(r"^(\d+)-y Bond Auction$")
 _SPEAKS = re.compile(r"^(.*?)\s+(?:Speaks|speech)$")
 
@@ -348,13 +354,6 @@ def translate_title(title: str) -> str:
 
     prefix, rest = _strip_prefix(title)
 
-    # 央行縮寫（BoC、RBNZ、ECB…）：剝掉之後剩下的通常是既有規則認得的詞
-    for en, zh in BANKS:
-        if rest.startswith(en + " "):
-            tail = translate_title(rest[len(en) + 1:])
-            sep = " " if prefix else ""
-            return f"{prefix}{sep}{zh}{tail}"
-
     m = _AUCTION.match(rest)
     if m:
         sep = " " if prefix else ""
@@ -373,6 +372,19 @@ def translate_title(title: str) -> str:
 
     if rest in TERMS:
         return f"{prefix}{TERMS[rest]}"
+
+    # 央行縮寫（BoC、RBNZ、ECB…）：剝掉之後剩下的通常是既有規則認得的詞。
+    # 排在完整詞條之後 —— 不然 TERMS 裡寫好的整句對照會被這一步搶走。
+    for en, zh in BANKS:
+        if rest.startswith(en + " "):
+            tail = translate_title(rest[len(en) + 1:])
+            sep = " " if prefix else ""
+            # 詞條本身已經帶了機構名（「褐皮書」對照成「聯準會褐皮書」）就別再加一次
+            if tail.startswith(zh):
+                return f"{prefix}{sep}{tail}"
+            # 後半沒翻成中文時補個空格，中英才不會黏在一起
+            gap = "" if _CJK.search(tail[:1]) else " "
+            return f"{prefix}{sep}{zh}{gap}{tail}"
 
     rest, suffix = _strip_suffix(rest)
     if rest in TERMS:

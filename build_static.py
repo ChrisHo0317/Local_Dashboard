@@ -587,9 +587,14 @@ TPL = """<!doctype html>
                    border-radius:999px; background:var(--accent); color:#fff; }
   .cal-row td { box-shadow:inset 0 -1px 0 var(--border); }
   .dot { display:block; width:8px; height:8px; border-radius:50%; margin-top:5px; }
-  .i-high { background:#e8590c; }
-  .i-mid  { background:#f08c00; }
+  /* 高與中原本是橘與深黃，小圓點的尺寸下幾乎分不出來，改成紅與藍 */
+  .i-high { background:#e03131; }
+  .i-mid  { background:#1c7ed6; }
   .i-low  { background:#adb5bd; }
+  .i-hol  { background:#37b24d; }          /* 假日 */
+  html[data-theme="dark"] .i-hol  { background:#51cf66; }
+  html[data-theme="dark"] .i-high { background:#ff6b6b; }
+  html[data-theme="dark"] .i-mid  { background:#4dabf7; }
   .i-hol  { background:#4dabf7; }
   .cal-title { line-height:1.45; }
   .cal-sub { font-size:11px; color:var(--muted); margin-top:1px; }

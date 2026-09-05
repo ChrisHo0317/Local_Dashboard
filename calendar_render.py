@@ -62,7 +62,7 @@ def panel_html(df: pd.DataFrame) -> str:
     # 只列資料裡真的有的等級 —— 來源只給中／高，多一顆按了沒反應的「低」很怪。
     present = {IMPACT_ORDER.get(v, 1) for v in window(df)["impact"]} if not df.empty else set()
     levels = [(3, "高", "i-high"), (2, "中", "i-mid"),
-              (1, "低", "i-low"), (0, "假日", "i-low")]
+              (1, "低", "i-low"), (0, "假日", "i-hol")]
     chips = "".join(
         f'      <button type="button" class="chip chip-tick" data-impact="{rank}"'
         f' aria-pressed="true"><span class="dot {cls}"></span>{label}</button>\n'
