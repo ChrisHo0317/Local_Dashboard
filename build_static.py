@@ -444,9 +444,11 @@ TPL = """<!doctype html>
   #page-meta { overflow:hidden; max-height:64px; opacity:1;
                transition:max-height .18s, opacity .18s; }
   body.scrolled #page-meta { max-height:0; opacity:0; }
-  h1 { font-size:20px; margin:0 0 4px; font-weight:600; }
-  .meta { font-size:13px; color:var(--muted); line-height:1.6; }
-  .head-right { display:flex; align-items:center; gap:8px; padding-top:1px; }
+  h1 { font-size:20px; margin:0; font-weight:600; }
+  .meta { font-size:12px; color:var(--muted); line-height:1.55; }
+  /* 說明文字靠右上，標題那一側才不會被長長的來源說明推下去 */
+  .head-right { display:flex; flex-direction:column; align-items:flex-end; gap:2px;
+                text-align:right; max-width:58%; padding-top:2px; }
   /* 看內文時標題列左邊出現返回鍵；標題列本身是 sticky，捲到哪都按得到 */
   .head-left { display:flex; gap:8px; align-items:flex-start; min-width:0; }
   .backbtn { flex:none; margin:-4px 0 0 -6px; padding:4px 6px; border-radius:8px;
@@ -464,6 +466,22 @@ TPL = """<!doctype html>
   .iconbtn svg { width:17px; height:17px; }
   .iconbtn.spin svg { animation:spin .8s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* 下拉重新整理的指示器：固定在畫面頂端，跟著手指往下移 */
+  .ptr { position:fixed; top:-34px; left:0; right:0; z-index:60; opacity:0;
+         display:flex; justify-content:center; pointer-events:none; }
+  .ptr.back { transition:transform .2s, opacity .2s; }
+  .ptr-box { width:30px; height:30px; border-radius:50%; background:var(--card);
+             border:1px solid var(--border); box-shadow:0 2px 8px rgba(0,0,0,.14);
+             position:relative; }
+  /* 圈裡是一個箭頭；拉到門檻就轉成向上（放開即可更新）*/
+  .ptr-box::before { content:""; position:absolute; left:50%; top:50%;
+                     width:7px; height:7px; margin:-5px 0 0 -4px;
+                     border-left:2px solid var(--muted); border-bottom:2px solid var(--muted);
+                     transform:rotate(-45deg); transition:transform .15s, border-color .15s; }
+  .ptr.ready .ptr-box::before { transform:rotate(135deg);
+                                border-color:var(--accent); }
+  .ptr.spin .ptr-box { animation:spin .8s linear infinite; }
 
   /* pan-y：垂直滑動仍由瀏覽器捲動頁面，水平與雙指手勢交給 initTouch 處理 */
   .chart { width:100%; height:600px; touch-action:pan-y; }
@@ -835,22 +853,15 @@ TPL = """<!doctype html>
           <polyline points="15 18 9 12 15 6"/>
         </svg>
       </button>
-      <div>
-        <h1 id="page-title">__TITLE0__</h1>
-        <div class="meta" id="page-meta">__META0__</div>
-      </div>
+      <h1 id="page-title">__TITLE0__</h1>
     </div>
     <div class="head-right">
-      <button id="reload" class="iconbtn" type="button" title="重新載入" aria-label="重新載入">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <polyline points="23 4 23 10 17 10"/>
-          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-        </svg>
-      </button>
+      <div class="meta" id="page-meta">__META0__</div>
       <span class="ver">__VERSION__</span>
     </div>
   </header>
+
+  <div class="ptr" id="ptr" aria-hidden="true"><span class="ptr-box"></span></div>
 
   __GROUPBAR__
 
@@ -2853,10 +2864,66 @@ function setStockFocus(target) {
 // GitHub Pages 的 CDN 會把頁面快取約 10 分鐘，單純 location.reload() 常常
 // 拿回同一份舊的。改成帶時間戳重新導向，強制取得最新版；用 replace 避免
 // 在瀏覽記錄裡堆一堆條目。
-document.getElementById('reload').addEventListener('click', function () {
-  this.classList.add('spin');
-  location.replace(location.pathname + '?r=' + Date.now());
-});
+// ── 下拉重新整理 ───────────────────────────────────────────
+// 加到主畫面之後（standalone）沒有瀏覽器自己的下拉重新整理，
+// 而頁面被 CDN 快取，總得有個方法要最新版。
+(function () {
+  var ptr = document.getElementById('ptr');
+  if (!ptr) return;
+  var TRIGGER = 72;      // 拉超過這麼多 px 放開才會重新整理
+  var MAX = 110;         // 指示器最多下移這麼多
+  var y0 = 0, pulling = false, dist = 0, firing = false;
+
+  function show(px, ready) {
+    ptr.style.transform = 'translateY(' + px + 'px)';
+    ptr.style.opacity = Math.min(1, px / 40);
+    ptr.classList.toggle('ready', ready);
+  }
+  function reset() {
+    ptr.classList.add('back');
+    show(0, false);
+    setTimeout(function () { ptr.classList.remove('back'); }, 200);
+  }
+
+  document.addEventListener('touchstart', function (e) {
+    pulling = false;
+    if (firing || e.touches.length !== 1) return;
+    if (window.scrollY > 0) return;          // 只有在最上方才算
+    var el = e.target;
+    if (el.closest && el.closest('input, textarea, select, .chart')) return;
+    y0 = e.touches[0].clientY;
+    pulling = true;
+    dist = 0;
+  }, {passive: true});
+
+  document.addEventListener('touchmove', function (e) {
+    if (!pulling || e.touches.length !== 1) return;
+    var dy = e.touches[0].clientY - y0;
+    if (dy <= 0 || window.scrollY > 0) {     // 往上滑或已經捲走就交還給頁面
+      if (dist) { dist = 0; reset(); }
+      pulling = false;
+      return;
+    }
+    // 阻止瀏覽器自己的橡皮筋／下拉重新整理，不然兩套會打架
+    if (e.cancelable) e.preventDefault();
+    dist = Math.min(MAX, dy * 0.5);          // 有阻尼，拉起來才有手感
+    show(dist, dist >= TRIGGER);
+  }, {passive: false});
+
+  document.addEventListener('touchend', function () {
+    if (!pulling) return;
+    pulling = false;
+    if (dist >= TRIGGER) {
+      firing = true;
+      ptr.classList.add('spin');
+      show(TRIGGER, true);
+      location.replace(location.pathname + '?r=' + Date.now());
+      return;
+    }
+    if (dist) reset();
+    dist = 0;
+  }, {passive: true});
+})();
 
 // ── 主題 ───────────────────────────────────────────────────
 try {

@@ -54,9 +54,11 @@
   #page-meta { overflow:hidden; max-height:64px; opacity:1;
                transition:max-height .18s, opacity .18s; }
   body.scrolled #page-meta { max-height:0; opacity:0; }
-  h1 { font-size:20px; margin:0 0 4px; font-weight:600; }
-  .meta { font-size:13px; color:var(--muted); line-height:1.6; }
-  .head-right { display:flex; align-items:center; gap:8px; padding-top:1px; }
+  h1 { font-size:20px; margin:0; font-weight:600; }
+  .meta { font-size:12px; color:var(--muted); line-height:1.55; }
+  /* 說明文字靠右上，標題那一側才不會被長長的來源說明推下去 */
+  .head-right { display:flex; flex-direction:column; align-items:flex-end; gap:2px;
+                text-align:right; max-width:58%; padding-top:2px; }
   /* 看內文時標題列左邊出現返回鍵；標題列本身是 sticky，捲到哪都按得到 */
   .head-left { display:flex; gap:8px; align-items:flex-start; min-width:0; }
   .backbtn { flex:none; margin:-4px 0 0 -6px; padding:4px 6px; border-radius:8px;
@@ -74,6 +76,22 @@
   .iconbtn svg { width:17px; height:17px; }
   .iconbtn.spin svg { animation:spin .8s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* 下拉重新整理的指示器：固定在畫面頂端，跟著手指往下移 */
+  .ptr { position:fixed; top:-34px; left:0; right:0; z-index:60; opacity:0;
+         display:flex; justify-content:center; pointer-events:none; }
+  .ptr.back { transition:transform .2s, opacity .2s; }
+  .ptr-box { width:30px; height:30px; border-radius:50%; background:var(--card);
+             border:1px solid var(--border); box-shadow:0 2px 8px rgba(0,0,0,.14);
+             position:relative; }
+  /* 圈裡是一個箭頭；拉到門檻就轉成向上（放開即可更新）*/
+  .ptr-box::before { content:""; position:absolute; left:50%; top:50%;
+                     width:7px; height:7px; margin:-5px 0 0 -4px;
+                     border-left:2px solid var(--muted); border-bottom:2px solid var(--muted);
+                     transform:rotate(-45deg); transition:transform .15s, border-color .15s; }
+  .ptr.ready .ptr-box::before { transform:rotate(135deg);
+                                border-color:var(--accent); }
+  .ptr.spin .ptr-box { animation:spin .8s linear infinite; }
 
   /* pan-y：垂直滑動仍由瀏覽器捲動頁面，水平與雙指手勢交給 initTouch 處理 */
   .chart { width:100%; height:600px; touch-action:pan-y; }
@@ -445,22 +463,15 @@
           <polyline points="15 18 9 12 15 6"/>
         </svg>
       </button>
-      <div>
-        <h1 id="page-title">DRAM 現貨報價趨勢</h1>
-        <div class="meta" id="page-meta">資料來源：TrendForce　·　單位：USD（盤平均）<br>最後更新日：2026-09-04</div>
-      </div>
+      <h1 id="page-title">DRAM 現貨報價趨勢</h1>
     </div>
     <div class="head-right">
-      <button id="reload" class="iconbtn" type="button" title="重新載入" aria-label="重新載入">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <polyline points="23 4 23 10 17 10"/>
-          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-        </svg>
-      </button>
-      <span class="ver">v0.3.040</span>
+      <div class="meta" id="page-meta">資料來源：TrendForce　·　單位：USD（盤平均）<br>最後更新日：2026-09-04</div>
+      <span class="ver">v0.3.041</span>
     </div>
   </header>
+
+  <div class="ptr" id="ptr" aria-hidden="true"><span class="ptr-box"></span></div>
 
   <nav class="groupbar" id="groupbar" role="tablist" aria-label="分類">
     <span class="grp-pill" id="grp-pill" aria-hidden="true"></span>
@@ -7053,16 +7064,8 @@
           <span class="news-meta">9/04 23:30 · Yahoo <span class="dg-tag">半導體 / AI</span><span class="dg-tag">台股</span><span class="dg-tag">總體經濟</span><span class="dg-tag">公司營運</span></span>
         </span>
       </li>
-      <li class="news-item dg-item" data-n="56" data-source="technews" data-body="1" data-url="https://finance.technews.tw/2026/09/04/hsin-hung-technologys-stock-price-surged-to-its-daily-limit-on-the-4th-due-to-a-confluence-of-positive-factors/" role="button" tabindex="0">
-        <span class="news-no">6</span>
-        <span class="news-main">
-          <span class="news-title">在手訂單達 230 億元，信紘科多重利多齊發今日股價強攻漲停</span>
-          <span class="dg-sum">半導體廠務工程大廠 信紘科 表示，隨著全球半導體產能擴充需求不減，信紘科已從傳統設備商成功演化為具備高技術含量的供應鏈關鍵角色，並且手握新台幣 230 億元訂單，能見度達到 202…</span>
-          <span class="news-meta">9/04 14:40 · TechNews <span class="dg-tag">半導體 / AI</span><span class="dg-tag">台股</span><span class="dg-tag">總體經濟</span><span class="dg-tag">公司營運</span></span>
-        </span>
-      </li>
       <li class="news-item dg-item" data-n="16" data-source="ltn" data-body="1" data-url="https://ec.ltn.com.tw/article/breakingnews/5563726" role="button" tabindex="0">
-        <span class="news-no">7</span>
+        <span class="news-no">6</span>
         <span class="news-main">
           <span class="news-title">投信：AI長線趨勢不變 台股拉回、有助後市</span>
           <span class="dg-sum">投信表示，美國期中選舉前觀望升溫，台股9月恐維持震盪，大盤拉回反而有助後市表現（記者王孟倫攝）</span>
@@ -7070,23 +7073,23 @@
         </span>
       </li>
       <li class="news-item dg-item" data-n="2" data-source="ltn" data-body="1" data-url="https://ec.ltn.com.tw/article/breakingnews/5562670" role="button" tabindex="0">
-        <span class="news-no">8</span>
+        <span class="news-no">7</span>
         <span class="news-main">
           <span class="news-title">台灣太強了！美國7月對台灣貿易逆差暴增至207億美元創歷史新高</span>
           <span class="dg-sum">美國7月對台灣的貿易逆差達到207億美元，創下單月歷史新高。（彭博）</span>
           <span class="news-meta">9/04 18:09 · 自由財經／非凡新聞 <span class="dg-tag">半導體 / AI</span><span class="dg-tag">總體經濟</span></span>
         </span>
       </li>
-      <li class="news-item dg-item" data-n="16" data-source="ustv" data-body="1" data-url="https://news.ustv.com.tw/newsdetail/20260904A051?newsall=true&amp;type=144&amp;" role="button" tabindex="0">
-        <span class="news-no">9</span>
+      <li class="news-item dg-item" data-n="56" data-source="technews" data-body="1" data-url="https://finance.technews.tw/2026/09/04/hsin-hung-technologys-stock-price-surged-to-its-daily-limit-on-the-4th-due-to-a-confluence-of-positive-factors/" role="button" tabindex="0">
+        <span class="news-no">8</span>
         <span class="news-main">
-          <span class="news-title">升息機率降低 台股重回4萬6漲693點周K連紅</span>
-          <span class="dg-sum">美國聯準會理事沃勒放鴿，讓台股今（4）日開高震盪，指數早盤一度大漲超過740點，重新站回46000點大關， 台積電 、 台達電 等權值股同步回神，被動元件、光通訊等中小型題材股也接…</span>
-          <span class="news-meta">9/04 15:03 · 非凡新聞 <span class="dg-tag">半導體 / AI</span><span class="dg-tag">台股</span><span class="dg-tag">總體經濟</span></span>
+          <span class="news-title">在手訂單達 230 億元，信紘科多重利多齊發今日股價強攻漲停</span>
+          <span class="dg-sum">半導體廠務工程大廠 信紘科 表示，隨著全球半導體產能擴充需求不減，信紘科已從傳統設備商成功演化為具備高技術含量的供應鏈關鍵角色，並且手握新台幣 230 億元訂單，能見度達到 202…</span>
+          <span class="news-meta">9/04 14:40 · TechNews <span class="dg-tag">半導體 / AI</span><span class="dg-tag">台股</span><span class="dg-tag">總體經濟</span><span class="dg-tag">公司營運</span></span>
         </span>
       </li>
       <li class="news-item dg-item" data-n="6" data-source="ustv" data-body="1" data-url="https://news.ustv.com.tw/newsdetail/20260904A084" role="button" tabindex="0">
-        <span class="news-no">10</span>
+        <span class="news-no">9</span>
         <span class="news-main">
           <span class="news-title">戴爾財報報喜上調展望 帶動AI伺服器股強攻</span>
           <span class="dg-sum">戴爾公布第二季財報，營收、獲利雙雙優於市場預期，並同步上調全年營收展望；聯想伺服器業務也維持強勁表現，顯示AI伺服器需求持續升溫。今（4）日台股資金也重新回到AI伺服器族群，緯創…</span>
@@ -7094,11 +7097,19 @@
         </span>
       </li>
       <li class="news-item dg-item" data-n="14" data-source="ustv" data-body="1" data-url="https://news.ustv.com.tw/newsdetail/20260904A001017?newsall=true&amp;type=104&amp;" role="button" tabindex="0">
-        <span class="news-no">11</span>
+        <span class="news-no">10</span>
         <span class="news-main">
           <span class="news-title">美擬祭晶片關稅！南韓證實雙方正磋商 待遇不劣於競爭對手</span>
           <span class="dg-sum">美國政府醞釀新一輪半導體關稅之際，週五（4日）南韓一名總統府官員透露，雙方正持續就半導體投資及關稅待遇進行磋商，同時表示，在美半導體投資是兩國廣泛雙邊談判的一環；另一名官員更強調…</span>
           <span class="news-meta">9/04 15:46 · 非凡新聞 <span class="dg-tag">半導體 / AI</span><span class="dg-tag">總體經濟</span><span class="dg-tag">公司營運</span></span>
+        </span>
+      </li>
+      <li class="news-item dg-item" data-n="16" data-source="ustv" data-body="1" data-url="https://news.ustv.com.tw/newsdetail/20260904A051?newsall=true&amp;type=144&amp;" role="button" tabindex="0">
+        <span class="news-no">11</span>
+        <span class="news-main">
+          <span class="news-title">升息機率降低 台股重回4萬6漲693點周K連紅</span>
+          <span class="dg-sum">美國聯準會理事沃勒放鴿，讓台股今（4）日開高震盪，指數早盤一度大漲超過740點，重新站回46000點大關， 台積電 、 台達電 等權值股同步回神，被動元件、光通訊等中小型題材股也接…</span>
+          <span class="news-meta">9/04 15:03 · 非凡新聞 <span class="dg-tag">半導體 / AI</span><span class="dg-tag">台股</span><span class="dg-tag">總體經濟</span></span>
         </span>
       </li>
       <li class="news-item dg-item" data-n="17" data-source="ltn" data-body="1" data-url="https://ec.ltn.com.tw/article/breakingnews/5563728" role="button" tabindex="0">
@@ -9435,8 +9446,8 @@
 
     <div class="card">
       <div class="card-h">關於</div>
-      <div class="row"><span>版本</span><b>v0.3.040</b></div>
-      <div class="row"><span>頁面產生時間</span><b>2026-09-05 14:28 (UTC+8)</b></div>
+      <div class="row"><span>版本</span><b>v0.3.041</b></div>
+      <div class="row"><span>頁面產生時間</span><b>2026-09-05 15:12 (UTC+8)</b></div>
       <div class="row"><span>原始碼</span>
         <a href="https://github.com/ChrisHo0317/Local_Dashboard"
            target="_blank" rel="noopener">GitHub</a></div>
@@ -11473,10 +11484,66 @@ function setStockFocus(target) {
 // GitHub Pages 的 CDN 會把頁面快取約 10 分鐘，單純 location.reload() 常常
 // 拿回同一份舊的。改成帶時間戳重新導向，強制取得最新版；用 replace 避免
 // 在瀏覽記錄裡堆一堆條目。
-document.getElementById('reload').addEventListener('click', function () {
-  this.classList.add('spin');
-  location.replace(location.pathname + '?r=' + Date.now());
-});
+// ── 下拉重新整理 ───────────────────────────────────────────
+// 加到主畫面之後（standalone）沒有瀏覽器自己的下拉重新整理，
+// 而頁面被 CDN 快取，總得有個方法要最新版。
+(function () {
+  var ptr = document.getElementById('ptr');
+  if (!ptr) return;
+  var TRIGGER = 72;      // 拉超過這麼多 px 放開才會重新整理
+  var MAX = 110;         // 指示器最多下移這麼多
+  var y0 = 0, pulling = false, dist = 0, firing = false;
+
+  function show(px, ready) {
+    ptr.style.transform = 'translateY(' + px + 'px)';
+    ptr.style.opacity = Math.min(1, px / 40);
+    ptr.classList.toggle('ready', ready);
+  }
+  function reset() {
+    ptr.classList.add('back');
+    show(0, false);
+    setTimeout(function () { ptr.classList.remove('back'); }, 200);
+  }
+
+  document.addEventListener('touchstart', function (e) {
+    pulling = false;
+    if (firing || e.touches.length !== 1) return;
+    if (window.scrollY > 0) return;          // 只有在最上方才算
+    var el = e.target;
+    if (el.closest && el.closest('input, textarea, select, .chart')) return;
+    y0 = e.touches[0].clientY;
+    pulling = true;
+    dist = 0;
+  }, {passive: true});
+
+  document.addEventListener('touchmove', function (e) {
+    if (!pulling || e.touches.length !== 1) return;
+    var dy = e.touches[0].clientY - y0;
+    if (dy <= 0 || window.scrollY > 0) {     // 往上滑或已經捲走就交還給頁面
+      if (dist) { dist = 0; reset(); }
+      pulling = false;
+      return;
+    }
+    // 阻止瀏覽器自己的橡皮筋／下拉重新整理，不然兩套會打架
+    if (e.cancelable) e.preventDefault();
+    dist = Math.min(MAX, dy * 0.5);          // 有阻尼，拉起來才有手感
+    show(dist, dist >= TRIGGER);
+  }, {passive: false});
+
+  document.addEventListener('touchend', function () {
+    if (!pulling) return;
+    pulling = false;
+    if (dist >= TRIGGER) {
+      firing = true;
+      ptr.classList.add('spin');
+      show(TRIGGER, true);
+      location.replace(location.pathname + '?r=' + Date.now());
+      return;
+    }
+    if (dist) reset();
+    dist = 0;
+  }, {passive: true});
+})();
 
 // ── 主題 ───────────────────────────────────────────────────
 try {
