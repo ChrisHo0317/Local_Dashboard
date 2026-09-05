@@ -217,6 +217,18 @@ TITLES = {
     "Bank Holiday": "銀行假日",
 }
 
+# 央行縮寫當作名稱前綴：「BoC Interest Rate Decision」→「加拿大央行 利率決議」。
+# 長的排前面，才不會被短的先吃掉（PBoC 要贏過 BoC）。
+BANKS = [
+    ("FOMC", "FOMC"), ("Fed", "聯準會"), ("ECB", "歐洲央行"),
+    ("PBoC", "中國人民銀行"), ("BoC", "加拿大央行"), ("BOC", "加拿大央行"),
+    ("BoE", "英國央行"), ("BOE", "英國央行"), ("BoJ", "日本央行"), ("BOJ", "日本央行"),
+    ("RBNZ", "紐西蘭央行"), ("RBA", "澳洲央行"), ("SNB", "瑞士央行"),
+    ("CBRT", "土耳其央行"), ("Riksbank", "瑞典央行"), ("Norges Bank", "挪威央行"),
+    ("BCB", "巴西央行"), ("Banxico", "墨西哥央行"), ("RBI", "印度央行"),
+    ("BoK", "南韓央行"), ("BOK", "南韓央行"),
+]
+
 # 央行／機構縮寫，用於「XXX Speaks」
 INSTITUTIONS = {
     "FOMC Member": "FOMC 官員",
@@ -335,6 +347,13 @@ def translate_title(title: str) -> str:
         return f"{m.group(1)} 年期公債標售"
 
     prefix, rest = _strip_prefix(title)
+
+    # 央行縮寫（BoC、RBNZ、ECB…）：剝掉之後剩下的通常是既有規則認得的詞
+    for en, zh in BANKS:
+        if rest.startswith(en + " "):
+            tail = translate_title(rest[len(en) + 1:])
+            sep = " " if prefix else ""
+            return f"{prefix}{sep}{zh}{tail}"
 
     m = _AUCTION.match(rest)
     if m:

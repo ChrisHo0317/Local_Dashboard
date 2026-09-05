@@ -136,6 +136,11 @@
              gap:10px; flex-wrap:wrap; margin-bottom:12px; }
   .cal-filter { display:flex; gap:8px; flex-wrap:wrap; }
   .chip { font-size:12px; padding:6px 14px; border-radius:999px; color:var(--muted); }
+  /* 勾選式的影響程度標籤：沒勾的整顆淡掉，一眼看得出現在在看什麼 */
+  .chip-tick { display:inline-flex; align-items:center; gap:6px; }
+  .chip-tick .dot { width:7px; height:7px; margin:0; }
+  .chip-tick[aria-pressed="false"] { opacity:.45; }
+  .chip-tick[aria-pressed="false"] .dot { background:var(--muted); }
   .chip[aria-pressed="true"] { background:var(--pill); color:var(--fg); border-color:transparent; }
   .cal-clock { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums;
                white-space:nowrap; }
@@ -448,7 +453,7 @@
           <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
         </svg>
       </button>
-      <span class="ver">v0.3.037</span>
+      <span class="ver">v0.3.038</span>
     </div>
   </header>
 
@@ -474,9 +479,8 @@
   <section id="panel-calendar" class="panel" role="tabpanel" hidden>
   <div class="cal-bar">
     <div class="cal-filter" role="group" aria-label="影響程度篩選">
-      <button type="button" class="chip" data-min="0" aria-pressed="true">全部</button>
-      <button type="button" class="chip" data-min="2" aria-pressed="false">中以上</button>
-      <button type="button" class="chip" data-min="3" aria-pressed="false">僅高影響</button>
+      <button type="button" class="chip chip-tick" data-impact="3" aria-pressed="true"><span class="dot i-high"></span>高</button>
+      <button type="button" class="chip chip-tick" data-impact="2" aria-pressed="true"><span class="dot i-mid"></span>中</button>
     </div>
     <div class="cal-clock" id="cal-clock" aria-live="off">—</div>
   </div>
@@ -570,7 +574,7 @@
         <td class="cal-time">10:00</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">紐西蘭央行貨幣政策檢討</div>
+          <div class="cal-title">紐西蘭央行Monetary Policy Review</div>
           <div class="cal-sub">紐西蘭 · RBNZ Monetary Policy Review</div>
         </td>
         <td class="cal-num"></td>
@@ -620,8 +624,8 @@
         <td class="cal-time">21:45</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoC Interest Rate Decision</div>
-          <div class="cal-sub">加拿大</div>
+          <div class="cal-title">加拿大央行利率決議</div>
+          <div class="cal-sub">加拿大 · BoC Interest Rate Decision</div>
         </td>
         <td class="cal-num">2.25</td>
         <td class="cal-num">2.25</td>
@@ -630,8 +634,8 @@
         <td class="cal-time">21:45</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoC Monetary Policy Statement</div>
-          <div class="cal-sub">加拿大</div>
+          <div class="cal-title">加拿大央行貨幣政策聲明</div>
+          <div class="cal-sub">加拿大 · BoC Monetary Policy Statement</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -650,8 +654,8 @@
         <td class="cal-time">22:30</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoC Press Conference</div>
-          <div class="cal-sub">加拿大</div>
+          <div class="cal-title">加拿大央行記者會</div>
+          <div class="cal-sub">加拿大 · BoC Press Conference</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -1481,8 +1485,8 @@
         <td class="cal-time">19:00</td>
         <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">CBRT Interest Rate Decision</div>
-          <div class="cal-sub">土耳其</div>
+          <div class="cal-title">土耳其央行利率決議</div>
+          <div class="cal-sub">土耳其 · CBRT Interest Rate Decision</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num">37</td>
@@ -1491,8 +1495,8 @@
         <td class="cal-time">20:15</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">ECB Rate On Deposit Facility</div>
-          <div class="cal-sub">歐元區</div>
+          <div class="cal-title">歐洲央行Rate On Deposit Facility</div>
+          <div class="cal-sub">歐元區 · ECB Rate On Deposit Facility</div>
         </td>
         <td class="cal-num">2.5</td>
         <td class="cal-num">2.25</td>
@@ -1501,8 +1505,8 @@
         <td class="cal-time">20:15</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">ECB Main Refinancing Operations Rate</div>
-          <div class="cal-sub">歐元區</div>
+          <div class="cal-title">歐洲央行Main Refinancing Operations Rate</div>
+          <div class="cal-sub">歐元區 · ECB Main Refinancing Operations Rate</div>
         </td>
         <td class="cal-num">2.65</td>
         <td class="cal-num">2.4</td>
@@ -1511,8 +1515,8 @@
         <td class="cal-time">20:15</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">ECB Monetary Policy Statement</div>
-          <div class="cal-sub">歐元區</div>
+          <div class="cal-title">歐洲央行貨幣政策聲明</div>
+          <div class="cal-sub">歐元區 · ECB Monetary Policy Statement</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -1767,7 +1771,7 @@
         <td class="cal-time">20:30</td>
         <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoC Consumer Price Index Core月增率</div>
+          <div class="cal-title">加拿大央行Consumer Price Index Core月增率</div>
           <div class="cal-sub">加拿大 · BoC Consumer Price Index Core (MoM)</div>
         </td>
         <td class="cal-num"></td>
@@ -1777,7 +1781,7 @@
         <td class="cal-time">20:30</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoC Consumer Price Index Core年增率</div>
+          <div class="cal-title">加拿大央行Consumer Price Index Core年增率</div>
           <div class="cal-sub">加拿大 · BoC Consumer Price Index Core (YoY)</div>
         </td>
         <td class="cal-num"></td>
@@ -2156,8 +2160,8 @@
         <td class="cal-time">01:30</td>
         <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoC Summary of Deliberations</div>
-          <div class="cal-sub">加拿大</div>
+          <div class="cal-title">加拿大央行Summary of Deliberations</div>
+          <div class="cal-sub">加拿大 · BoC Summary of Deliberations</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -2166,8 +2170,8 @@
         <td class="cal-time">02:00</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">Fed Interest Rate Decision</div>
-          <div class="cal-sub">美國</div>
+          <div class="cal-title">聯準會利率決議</div>
+          <div class="cal-sub">美國 · Fed Interest Rate Decision</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num">3.75</td>
@@ -2176,8 +2180,8 @@
         <td class="cal-time">02:00</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">Fed Monetary Policy Statement</div>
-          <div class="cal-sub">美國</div>
+          <div class="cal-title">聯準會貨幣政策聲明</div>
+          <div class="cal-sub">美國 · Fed Monetary Policy Statement</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -2186,8 +2190,8 @@
         <td class="cal-time">02:00</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">FOMC Economic Projections</div>
-          <div class="cal-sub">美國</div>
+          <div class="cal-title">FOMCEconomic Projections</div>
+          <div class="cal-sub">美國 · FOMC Economic Projections</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -2306,8 +2310,8 @@
         <td class="cal-time">19:00</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoE MPC Vote Rate Hike</div>
-          <div class="cal-sub">英國</div>
+          <div class="cal-title">英國央行MPC Vote Rate Hike</div>
+          <div class="cal-sub">英國 · BoE MPC Vote Rate Hike</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num">3</td>
@@ -2316,8 +2320,8 @@
         <td class="cal-time">19:00</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoE MPC Vote Rate Cut</div>
-          <div class="cal-sub">英國</div>
+          <div class="cal-title">英國央行MPC Vote Rate Cut</div>
+          <div class="cal-sub">英國 · BoE MPC Vote Rate Cut</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num">0</td>
@@ -2326,8 +2330,8 @@
         <td class="cal-time">19:00</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoE MPC Vote Rate Unchanged</div>
-          <div class="cal-sub">英國</div>
+          <div class="cal-title">英國央行MPC Vote Rate Unchanged</div>
+          <div class="cal-sub">英國 · BoE MPC Vote Rate Unchanged</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num">6</td>
@@ -2336,8 +2340,8 @@
         <td class="cal-time">19:00</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoE Minutes</div>
-          <div class="cal-sub">英國</div>
+          <div class="cal-title">英國央行Minutes</div>
+          <div class="cal-sub">英國 · BoE Minutes</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -2346,8 +2350,8 @@
         <td class="cal-time">19:00</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoE Interest Rate Decision</div>
-          <div class="cal-sub">英國</div>
+          <div class="cal-title">英國央行利率決議</div>
+          <div class="cal-sub">英國 · BoE Interest Rate Decision</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num">3.75</td>
@@ -2356,8 +2360,8 @@
         <td class="cal-time">19:00</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoE Monetary Policy Summary</div>
-          <div class="cal-sub">英國</div>
+          <div class="cal-title">英國央行貨幣政策摘要</div>
+          <div class="cal-sub">英國 · BoE Monetary Policy Summary</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -2459,7 +2463,7 @@
         <td class="cal-time">07:30</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">澳洲央行 Governor Bullock 談話</div>
+          <div class="cal-title">澳洲央行Governor Bullock 談話</div>
           <div class="cal-sub">澳洲 · RBA Governor Bullock speech</div>
         </td>
         <td class="cal-num"></td>
@@ -2479,8 +2483,8 @@
         <td class="cal-time">11:00</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoJ Interest Rate Decision</div>
-          <div class="cal-sub">日本</div>
+          <div class="cal-title">日本央行利率決議</div>
+          <div class="cal-sub">日本 · BoJ Interest Rate Decision</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num">1</td>
@@ -2489,8 +2493,8 @@
         <td class="cal-time">11:00</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoJ Monetary Policy Statement</div>
-          <div class="cal-sub">日本</div>
+          <div class="cal-title">日本央行貨幣政策聲明</div>
+          <div class="cal-sub">日本 · BoJ Monetary Policy Statement</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -2559,8 +2563,8 @@
         <td class="cal-time">14:30</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoJ Press Conference</div>
-          <div class="cal-sub">日本</div>
+          <div class="cal-title">日本央行記者會</div>
+          <div class="cal-sub">日本 · BoJ Press Conference</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -2615,7 +2619,7 @@
         <td class="cal-time">11:10</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">澳洲央行 Governor Bullock 談話</div>
+          <div class="cal-title">澳洲央行Governor Bullock 談話</div>
           <div class="cal-sub">澳洲 · RBA Governor Bullock speech</div>
         </td>
         <td class="cal-num"></td>
@@ -2911,8 +2915,8 @@
         <td class="cal-time">15:30</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">SNB Interest Rate Decision</div>
-          <div class="cal-sub">瑞士</div>
+          <div class="cal-title">瑞士央行利率決議</div>
+          <div class="cal-sub">瑞士 · SNB Interest Rate Decision</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num">0</td>
@@ -2921,8 +2925,8 @@
         <td class="cal-time">15:30</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">SNB Monetary Policy Assessment</div>
-          <div class="cal-sub">瑞士</div>
+          <div class="cal-title">瑞士央行Monetary Policy Assessment</div>
+          <div class="cal-sub">瑞士 · SNB Monetary Policy Assessment</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -2931,8 +2935,8 @@
         <td class="cal-time">15:30</td>
         <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">Riksbank Interest Rate Decision</div>
-          <div class="cal-sub">瑞典</div>
+          <div class="cal-title">瑞典央行利率決議</div>
+          <div class="cal-sub">瑞典 · Riksbank Interest Rate Decision</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num">1.75</td>
@@ -2961,8 +2965,8 @@
         <td class="cal-time">16:00</td>
         <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">Norges Bank Interest Rate Decision</div>
-          <div class="cal-sub">挪威</div>
+          <div class="cal-title">挪威央行利率決議</div>
+          <div class="cal-sub">挪威 · Norges Bank Interest Rate Decision</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num">4.25</td>
@@ -2971,8 +2975,8 @@
         <td class="cal-time">16:00</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">SNB Press Conference</div>
-          <div class="cal-sub">瑞士</div>
+          <div class="cal-title">瑞士央行記者會</div>
+          <div class="cal-sub">瑞士 · SNB Press Conference</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -3034,8 +3038,8 @@
         <td class="cal-time">03:00</td>
         <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">Banxico Interest Rate Decision</div>
-          <div class="cal-sub">墨西哥</div>
+          <div class="cal-title">墨西哥央行利率決議</div>
+          <div class="cal-sub">墨西哥 · Banxico Interest Rate Decision</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num">6.5</td>
@@ -3157,8 +3161,8 @@
         <td class="cal-time">07:50</td>
         <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoJ Monetary Policy Meeting Minutes</div>
-          <div class="cal-sub">日本</div>
+          <div class="cal-title">日本央行Monetary Policy Meeting Minutes</div>
+          <div class="cal-sub">日本 · BoJ Monetary Policy Meeting Minutes</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -3170,8 +3174,8 @@
         <td class="cal-time">12:30</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">RBA Interest Rate Decision</div>
-          <div class="cal-sub">澳洲</div>
+          <div class="cal-title">澳洲央行利率決議</div>
+          <div class="cal-sub">澳洲 · RBA Interest Rate Decision</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num">4.35</td>
@@ -3180,8 +3184,8 @@
         <td class="cal-time">12:30</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">RBA Monetary Policy Statement</div>
-          <div class="cal-sub">澳洲</div>
+          <div class="cal-title">澳洲央行貨幣政策聲明</div>
+          <div class="cal-sub">澳洲 · RBA Monetary Policy Statement</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -3190,8 +3194,8 @@
         <td class="cal-time">12:30</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">RBA Rate Statement</div>
-          <div class="cal-sub">澳洲</div>
+          <div class="cal-title">澳洲央行利率聲明</div>
+          <div class="cal-sub">澳洲 · RBA Rate Statement</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -3200,8 +3204,8 @@
         <td class="cal-time">13:30</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">RBA Press Conference</div>
-          <div class="cal-sub">澳洲</div>
+          <div class="cal-title">澳洲央行記者會</div>
+          <div class="cal-sub">澳洲 · RBA Press Conference</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -3623,8 +3627,8 @@
         <td class="cal-time">21:00</td>
         <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">SNB Quarterly Bulletin</div>
-          <div class="cal-sub">瑞士</div>
+          <div class="cal-title">瑞士央行Quarterly Bulletin</div>
+          <div class="cal-sub">瑞士 · SNB Quarterly Bulletin</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -3949,8 +3953,8 @@
         <td class="cal-time">12:30</td>
         <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">RBI Interest Rate Decision (Repo Rate)</div>
-          <div class="cal-sub">印度</div>
+          <div class="cal-title">印度央行Interest Rate Decision (Repo Rate)</div>
+          <div class="cal-sub">印度 · RBI Interest Rate Decision (Repo Rate)</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num">5.25</td>
@@ -4371,8 +4375,8 @@
         <td class="cal-time">02:00</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">FOMC Minutes</div>
-          <div class="cal-sub">美國</div>
+          <div class="cal-title">FOMCMinutes</div>
+          <div class="cal-sub">美國 · FOMC Minutes</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -4461,8 +4465,8 @@
         <td class="cal-time">23:00</td>
         <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">Banxico Monetary Policy Meeting Minutes</div>
-          <div class="cal-sub">墨西哥</div>
+          <div class="cal-title">墨西哥央行Monetary Policy Meeting Minutes</div>
+          <div class="cal-sub">墨西哥 · Banxico Monetary Policy Meeting Minutes</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -4650,8 +4654,8 @@
         <td class="cal-time">08:30</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">RBA Meeting Minutes</div>
-          <div class="cal-sub">澳洲</div>
+          <div class="cal-title">澳洲央行Meeting Minutes</div>
+          <div class="cal-sub">澳洲 · RBA Meeting Minutes</div>
         </td>
         <td class="cal-num"></td>
         <td class="cal-num"></td>
@@ -5248,7 +5252,7 @@
         <td class="cal-time">20:30</td>
         <td class="cal-imp"><span class="dot i-mid" title="影響 中"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoC Consumer Price Index Core月增率</div>
+          <div class="cal-title">加拿大央行Consumer Price Index Core月增率</div>
           <div class="cal-sub">加拿大 · BoC Consumer Price Index Core (MoM)</div>
         </td>
         <td class="cal-num"></td>
@@ -5258,7 +5262,7 @@
         <td class="cal-time">20:30</td>
         <td class="cal-imp"><span class="dot i-high" title="影響 高"></span></td>
         <td class="cal-ev">
-          <div class="cal-title">BoC Consumer Price Index Core年增率</div>
+          <div class="cal-title">加拿大央行Consumer Price Index Core年增率</div>
           <div class="cal-sub">加拿大 · BoC Consumer Price Index Core (YoY)</div>
         </td>
         <td class="cal-num"></td>
@@ -9426,8 +9430,8 @@
 
     <div class="card">
       <div class="card-h">關於</div>
-      <div class="row"><span>版本</span><b>v0.3.037</b></div>
-      <div class="row"><span>頁面產生時間</span><b>2026-09-05 13:17 (UTC+8)</b></div>
+      <div class="row"><span>版本</span><b>v0.3.038</b></div>
+      <div class="row"><span>頁面產生時間</span><b>2026-09-05 13:28 (UTC+8)</b></div>
       <div class="row"><span>原始碼</span>
         <a href="https://github.com/ChrisHo0317/Local_Dashboard"
            target="_blank" rel="noopener">GitHub</a></div>
@@ -10375,6 +10379,14 @@ function initCalendarTable(table) {
     : [];
   var cols = table.querySelectorAll('thead th').length;
   var minRank = 0;
+  // 勾選式篩選（行事曆）：哪些影響程度要顯示。空的代表這張表不用這種篩選。
+  var allowed = {};
+  chips.forEach(function (c) {
+    if (c.dataset.impact != null && c.getAttribute('aria-pressed') === 'true') {
+      allowed[Number(c.dataset.impact)] = true;
+    }
+  });
+  var byImpact = chips.some(function (c) { return c.dataset.impact != null; });
   var nowRow = null;
 
   // 台北時間（UTC+8）：不論使用者裝置在哪個時區，顯示都與表格一致
@@ -10461,7 +10473,8 @@ function initCalendarTable(table) {
     days.forEach(function (d) {
       var shown = 0;
       Array.prototype.slice.call(d.querySelectorAll('.cal-row')).forEach(function (row) {
-        var on = Number(row.dataset.impact) >= minRank;
+        var rank = Number(row.dataset.impact);
+        var on = byImpact ? allowed[rank] === true : rank >= minRank;
         row.hidden = !on;
         if (on) shown++;
       });
@@ -10480,10 +10493,20 @@ function initCalendarTable(table) {
     }
   }
 
+  // 兩種篩選共用同一組 class：
+  //   data-impact  每個等級一顆、各自開關（行事曆）
+  //   data-min     互斥的「以上」級距（F1 的場次類型）
   chips.forEach(function (c) {
     c.addEventListener('click', function () {
-      chips.forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); });
-      minRank = Number(c.dataset.min);
+      if (c.dataset.impact != null) {
+        var on = c.getAttribute('aria-pressed') !== 'true';
+        c.setAttribute('aria-pressed', String(on));
+        var rank = Number(c.dataset.impact);
+        if (on) { allowed[rank] = true; } else { delete allowed[rank]; }
+      } else {
+        chips.forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); });
+        minRank = Number(c.dataset.min);
+      }
       refresh();
     });
   });

@@ -526,6 +526,11 @@ TPL = """<!doctype html>
              gap:10px; flex-wrap:wrap; margin-bottom:12px; }
   .cal-filter { display:flex; gap:8px; flex-wrap:wrap; }
   .chip { font-size:12px; padding:6px 14px; border-radius:999px; color:var(--muted); }
+  /* 勾選式的影響程度標籤：沒勾的整顆淡掉，一眼看得出現在在看什麼 */
+  .chip-tick { display:inline-flex; align-items:center; gap:6px; }
+  .chip-tick .dot { width:7px; height:7px; margin:0; }
+  .chip-tick[aria-pressed="false"] { opacity:.45; }
+  .chip-tick[aria-pressed="false"] .dot { background:var(--muted); }
   .chip[aria-pressed="true"] { background:var(--pill); color:var(--fg); border-color:transparent; }
   .cal-clock { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums;
                white-space:nowrap; }
@@ -1754,6 +1759,14 @@ function initCalendarTable(table) {
     : [];
   var cols = table.querySelectorAll('thead th').length;
   var minRank = 0;
+  // 勾選式篩選（行事曆）：哪些影響程度要顯示。空的代表這張表不用這種篩選。
+  var allowed = {};
+  chips.forEach(function (c) {
+    if (c.dataset.impact != null && c.getAttribute('aria-pressed') === 'true') {
+      allowed[Number(c.dataset.impact)] = true;
+    }
+  });
+  var byImpact = chips.some(function (c) { return c.dataset.impact != null; });
   var nowRow = null;
 
   // 台北時間（UTC+8）：不論使用者裝置在哪個時區，顯示都與表格一致
@@ -1840,7 +1853,8 @@ function initCalendarTable(table) {
     days.forEach(function (d) {
       var shown = 0;
       Array.prototype.slice.call(d.querySelectorAll('.cal-row')).forEach(function (row) {
-        var on = Number(row.dataset.impact) >= minRank;
+        var rank = Number(row.dataset.impact);
+        var on = byImpact ? allowed[rank] === true : rank >= minRank;
         row.hidden = !on;
         if (on) shown++;
       });
@@ -1859,10 +1873,20 @@ function initCalendarTable(table) {
     }
   }
 
+  // 兩種篩選共用同一組 class：
+  //   data-impact  每個等級一顆、各自開關（行事曆）
+  //   data-min     互斥的「以上」級距（F1 的場次類型）
   chips.forEach(function (c) {
     c.addEventListener('click', function () {
-      chips.forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); });
-      minRank = Number(c.dataset.min);
+      if (c.dataset.impact != null) {
+        var on = c.getAttribute('aria-pressed') !== 'true';
+        c.setAttribute('aria-pressed', String(on));
+        var rank = Number(c.dataset.impact);
+        if (on) { allowed[rank] = true; } else { delete allowed[rank]; }
+      } else {
+        chips.forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); });
+        minRank = Number(c.dataset.min);
+      }
       refresh();
     });
   });

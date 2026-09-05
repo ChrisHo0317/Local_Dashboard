@@ -58,12 +58,20 @@ def stats(df: pd.DataFrame) -> dict:
 
 def panel_html(df: pd.DataFrame) -> str:
     """產生行事曆分頁的內容（不含 <section> 外框）。"""
+    # 每個影響程度一顆，各自開關（不是互斥的「以上」級距）。
+    # 只列資料裡真的有的等級 —— 來源只給中／高，多一顆按了沒反應的「低」很怪。
+    present = {IMPACT_ORDER.get(v, 1) for v in window(df)["impact"]} if not df.empty else set()
+    levels = [(3, "高", "i-high"), (2, "中", "i-mid"),
+              (1, "低", "i-low"), (0, "假日", "i-low")]
+    chips = "".join(
+        f'      <button type="button" class="chip chip-tick" data-impact="{rank}"'
+        f' aria-pressed="true"><span class="dot {cls}"></span>{label}</button>\n'
+        for rank, label, cls in levels if rank in present
+    )
     head = (
         '  <div class="cal-bar">\n'
         '    <div class="cal-filter" role="group" aria-label="影響程度篩選">\n'
-        '      <button type="button" class="chip" data-min="0" aria-pressed="true">全部</button>\n'
-        '      <button type="button" class="chip" data-min="2" aria-pressed="false">中以上</button>\n'
-        '      <button type="button" class="chip" data-min="3" aria-pressed="false">僅高影響</button>\n'
+        + chips +
         '    </div>\n'
         '    <div class="cal-clock" id="cal-clock" aria-live="off">—</div>\n'
         '  </div>'
