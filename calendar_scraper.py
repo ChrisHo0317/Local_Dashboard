@@ -1,90 +1,109 @@
 """
-財經行事曆爬蟲（ForexFactory）
+財經行事曆爬蟲（FXStreet）
 
-forexfactory.com 本站有 Cloudflare，直接抓會 403；但官方另外提供 JSON feed：
+原本用 ForexFactory 的 JSON feed，但那個 feed 只有「本週」一種
+（nextweek／thismonth 都是 404），所以永遠只看得到本週剩下的日子。
+本站的 HTML 有 Cloudflare，連真實瀏覽器都會被擋成 403，抓不到月曆。
 
-    https://nfs.faireconomy.media/ff_calendar_thisweek.json
+改用 FXStreet 行事曆頁背後的端點，可以指定任意區間：
 
-回傳 [{"title","country","date","impact","forecast","previous"}, ...]
-date 是 ISO 8601 含時區（來源為紐約時間，如 2026-09-04T08:30:00-04:00）。
+    https://calendar-api.fxsstatic.com/en/api/v2/eventDates/{起}/{迄}
 
-兩個要注意的地方：
+回傳 [{"dateUtc","countryCode","name","volatility","consensus","previous",...}]
 
-1. 只有「本週」這一個 feed —— nextweek／lastweek／thismonth 都是 404。
-   所以看得到的未來事件僅限本週剩下的日子，歷史則靠每天執行逐週累積。
+一次抓本月 1 日到下個月底，涵蓋頁面要顯示的「過去幾天 + 未來 45 天」。
 
-2. 這個端點有速率限制。短時間連續抓會回 HTTP 429 加 Retry-After，
-   內容是 HTML 而不是 JSON。每次執行只抓一次，遇到 429 就跳過本次更新。
+只留 HIGH 與 MEDIUM：LOW 一個月有七百多筆，多是次要國家的次要指標，
+全放進頁面只會讓真正該注意的事件被淹掉。
 """
 import json
 import logging
+from datetime import date, timedelta
 
 from curl_cffi import requests as cffi_requests
 
-FEED_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
-SITE_URL = "https://www.forexfactory.com/calendar"
+API = "https://calendar-api.fxsstatic.com/en/api/v2/eventDates/"
+SITE_URL = "https://www.fxstreet.com/economic-calendar"
+
+KEEP_VOLATILITY = {"HIGH", "MEDIUM"}
+
+# 來源的波動度 → 我們既有的影響程度欄位（沿用 ForexFactory 時期的字面值，
+# 中文化與排序都吃這組字）
+IMPACT = {"HIGH": "High", "MEDIUM": "Medium", "LOW": "Low", "NONE": "Low"}
 
 
 class ForexFactoryCalendarScraper:
+    """名字沿用舊的，換來源不必動呼叫端；抓的是 FXStreet 的行事曆。"""
+
     def __init__(self, logger: logging.Logger | None = None):
-        self.logger = logger or logging.getLogger("ForexFactoryCalendarScraper")
+        self.logger = logger or logging.getLogger("CalendarScraper")
 
     def fetch_events(self) -> list[dict]:
         """
-        取得本週事件。
+        取得本月與下個月的事件。
 
         回傳: [{"event_time","country","title","impact","forecast","previous"}, ...]
-        失敗（含被限流）則回傳空串列，由呼叫端決定是否跳過更新。
+        失敗則回傳空串列，由呼叫端決定是否跳過更新。
         """
+        today = date.today()
+        start = today.replace(day=1)
+        # 下個月的最後一天：跳到下下個月 1 號再退一天
+        after_next = (start + timedelta(days=62)).replace(day=1)
+        end = after_next - timedelta(days=1)
+
+        url = f"{API}{start}T00:00:00Z/{end}T23:59:59Z"
         try:
             session = cffi_requests.Session(impersonate="chrome124")
             resp = session.get(
-                FEED_URL,
-                headers={"Accept": "application/json", "Referer": SITE_URL},
-                timeout=40,
+                url,
+                headers={"Accept": "application/json",
+                         "Origin": "https://www.fxstreet.com",
+                         "Referer": SITE_URL},
+                timeout=60,
             )
         except Exception as e:
-            self.logger.error(f"ForexFactory feed 讀取失敗: {e}")
+            self.logger.error(f"行事曆讀取失敗: {e}")
             return []
 
-        if resp.status_code == 429:
-            wait = resp.headers.get("retry-after", "?")
-            self.logger.warning(f"ForexFactory feed 被限流（HTTP 429，Retry-After {wait}s），本次跳過")
-            return []
         if resp.status_code != 200:
-            self.logger.error(f"ForexFactory feed 回應 HTTP {resp.status_code}")
+            self.logger.error(f"行事曆回應 HTTP {resp.status_code}")
             return []
 
         try:
             payload = json.loads(resp.content.decode("utf-8", errors="replace"))
         except ValueError:
-            self.logger.error("ForexFactory feed 未回傳 JSON（可能被限流或改版）")
+            self.logger.error("行事曆回應不是 JSON（可能被擋或改版）")
             return []
-
         if not isinstance(payload, list):
-            self.logger.error(f"ForexFactory feed 格式非預期: {type(payload).__name__}")
+            self.logger.error("行事曆回應格式不符（不是清單）")
             return []
 
         rows = []
-        for e in payload:
-            when = (e.get("date") or "").strip()
-            title = (e.get("title") or "").strip()
+        for item in payload:
+            if item.get("volatility") not in KEEP_VOLATILITY:
+                continue
+            when = item.get("dateUtc") or ""
+            title = (item.get("name") or "").strip()
             if not when or not title:
                 continue
             rows.append({
                 "event_time": when,
-                "country": (e.get("country") or "").strip(),
+                "country": (item.get("countryCode") or "").strip(),
                 "title": title,
-                "impact": (e.get("impact") or "").strip(),
-                "forecast": (e.get("forecast") or "").strip(),
-                "previous": (e.get("previous") or "").strip(),
+                "impact": IMPACT.get(item.get("volatility"), "Low"),
+                "forecast": _text(item.get("consensus"), item.get("unit")),
+                "previous": _text(item.get("previous"), item.get("unit")),
             })
 
-        if rows:
-            days = sorted({r["event_time"][:10] for r in rows})
-            self.logger.info(
-                f"ForexFactory：{len(rows)} 筆事件，{days[0]} ～ {days[-1]}"
-            )
-        else:
-            self.logger.warning("ForexFactory feed 沒有回傳任何事件")
+        self.logger.info(f"行事曆：{start} ～ {end} 取得 {len(rows)} 筆（中／高影響）")
         return rows
+
+
+def _text(value, unit) -> str:
+    """把數值與單位合成顯示字串；沒有值就留空。"""
+    if value is None or value == "":
+        return ""
+    text = f"{value:g}" if isinstance(value, (int, float)) else str(value)
+    if unit == "percentage":
+        return text + "%"
+    return text

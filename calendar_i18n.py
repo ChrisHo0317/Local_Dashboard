@@ -22,6 +22,15 @@ COUNTRIES = {
     "TWD": "台灣", "INR": "印度", "BRL": "巴西", "MXN": "墨西哥",
     "ZAR": "南非", "RUB": "俄羅斯", "SEK": "瑞典", "NOK": "挪威",
     "All": "全球",
+    # FXStreet 用的是國碼而不是貨幣碼（同一份表兩種都認，舊資料才不會變成空白）
+    "US": "美國", "EMU": "歐元區", "UK": "英國", "DE": "德國", "FR": "法國",
+    "IT": "義大利", "ES": "西班牙", "NL": "荷蘭", "BE": "比利時", "PT": "葡萄牙",
+    "GR": "希臘", "IE": "愛爾蘭", "AT": "奧地利", "FI": "芬蘭",
+    "JP": "日本", "CN": "中國", "AU": "澳洲", "NZ": "紐西蘭", "CA": "加拿大",
+    "CH": "瑞士", "KR": "南韓", "TW": "台灣", "IN": "印度", "ID": "印尼",
+    "SG": "新加坡", "HK": "香港", "BR": "巴西", "MX": "墨西哥", "TR": "土耳其",
+    "RU": "俄羅斯", "SE": "瑞典", "NO": "挪威", "DK": "丹麥", "PL": "波蘭",
+    "ZA": "南非", "SA": "沙烏地阿拉伯", "IL": "以色列", "WW": "全球",
 }
 
 # ── 影響程度 ───────────────────────────────────────────────
@@ -45,6 +54,7 @@ LEADING_MODIFIERS = [
     ("Annual", "年度"), ("Total", "整體"),
 ]
 TRAILING_MODIFIERS = [
+    ("s.a.", "（季調）"), ("n.s.a.", "（未季調）"), ("n.s.a", "（未季調）"),
     ("Flash Estimate", "快報"), ("Flash", "快報"),
     ("Prelim", "初值"), ("Preliminary", "初值"),
     ("Revised", "修正值"), ("Final", "終值"),
@@ -57,6 +67,66 @@ SUFFIXES = [
 
 # ── 核心指標詞 ─────────────────────────────────────────────
 TERMS = {
+    # ── 換到 FXStreet 之後才出現的寫法 ──
+    "Composite PMI": "綜合採購經理人指數",
+    "Gross Domestic Product": "國內生產毛額",
+    "Producer Price Index": "生產者物價指數",
+    "Building Permits": "建築許可",
+    "Real Retail Sales": "實質零售銷售",
+    "Retail Sales ex Autos": "零售銷售（不含汽車）",
+    "Core Retail Sales": "核心零售銷售",
+    "Durable Goods Orders": "耐久財訂單",
+    "Existing Home Sales": "成屋銷售",
+    "New Home Sales": "新屋銷售",
+    "Pending Home Sales": "待完成房屋銷售",
+    "Consumer Credit Change": "消費信貸變動",
+    "Business Inventories": "企業庫存",
+    "Wholesale Inventories": "批發庫存",
+    "Capacity Utilization": "產能利用率",
+    "Import Price Index": "進口物價指數",
+    "Export Price Index": "出口物價指數",
+    "Current Account n.s.a.": "經常帳（未季調）",
+    "AiG Industry Index": "AiG 產業指數",
+    "Interest Rate Decision": "利率決議",
+    "Consumer Confidence Index": "消費者信心指數",
+    "Economic Sentiment Indicator": "經濟景氣指標",
+    "Industrial Confidence": "工業信心指數",
+    "Services Sentiment": "服務業景氣指數",
+    "Initial Jobless Claims": "初次申請失業救濟金人數",
+    "Continuing Jobless Claims": "續領失業救濟金人數",
+    "Nonfarm Payrolls": "非農就業人數",
+    "ADP Employment Change": "ADP 就業人數變動",
+    "ADP Employment Change 4-week average": "ADP 就業人數變動 四週平均",
+    "Net Change in Employment": "就業人數淨變動",
+    "Participation Rate": "勞動參與率",
+    "Part-Time Employment": "兼職就業人數",
+    "Full-Time Employment": "全職就業人數",
+    "U6 Underemployment Rate": "U6 廣義失業率",
+    "Unemployment Rate s.a.": "失業率（季調）",
+    "Personal Spending": "個人消費支出",
+    "Personal Income": "個人所得",
+    "Retail Sales Control Group": "零售銷售控制組",
+    "Trade Balance s.a.": "貿易餘額（季調）",
+    "Trade Balance USD": "貿易餘額（美元）",
+    "Trade Balance CNY": "貿易餘額（人民幣）",
+    "Gross Domestic Product Annualized": "國內生產毛額 年化",
+    "Consumer Inflation Expectations": "消費者通膨預期",
+    "Michigan Consumer Sentiment Index": "密西根大學消費者信心指數",
+    "Michigan Consumer Expectations Index": "密西根大學消費者預期指數",
+    "UoM 1-year Consumer Inflation Expectations": "密西根大學 1 年期通膨預期",
+    "UoM 5-year Consumer Inflation Expectation": "密西根大學 5 年期通膨預期",
+    "ZEW Survey – Economic Sentiment": "ZEW 經濟景氣指數",
+    "ZEW Survey – Expectations": "ZEW 景氣預期指數",
+    "ZEW Survey – Current Situation": "ZEW 現況指數",
+    "Sentix Investor Confidence": "Sentix 投資人信心指數",
+    "Westpac Consumer Confidence": "Westpac 消費者信心指數",
+    "Philadelphia Fed Manufacturing Survey": "費城聯準銀製造業指數",
+    "Nondefense Capital Goods Orders ex Aircraft": "非國防資本財訂單（不含飛機）",
+    "IMF Meeting": "IMF 會議",
+    "RBNZ Interest Rate Decision": "紐西蘭央行利率決議",
+    "RBNZ Monetary Policy Review": "紐西蘭央行貨幣政策檢討",
+    "PBoC Interest Rate Decision": "中國人民銀行利率決議",
+
     "CPI": "消費者物價指數",
     "PPI": "生產者物價指數",
     "GDP": "國內生產毛額",
@@ -170,7 +240,23 @@ INSTITUTIONS = {
 }
 
 _AUCTION = re.compile(r"^(\d+)-y Bond Auction$")
-_SPEAKS = re.compile(r"^(.*?)\s+Speaks$")
+_SPEAKS = re.compile(r"^(.*?)\s+(?:Speaks|speech)$")
+
+# 來源寫法的正規化（見 normalize）。順序有意義：先拆括號裡的週期，
+# 再處理機構前綴，最後收拾多餘空白。
+_NORMALIZE = [
+    (re.compile(r"\s*\(YoY\)", re.I), " y/y"),
+    (re.compile(r"\s*\(MoM\)", re.I), " m/m"),
+    (re.compile(r"\s*\(QoQ\)", re.I), " q/q"),
+    (re.compile(r"\s*\(WoW\)", re.I), " w/w"),
+    (re.compile(r"\s*\(YTD\)", re.I), " 年初至今"),
+    # PMI 的編製機構：名稱不同但講的是同一個指標
+    (re.compile(r"^(S&P Global|HCOB|Judo Bank|Jibun Bank|au Jibun Bank|Caixin|"
+                r"RatingDog|ISM|NBS|Ai Group|BusinessNZ|SVME|HSBC|Markit)\s+", re.I), ""),
+    # 「Consumer Price Index (CPI)」這種括號縮寫是重複資訊
+    (re.compile(r"\s*\((CPI|PPI|GDP|PMI|PCE|CPIF|HICP)\)", re.I), ""),
+    (re.compile(r"\s{2,}"), " "),
+]
 
 
 def translate_country(code: str) -> str:
@@ -221,9 +307,22 @@ def _strip_modifiers(title: str) -> tuple[str, str, str]:
     return "".join(lead), "".join(trail), title
 
 
+def normalize(title: str) -> str:
+    """把來源的寫法整理成規則吃得下的樣子。
+
+    FXStreet 的名稱格式跟原本的 ForexFactory 不同：週期寫成「(YoY)」而不是
+    「y/y」，PMI 前面還會掛編製機構（S&P Global、HCOB、Judo Bank…）。
+    不先正規化的話，同一個指標會因為寫法不同而整批查不到。
+    """
+    title = (title or "").strip()
+    for pattern, repl in _NORMALIZE:
+        title = pattern.sub(repl, title)
+    return title.strip()
+
+
 def translate_title(title: str) -> str:
     """把事件名稱轉成中文；無法確定的部分保留英文。"""
-    title = (title or "").strip()
+    title = normalize(title)
     if not title:
         return ""
 

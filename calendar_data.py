@@ -50,6 +50,41 @@ def latest_date(df: pd.DataFrame) -> str:
     return df["_ts"].max().tz_convert(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
 
 
+# 舊來源（ForexFactory）的國別欄放的是貨幣碼，現在的來源放國碼。
+# 兩邊對同一場事件的寫法完全不同，去重比對不到，同一天會列出兩套。
+LEGACY_COUNTRIES = {"USD", "EUR", "GBP", "JPY", "AUD", "NZD", "CAD", "CHF",
+                    "CNY", "HKD", "SGD", "KRW", "TWD", "INR", "BRL", "MXN",
+                    "ZAR", "RUB", "SEK", "NOK", "All"}
+
+
+def drop_legacy_overlap() -> int:
+    """新來源已經涵蓋的日子，把舊來源留下的列清掉，回傳清掉幾筆。
+
+    只動重疊的那一段 —— 新來源涵蓋不到的更早日期仍然留著，
+    那是換來源之前累積的歷史。
+    """
+    if not CSV_PATH.exists():
+        return 0
+    df = pd.read_csv(CSV_PATH, dtype=str).fillna("")
+    if df.empty:
+        return 0
+
+    legacy = df["country"].isin(LEGACY_COUNTRIES)
+    if not legacy.any() or legacy.all():
+        return 0
+
+    ts = pd.to_datetime(df["event_time"], errors="coerce", utc=True)
+    covered_from = ts[~legacy].min()
+    if pd.isna(covered_from):
+        return 0
+
+    drop = legacy & (ts >= covered_from)
+    if not drop.any():
+        return 0
+    df[~drop].to_csv(CSV_PATH, index=False, encoding="utf-8")
+    return int(drop.sum())
+
+
 def merge_events(rows: list[dict]) -> int:
     """
     將爬蟲回傳的事件併入 CSV，回傳新增的筆數。

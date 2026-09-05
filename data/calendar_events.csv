@@ -14,108 +14,656 @@ event_time,country,title,impact,forecast,previous
 2026-08-31T11:15:00-04:00,All,G20 Meetings,Low,,
 2026-08-31T19:01:00-04:00,GBP,BRC Shop Price Index y/y,Low,0.9%,0.9%
 2026-08-31T19:50:00-04:00,JPY,Capital Spending q/y,Low,-0.2%,0.0%
-2026-08-31T20:30:00-04:00,JPY,Final Manufacturing PMI,Low,55.1,55.1
-2026-08-31T21:30:00-04:00,AUD,Building Approvals m/m,Low,-4.7%,7.2%
-2026-08-31T21:30:00-04:00,AUD,Current Account,Low,-29.7B,-27.1B
-2026-08-31T21:45:00-04:00,CNY,RatingDog Manufacturing PMI,Low,51.0,50.9
-2026-08-31T23:35:00-04:00,JPY,10-y Bond Auction,Low,,2.84|2.6
-2026-09-01T01:00:00-04:00,JPY,Consumer Confidence,Low,35.3,34.9
-2026-09-01T02:00:00-04:00,EUR,German Retail Sales m/m,Low,0.4%,-0.7%
-2026-09-01T02:00:00-04:00,GBP,Nationwide HPI m/m,Low,0.1%,0.1%
-2026-09-01T02:30:00-04:00,AUD,Commodity Prices y/y,Low,,15.4%
-2026-09-01T02:33:00-04:00,CHF,Retail Sales y/y,Low,1.6%,1.5%
-2026-09-01T03:15:00-04:00,EUR,Spanish Manufacturing PMI,Low,50.3,50.2
-2026-09-01T03:30:00-04:00,CHF,Manufacturing PMI,Low,54.1,53.2
-2026-09-01T03:45:00-04:00,EUR,Italian Manufacturing PMI,Low,51.4,51.3
-2026-09-01T03:50:00-04:00,EUR,French Final Manufacturing PMI,Low,51.5,51.5
-2026-09-01T03:55:00-04:00,EUR,German Final Manufacturing PMI,Low,54.1,54.1
-2026-09-01T04:00:00-04:00,EUR,Final Manufacturing PMI,Low,52.8,52.8
-2026-09-01T04:30:00-04:00,EUR,Italian Monthly Unemployment Rate,Low,5.6%,5.7%
-2026-09-01T04:30:00-04:00,GBP,Final Manufacturing PMI,Low,51.5,51.5
-2026-09-01T04:30:00-04:00,GBP,M4 Money Supply m/m,Low,0.9%,0.8%
-2026-09-01T04:30:00-04:00,GBP,Mortgage Approvals,Low,59K,58K
-2026-09-01T04:30:00-04:00,GBP,Net Lending to Individuals m/m,Low,7.2B,9.5B
-2026-09-01T05:00:00-04:00,EUR,Core CPI Flash Estimate y/y,Medium,2.5%,2.5%
-2026-09-01T05:00:00-04:00,EUR,CPI Flash Estimate y/y,Medium,3.3%,2.9%
-2026-09-01T05:00:00-04:00,EUR,Italian Prelim CPI m/m,Low,0.5%,0.2%
-2026-09-01T05:00:00-04:00,EUR,Unemployment Rate,Low,6.3%,6.3%
-2026-09-01T08:30:00-04:00,EUR,German Buba President Nagel Speaks,Low,,
-2026-09-01T09:05:00-04:00,USD,FOMC Member Barr Speaks,Low,,
-2026-09-01T09:30:00-04:00,CAD,Manufacturing PMI,Low,,53.5
-2026-09-01T09:45:00-04:00,USD,Final Manufacturing PMI,Low,53.3,53.2
-2026-09-01T10:00:00-04:00,USD,Construction Spending m/m,Low,0.0%,-0.1%
-2026-09-01T10:00:00-04:00,USD,JOLTS Job Openings,Medium,7.33M,7.36M
-2026-09-01T10:00:00-04:00,USD,ISM Manufacturing PMI,High,55.2,55.6
-2026-09-01T10:00:00-04:00,USD,ISM Manufacturing Prices,Medium,70.5,71.1
-2026-09-01T10:04:00-04:00,USD,RCM/TIPP Economic Optimism,Low,46.2,45.1
-2026-09-01T10:14:00-04:00,USD,RCM/TIPP Economic Optimism,Low,46.2,45.1
-2026-09-01T10:15:00-04:00,USD,Omdia Total Vehicle Sales,Low,16.3M,16.3M
-2026-09-01T10:51:00-04:00,NZD,GDT Price Index,Low,,2.3%
-2026-09-01T11:15:00-04:00,All,G20 Meetings,Low,,
-2026-09-01T11:25:00-04:00,NZD,GDT Price Index,Low,,2.3%
-2026-09-01T16:30:00-04:00,USD,API Weekly Statistical Bulletin,Low,,
-2026-09-01T18:45:00-04:00,NZD,Building Consents m/m,Low,,-3.6%
-2026-09-01T19:50:00-04:00,JPY,Monetary Base y/y,Low,-13.5%,-13.8%
-2026-09-01T20:30:00-04:00,EUR,German Buba President Nagel Speaks,Low,,
-2026-09-01T21:30:00-04:00,AUD,GDP q/q,High,0.3%,0.3%
-2026-09-01T22:00:00-04:00,NZD,RBNZ Rate Statement,High,,
-2026-09-01T22:00:00-04:00,NZD,RBNZ Monetary Policy Statement,High,,
-2026-09-01T22:00:00-04:00,NZD,Official Cash Rate,High,2.75%,2.50%
-2026-09-01T23:00:00-04:00,NZD,RBNZ Press Conference,High,,
-2026-09-02T02:45:00-04:00,EUR,French Gov Budget Balance,Low,,-106.8B
-2026-09-02T03:00:00-04:00,EUR,Spanish Unemployment Change,Low,15.4K,19.5K
-2026-09-02T08:15:00-04:00,USD,ADP Non-Farm Employment Change,Medium,48K,44K
-2026-09-02T09:45:00-04:00,CAD,BOC Rate Statement,High,,
-2026-09-02T09:45:00-04:00,CAD,Overnight Rate,High,2.25%,2.25%
-2026-09-02T10:00:00-04:00,USD,Factory Orders m/m,Low,0.7%,-0.3%
-2026-09-02T10:30:00-04:00,USD,Crude Oil Inventories,Low,0.0M,0.1M
-2026-09-02T10:30:00-04:00,CAD,BOC Press Conference,High,,
-2026-09-02T14:00:00-04:00,USD,Beige Book,Low,,
-2026-09-02T16:10:00-04:00,NZD,RBNZ Gov Breman Speaks,Medium,,
-2026-09-02T18:45:00-04:00,NZD,Overseas Trade Index q/q,Low,-2.2%,-2.0%
-2026-09-02T21:00:00-04:00,NZD,ANZ Commodity Prices m/m,Low,,-3.9%
-2026-09-02T21:15:00-04:00,AUD,RBA Assist Gov Jones Speaks,Low,,
-2026-09-02T21:30:00-04:00,AUD,Goods Trade Balance,Low,1.50B,1.93B
-2026-09-02T21:45:00-04:00,CNY,RatingDog Services PMI,Low,50.6,50.4
-2026-09-02T23:35:00-04:00,JPY,30-y Bond Auction,Low,,3.94|3.9
-2026-09-03T01:15:00-04:00,AUD,RBA Assist Gov Hunter Speaks,Low,,
-2026-09-03T02:30:00-04:00,CHF,CPI m/m,Medium,0.0%,-0.1%
-2026-09-03T03:00:00-04:00,CHF,GDP q/q,Low,1.5%,0.7%
-2026-09-03T03:15:00-04:00,EUR,Spanish Services PMI,Low,59.0,58.3
-2026-09-03T03:45:00-04:00,EUR,Italian Services PMI,Low,53.6,52.5
-2026-09-03T03:50:00-04:00,EUR,French Final Services PMI,Low,48.4,48.4
-2026-09-03T03:55:00-04:00,EUR,German Final Services PMI,Low,48.5,48.5
-2026-09-03T04:00:00-04:00,EUR,Final Services PMI,Low,51.7,51.7
-2026-09-03T04:30:00-04:00,GBP,Final Services PMI,Low,52.8,52.8
-2026-09-03T04:43:00-04:00,EUR,Spanish 10-y Bond Auction,Low,,3.54|2.4
-2026-09-03T04:57:00-04:00,EUR,French 10-y Bond Auction,Low,,3.86|3.7
-2026-09-03T05:00:00-04:00,EUR,PPI m/m,Low,1.2%,-0.3%
-2026-09-03T05:03:00-04:00,EUR,Spanish 10-y Bond Auction,Low,,3.54|2.4
-2026-09-03T05:18:00-04:00,EUR,French 10-y Bond Auction,Low,,3.86|3.7
-2026-09-03T05:30:00-04:00,USD,Challenger Job Cuts y/y,Low,,-46.1%
-2026-09-03T08:30:00-04:00,USD,Revised Nonfarm Productivity q/q,Low,1.4%,1.4%
-2026-09-03T08:30:00-04:00,USD,Trade Balance,Low,-89.4B,-73.3B
-2026-09-03T08:30:00-04:00,USD,Unemployment Claims,Medium,205K,203K
-2026-09-03T08:30:00-04:00,CAD,Trade Balance,Low,3.2B,3.9B
-2026-09-03T08:30:00-04:00,USD,FOMC Member Waller Speaks,Low,,
-2026-09-03T08:30:00-04:00,CAD,Labor Productivity q/q,Low,0.7%,-0.5%
-2026-09-03T08:30:00-04:00,USD,Revised Unit Labor Costs q/q,Low,1.3%,1.3%
-2026-09-03T09:45:00-04:00,USD,Final Services PMI,Low,56.8,56.8
-2026-09-03T10:00:00-04:00,USD,ISM Services PMI,Medium,54.2,54.1
-2026-09-03T10:30:00-04:00,USD,Natural Gas Storage,Low,30B,15B
-2026-09-03T11:00:00-04:00,GBP,MPC Member Pill Speaks,Low,,
-2026-09-03T15:00:00-04:00,USD,FOMC Member Hammack Speaks,Low,,
-2026-09-03T15:05:00-04:00,USD,FOMC Member Goolsbee Speaks,Low,,
-2026-09-03T15:55:00-04:00,USD,FOMC Member Goolsbee Speaks,Low,,
-2026-09-03T19:30:00-04:00,JPY,Household Spending y/y,Low,-1.6%,-3.3%
-2026-09-04T02:00:00-04:00,EUR,German Factory Orders m/m,Low,0.3%,3.1%
-2026-09-04T04:00:00-04:00,EUR,Italian Retail Sales m/m,Low,0.2%,-0.1%
-2026-09-04T04:30:00-04:00,GBP,Construction PMI,Low,45.8,44.7
-2026-09-04T04:50:00-04:00,GBP,BOE Gov Bailey Speaks,High,,
-2026-09-04T05:00:00-04:00,EUR,Retail Sales m/m,Low,0.3%,-0.3%
-2026-09-04T08:30:00-04:00,CAD,Employment Change,High,15.1K,75.1K
-2026-09-04T08:30:00-04:00,CAD,Unemployment Rate,High,6.4%,6.4%
-2026-09-04T08:30:00-04:00,USD,Average Hourly Earnings m/m,High,0.3%,0.1%
-2026-09-04T08:30:00-04:00,USD,Non-Farm Employment Change,High,55K,-23K
-2026-09-04T08:30:00-04:00,USD,Unemployment Rate,High,4.1%,4.1%
-2026-09-04T10:00:00-04:00,CAD,Ivey PMI,Medium,56.2,55.1
+2026-09-01T00:00:00Z,EMU,G20 Finance Ministers and Central Bank Governors Meeting,Medium,,
+2026-09-01T01:30:00Z,AU,Building Permits (MoM),Medium,-4.8,7.2
+2026-09-01T01:45:00Z,CN,RatingDog Manufacturing PMI,High,50.9,50.9
+2026-09-01T05:00:00Z,IN,HSBC Manufacturing PMI,Medium,52.9,52.9
+2026-09-01T06:00:00Z,DE,Retail Sales (MoM),Medium,0.4,-1.1
+2026-09-01T06:00:00Z,DE,Retail Sales (YoY),High,,-0.2
+2026-09-01T06:30:00Z,CH,Real Retail Sales (YoY),Medium,1.3,1.5
+2026-09-01T07:15:00Z,ES,HCOB Manufacturing PMI,Medium,50.1,50.2
+2026-09-01T07:45:00Z,IT,HCOB Manufacturing PMI,Medium,51.5,51.3
+2026-09-01T07:55:00Z,DE,HCOB Manufacturing PMI,Medium,54.1,54.1
+2026-09-01T08:00:00Z,IT,Gross Domestic Product (QoQ),Medium,0.2,0.2
+2026-09-01T08:00:00Z,IT,Gross Domestic Product (YoY),Medium,1,1
+2026-09-01T09:00:00Z,EMU,Core Harmonized Index of Consumer Prices (MoM),High,,0
+2026-09-01T09:00:00Z,EMU,Core Harmonized Index of Consumer Prices (YoY),High,2.5,2.5
+2026-09-01T09:00:00Z,EMU,Harmonized Index of Consumer Prices (MoM),High,,0.2
+2026-09-01T09:00:00Z,EMU,Harmonized Index of Consumer Prices (YoY),High,3.3,2.9
+2026-09-01T09:00:00Z,EMU,Unemployment Rate,Medium,6.3,6.3
+2026-09-01T09:00:00Z,IT,Consumer Price Index (EU Norm) (YoY),Medium,3.2,2.9
+2026-09-01T09:00:00Z,IT,Consumer Price Index (YoY),Medium,,2.9
+2026-09-01T12:30:00Z,EMU,ECB's Nagel speech,Medium,,
+2026-09-01T13:05:00Z,US,Fed's Barr speech,Medium,,
+2026-09-01T13:30:00Z,CA,S&P Global Manufacturing PMI,Medium,,53.5
+2026-09-01T14:00:00Z,US,ISM Manufacturing Employment Index,Medium,,52.8
+2026-09-01T14:00:00Z,US,ISM Manufacturing New Orders Index,Medium,,56.7
+2026-09-01T14:00:00Z,US,ISM Manufacturing PMI,High,55.2,55.6
+2026-09-01T14:00:00Z,US,ISM Manufacturing Prices Paid,Medium,72,71.1
+2026-09-01T14:00:00Z,US,JOLTS Job Openings,Medium,7.3,7.359
+2026-09-01T15:00:00Z,UK,BoE's Mann speech,Medium,,
+2026-09-01T17:00:00Z,EMU,ECB's Vujčić speech,Medium,,
+2026-09-01T17:45:00Z,EMU,ECB's Vujčić speech,Medium,,
+2026-09-01T22:45:00Z,NZ,Building Permits s.a. (MoM),Medium,,-3.6
+2026-09-01T23:00:00Z,AU,AiG Industry Index,Medium,,-29.9
+2026-09-02T01:30:00Z,AU,Gross Domestic Product (QoQ),High,0.3,0.3
+2026-09-02T01:30:00Z,AU,Gross Domestic Product (YoY),Medium,1.8,2.5
+2026-09-02T02:00:00Z,NZ,RBNZ Interest Rate Decision,High,2.75,2.5
+2026-09-02T02:00:00Z,NZ,RBNZ Monetary Policy Review,High,,
+2026-09-02T02:00:00Z,NZ,RBNZ Monetary Policy Statement,High,,
+2026-09-02T03:00:00Z,NZ,RBNZ Press Conference,High,,
+2026-09-02T06:00:00Z,EMU,ECB's Nagel speech,Medium,,
+2026-09-02T12:00:00Z,US,Fed's Williams speech,Medium,,
+2026-09-02T12:15:00Z,US,ADP Employment Change,High,47,44
+2026-09-02T13:45:00Z,CA,BoC Interest Rate Decision,High,2.25,2.25
+2026-09-02T13:45:00Z,CA,BoC Monetary Policy Statement,High,,
+2026-09-02T14:00:00Z,US,Factory Orders (MoM),Medium,0.6,-0.3
+2026-09-02T14:30:00Z,CA,BoC Press Conference,High,,
+2026-09-02T18:00:00Z,US,Fed's Beige Book,Medium,,
+2026-09-02T23:00:00Z,AU,S&P Global Composite PMI,Medium,52.5,52.5
+2026-09-02T23:00:00Z,AU,S&P Global Services PMI,Medium,52.9,52.9
+2026-09-03T01:30:00Z,AU,Exports (MoM),Medium,,9.6
+2026-09-03T01:30:00Z,AU,Imports (MoM),Medium,,-0.2
+2026-09-03T01:30:00Z,AU,Trade Balance (MoM),High,1390,1929
+2026-09-03T01:45:00Z,CN,RatingDog Services PMI,High,50.6,50.4
+2026-09-03T05:00:00Z,IN,HSBC Composite PMI,Medium,54.6,54.6
+2026-09-03T05:00:00Z,IN,HSBC Services PMI,Medium,54.5,54.5
+2026-09-03T06:30:00Z,CH,Consumer Price Index (MoM),Medium,0,-0.1
+2026-09-03T06:30:00Z,CH,Consumer Price Index (YoY),High,0.5,0.4
+2026-09-03T07:00:00Z,CH,Gross Domestic Product (QoQ),High,1.6,0.7
+2026-09-03T07:00:00Z,CH,Gross Domestic Product (YoY),Medium,,0.5
+2026-09-03T07:00:00Z,TR,Consumer Price Index (YoY),Medium,31.62,31.75
+2026-09-03T07:15:00Z,ES,HCOB Services PMI,Medium,59,58.3
+2026-09-03T07:55:00Z,DE,HCOB Composite PMI,Medium,51,51
+2026-09-03T07:55:00Z,DE,HCOB Services PMI,Medium,48.5,48.5
+2026-09-03T08:00:00Z,EMU,HCOB Composite PMI,Medium,52.1,52.1
+2026-09-03T09:00:00Z,EMU,Producer Price Index (MoM),Medium,1.2,-0.3
+2026-09-03T09:00:00Z,EMU,Producer Price Index (YoY),Medium,,4.6
+2026-09-03T09:30:00Z,US,Challenger Job Cuts,Medium,,33.429
+2026-09-03T12:30:00Z,US,Fed's Waller speech,Medium,,
+2026-09-03T12:30:00Z,US,Initial Jobless Claims,Medium,205,203
+2026-09-03T12:30:00Z,US,Nonfarm Productivity,Medium,1.4,1.4
+2026-09-03T12:30:00Z,US,Unit Labor Costs,Medium,1.3,1.3
+2026-09-03T13:45:00Z,US,S&P Global Composite PMI,Medium,56,56
+2026-09-03T14:00:00Z,US,ISM Services Employment Index,Medium,,47.4
+2026-09-03T14:00:00Z,US,ISM Services New Orders Index,Medium,,57.2
+2026-09-03T14:00:00Z,US,ISM Services PMI,High,54.3,54.1
+2026-09-03T14:00:00Z,US,ISM Services Prices Paid,Medium,,70.3
+2026-09-03T15:00:00Z,UK,BoE's Pill speech,Medium,,
+2026-09-03T19:00:00Z,US,Fed's Hammack speech,Medium,,
+2026-09-04T06:00:00Z,DE,Factory Orders n.s.a. (YoY),Medium,,6.5
+2026-09-04T06:00:00Z,DE,Factory Orders s.a. (MoM),Medium,0.3,3.1
+2026-09-04T08:50:00Z,UK,BoE's Governor Bailey speech,High,,
+2026-09-04T09:00:00Z,EMU,ECB's Lane speech,Medium,,
+2026-09-04T09:00:00Z,EMU,Retail Sales (MoM),Medium,0.3,-0.3
+2026-09-04T09:00:00Z,EMU,Retail Sales (YoY),High,1.1,0.7
+2026-09-04T12:30:00Z,CA,Average Hourly Wages (YoY),Medium,,3
+2026-09-04T12:30:00Z,CA,Net Change in Employment,High,15,75.1
+2026-09-04T12:30:00Z,CA,Unemployment Rate,High,6.4,6.4
+2026-09-04T12:30:00Z,US,Average Hourly Earnings (MoM),High,0.3,0.1
+2026-09-04T12:30:00Z,US,Average Hourly Earnings (YoY),High,3,3.2
+2026-09-04T12:30:00Z,US,Labor Force Participation Rate,Medium,,61.4
+2026-09-04T12:30:00Z,US,Nonfarm Payrolls,High,56,-23
+2026-09-04T12:30:00Z,US,U6 Underemployment Rate,Medium,,7.9
+2026-09-04T12:30:00Z,US,Unemployment Rate,Medium,4.1,4.1
+2026-09-04T14:00:00Z,CA,Ivey Purchasing Managers Index,Medium,,54.1
+2026-09-04T14:00:00Z,CA,Ivey Purchasing Managers Index s.a,Medium,56.2,55.1
+2026-09-04T16:30:00Z,US,Fed's Hammack speech,Medium,,
+2026-09-07T06:00:00Z,DE,Industrial Production n.s.a. w.d.a. (YoY),Medium,,-0.1
+2026-09-07T06:00:00Z,DE,Industrial Production s.a. (MoM),Medium,0.3,0.2
+2026-09-07T08:30:00Z,EMU,Sentix Investor Confidence,Medium,,0.9
+2026-09-07T09:00:00Z,EMU,Employment Change (QoQ),Medium,0.1,0.1
+2026-09-07T09:00:00Z,EMU,Gross Domestic Product s.a. (QoQ),Medium,0.4,0.4
+2026-09-07T09:00:00Z,EMU,Gross Domestic Product s.a. (YoY),Medium,1,1
+2026-09-07T23:00:00Z,KR,Gross Domestic Product Growth (QoQ),Medium,0.6,0.6
+2026-09-07T23:01:00Z,UK,BRC Like-For-Like Retail Sales (YoY),Medium,,1
+2026-09-07T23:30:00Z,JP,Labor Cash Earnings (YoY),Medium,3.9,3.4
+2026-09-07T23:50:00Z,JP,Current Account n.s.a.,Medium,2870,-92.3
+2026-09-07T23:50:00Z,JP,Gross Domestic Product (QoQ),High,0.4,0.3
+2026-09-07T23:50:00Z,JP,Gross Domestic Product Annualized,Medium,1.1,1.1
+2026-09-07T23:50:00Z,JP,Gross Domestic Product Deflator (YoY),Medium,2.6,2.6
+2026-09-08T00:30:00Z,AU,Westpac Consumer Confidence,Medium,,6
+2026-09-08T03:00:00Z,CN,Exports (YoY),Medium,,23.9
+2026-09-08T03:00:00Z,CN,Exports (YoY) CNY,Medium,,17.8
+2026-09-08T03:00:00Z,CN,Imports (YoY),Medium,,27.5
+2026-09-08T03:00:00Z,CN,Imports (YoY) CNY,Medium,,21.2
+2026-09-08T03:00:00Z,CN,Trade Balance CNY,Medium,795,767.07
+2026-09-08T03:00:00Z,CN,Trade Balance USD,Medium,120.1,112.5
+2026-09-08T06:00:00Z,DE,Trade Balance s.a.,Medium,,15.4
+2026-09-08T12:15:00Z,US,ADP Employment Change 4-week average,Medium,,11.75
+2026-09-09T01:30:00Z,CN,Consumer Price Index (MoM),Medium,,-0.1
+2026-09-09T01:30:00Z,CN,Consumer Price Index (YoY),High,0.9,0.5
+2026-09-09T01:30:00Z,CN,Producer Price Index (YoY),Medium,3.6,3.5
+2026-09-09T12:00:00Z,MX,Headline Inflation,Medium,,0.03
+2026-09-10T01:00:00Z,AU,Consumer Inflation Expectations,Medium,,4.9
+2026-09-10T03:00:00Z,ID,Consumer Confidence,Medium,,116.8
+2026-09-10T06:00:00Z,DE,Harmonized Index of Consumer Prices (MoM),Medium,0.2,0.2
+2026-09-10T06:00:00Z,DE,Harmonized Index of Consumer Prices (YoY),High,2.9,2.9
+2026-09-10T11:00:00Z,TR,CBRT Interest Rate Decision,Medium,,37
+2026-09-10T12:15:00Z,EMU,ECB Main Refinancing Operations Rate,High,2.65,2.4
+2026-09-10T12:15:00Z,EMU,ECB Monetary Policy Statement,High,,
+2026-09-10T12:15:00Z,EMU,ECB Rate On Deposit Facility,High,2.5,2.25
+2026-09-10T12:30:00Z,US,Initial Jobless Claims,Medium,205,206
+2026-09-10T12:30:00Z,US,Producer Price Index (MoM),Medium,0.3,0
+2026-09-10T12:30:00Z,US,Producer Price Index (YoY),Medium,,4.7
+2026-09-10T12:30:00Z,US,Producer Price Index ex Food & Energy (MoM),Medium,0.3,0.2
+2026-09-10T12:30:00Z,US,Producer Price Index ex Food & Energy (YoY),High,,4.2
+2026-09-10T12:45:00Z,EMU,ECB Press Conference,High,,
+2026-09-10T12:45:00Z,EMU,ECB's Nagel speech,Medium,,
+2026-09-10T14:00:00Z,US,Existing Home Sales Change (MoM),Medium,,-1.7
+2026-09-10T18:00:00Z,US,Monthly Budget Statement,Medium,,-432
+2026-09-10T22:30:00Z,NZ,Business NZ PMI,Medium,,54.3
+2026-09-11T06:00:00Z,UK,Gross Domestic Product (MoM),Medium,0,0.3
+2026-09-11T06:00:00Z,UK,Industrial Production (MoM),Medium,0.1,-0.2
+2026-09-11T06:00:00Z,UK,Manufacturing Production (MoM),Medium,0.4,-0.5
+2026-09-11T08:30:00Z,UK,Consumer Inflation Expectations,Medium,,4
+2026-09-11T10:30:00Z,RU,Interest Rate Decision,Medium,14,14
+2026-09-11T12:30:00Z,US,Consumer Price Index (MoM),High,0.4,0.1
+2026-09-11T12:30:00Z,US,Consumer Price Index (YoY),High,,3.4
+2026-09-11T12:30:00Z,US,Consumer Price Index ex Food & Energy (MoM),High,0.2,0.2
+2026-09-11T12:30:00Z,US,Consumer Price Index ex Food & Energy (YoY),High,,2.5
+2026-09-11T14:00:00Z,US,Michigan Consumer Expectations Index,Medium,,51.5
+2026-09-11T14:00:00Z,US,Michigan Consumer Sentiment Index,High,,51.7
+2026-09-11T14:00:00Z,US,UoM 1-year Consumer Inflation Expectations,Medium,,4
+2026-09-11T14:00:00Z,US,UoM 5-year Consumer Inflation Expectation,Medium,,3.3
+2026-09-13T22:30:00Z,NZ,Business NZ PSI,Medium,,50.6
+2026-09-14T12:30:00Z,CA,BoC Consumer Price Index Core (MoM),Medium,,0.2
+2026-09-14T12:30:00Z,CA,BoC Consumer Price Index Core (YoY),High,,2.3
+2026-09-14T12:30:00Z,CA,Consumer Price Index (MoM),Medium,,0.5
+2026-09-14T12:30:00Z,CA,Consumer Price Index (YoY),High,,3
+2026-09-15T02:00:00Z,CN,Industrial Production (YoY),High,,4.5
+2026-09-15T02:00:00Z,CN,Retail Sales (YoY),High,,0.6
+2026-09-15T06:00:00Z,UK,Average Earnings Excluding Bonus (3Mo/Yr),Medium,,3.5
+2026-09-15T06:00:00Z,UK,Average Earnings Including Bonus (3Mo/Yr),Medium,,4.1
+2026-09-15T06:00:00Z,UK,Claimant Count Change,High,,-11
+2026-09-15T06:00:00Z,UK,Claimant Count Rate,Medium,,4.3
+2026-09-15T06:00:00Z,UK,Employment Change (3M),High,,83
+2026-09-15T06:00:00Z,UK,ILO Unemployment Rate (3M),High,,4.9
+2026-09-15T06:45:00Z,FR,Consumer Price Index (EU norm) (YoY),Medium,,2.7
+2026-09-15T07:00:00Z,ES,Harmonized Index of Consumer Prices (YoY),Medium,,4.5
+2026-09-15T09:00:00Z,DE,ZEW Survey – Current Situation,Medium,,-61.1
+2026-09-15T09:00:00Z,DE,ZEW Survey – Economic Sentiment,Medium,,34.2
+2026-09-15T09:00:00Z,EMU,ZEW Survey – Economic Sentiment,Medium,,31.4
+2026-09-15T12:15:00Z,US,ADP Employment Change 4-week average,Medium,,
+2026-09-15T12:30:00Z,US,NY Empire State Manufacturing Index,Medium,,20.6
+2026-09-15T23:50:00Z,JP,Adjusted Merchandise Trade Balance,Medium,,-686
+2026-09-15T23:50:00Z,JP,Exports (YoY),Medium,,23.2
+2026-09-15T23:50:00Z,JP,Imports (YoY),Medium,,27.8
+2026-09-15T23:50:00Z,JP,Merchandise Trade Balance Total,Medium,,-634.5
+2026-09-16T06:00:00Z,UK,Consumer Price Index (MoM),High,,0.3
+2026-09-16T06:00:00Z,UK,Consumer Price Index (YoY),High,,2.9
+2026-09-16T06:00:00Z,UK,Core Consumer Price Index (YoY),High,,2.6
+2026-09-16T06:00:00Z,UK,PPI Core Output (MoM) n.s.a,Medium,,0.6
+2026-09-16T06:00:00Z,UK,PPI Core Output (YoY) n.s.a,Medium,,2.8
+2026-09-16T06:00:00Z,UK,Producer Price Index - Output (MoM) n.s.a,Medium,,0.2
+2026-09-16T06:00:00Z,UK,Producer Price Index - Output (YoY) n.s.a,Medium,,3.1
+2026-09-16T06:00:00Z,UK,Retail Price Index (MoM),Medium,,0.6
+2026-09-16T06:00:00Z,UK,Retail Price Index (YoY),Medium,,3.2
+2026-09-16T08:00:00Z,IT,Consumer Price Index (EU Norm) (YoY),Medium,,3.2
+2026-09-16T08:00:00Z,IT,Consumer Price Index (YoY),Medium,,3.3
+2026-09-16T09:00:00Z,EMU,Industrial Production s.a. (MoM),Medium,,0
+2026-09-16T12:30:00Z,US,Retail Sales (MoM),High,,-0.6
+2026-09-16T12:30:00Z,US,Retail Sales Control Group,High,,-0.4
+2026-09-16T12:30:00Z,US,Retail Sales ex Autos (MoM),Medium,,-0.3
+2026-09-16T17:30:00Z,CA,BoC Summary of Deliberations,Medium,,
+2026-09-16T18:00:00Z,US,Fed Interest Rate Decision,High,,3.75
+2026-09-16T18:00:00Z,US,Fed Monetary Policy Statement,High,,
+2026-09-16T18:00:00Z,US,FOMC Economic Projections,High,,
+2026-09-16T18:00:00Z,US,Interest Rate Projections - 1st year,High,,3.6
+2026-09-16T18:00:00Z,US,Interest Rate Projections - 2nd year,High,,3.4
+2026-09-16T18:00:00Z,US,Interest Rate Projections - 3rd year,High,,3.1
+2026-09-16T18:00:00Z,US,Interest Rate Projections - Current,High,,3.8
+2026-09-16T18:00:00Z,US,Interest Rate Projections - Longer,High,,3.1
+2026-09-16T18:30:00Z,US,FOMC Press Conference,High,,
+2026-09-16T22:45:00Z,NZ,Gross Domestic Product (QoQ),High,,0.8
+2026-09-16T22:45:00Z,NZ,Gross Domestic Product (YoY),High,,1.5
+2026-09-17T09:00:00Z,EMU,Core Harmonized Index of Consumer Prices (MoM),Medium,,0.2
+2026-09-17T09:00:00Z,EMU,Core Harmonized Index of Consumer Prices (YoY),Medium,,2.4
+2026-09-17T09:00:00Z,EMU,Harmonized Index of Consumer Prices (MoM),Medium,,0.4
+2026-09-17T11:00:00Z,UK,BoE Interest Rate Decision,High,,3.75
+2026-09-17T11:00:00Z,UK,BoE Minutes,High,,
+2026-09-17T11:00:00Z,UK,BoE Monetary Policy Summary,High,,
+2026-09-17T11:00:00Z,UK,BoE MPC Vote Rate Cut,High,,0
+2026-09-17T11:00:00Z,UK,BoE MPC Vote Rate Hike,High,,3
+2026-09-17T11:00:00Z,UK,BoE MPC Vote Rate Unchanged,High,,6
+2026-09-17T12:30:00Z,US,Building Permits (MoM),Medium,,1.443
+2026-09-17T12:30:00Z,US,Housing Starts (MoM),Medium,,1.239
+2026-09-17T12:30:00Z,US,Initial Jobless Claims,Medium,,
+2026-09-17T12:30:00Z,US,Philadelphia Fed Manufacturing Survey,Medium,,47.4
+2026-09-17T22:45:00Z,NZ,Exports,Medium,,7.39
+2026-09-17T22:45:00Z,NZ,Imports,Medium,,9.34
+2026-09-17T22:45:00Z,NZ,Trade Balance NZD (YoY),Medium,,-5.23
+2026-09-17T23:30:00Z,AU,RBA Governor Bullock speech,High,,
+2026-09-17T23:30:00Z,JP,National Consumer Price Index (YoY),Medium,,1.9
+2026-09-17T23:30:00Z,JP,"National CPI ex Food, Energy (YoY)",Medium,,1.8
+2026-09-17T23:30:00Z,JP,National CPI ex Fresh Food (YoY),Medium,,1.8
+2026-09-18T03:00:00Z,JP,BoJ Interest Rate Decision,High,,1
+2026-09-18T03:00:00Z,JP,BoJ Monetary Policy Statement,High,,
+2026-09-18T06:00:00Z,DE,Producer Price Index (MoM),Medium,,1.1
+2026-09-18T06:00:00Z,DE,Producer Price Index (YoY),Medium,,3
+2026-09-18T06:00:00Z,UK,Retail Sales (MoM),High,,-0.5
+2026-09-18T06:00:00Z,UK,Retail Sales (YoY),Medium,,1.6
+2026-09-18T06:00:00Z,UK,Retail Sales ex-Fuel (MoM),Medium,,-0.9
+2026-09-18T06:00:00Z,UK,Retail Sales ex-Fuel (YoY),Medium,,2.3
+2026-09-18T06:30:00Z,JP,BoJ Press Conference,High,,
+2026-09-18T13:15:00Z,US,Industrial Production (MoM),Medium,,0.2
+2026-09-21T01:15:00Z,CN,PBoC Interest Rate Decision,Medium,,3
+2026-09-21T10:00:00Z,DE,German Buba Monthly Report,Medium,,
+2026-09-21T21:00:00Z,NZ,Westpac Consumer Survey,Medium,,80.4
+2026-09-22T03:10:00Z,AU,RBA Governor Bullock speech,High,,
+2026-09-22T12:15:00Z,US,ADP Employment Change 4-week average,Medium,,
+2026-09-22T14:00:00Z,EMU,Consumer Confidence,Medium,,-15.5
+2026-09-22T23:00:00Z,AU,S&P Global Composite PMI,Medium,,52.7
+2026-09-22T23:00:00Z,AU,S&P Global Manufacturing PMI,Medium,,52
+2026-09-22T23:00:00Z,AU,S&P Global Services PMI,Medium,,53.2
+2026-09-23T05:00:00Z,IN,HSBC Composite PMI,Medium,,54.3
+2026-09-23T05:00:00Z,IN,HSBC Manufacturing PMI,Medium,,52.8
+2026-09-23T05:00:00Z,IN,HSBC Services PMI,Medium,,54.1
+2026-09-23T07:30:00Z,DE,HCOB Composite PMI,High,,51.8
+2026-09-23T07:30:00Z,DE,HCOB Manufacturing PMI,High,,54.3
+2026-09-23T07:30:00Z,DE,HCOB Services PMI,High,,49.7
+2026-09-23T08:00:00Z,EMU,HCOB Composite PMI,High,,52
+2026-09-23T08:00:00Z,EMU,HCOB Manufacturing PMI,High,,52.7
+2026-09-23T08:00:00Z,EMU,HCOB Services PMI,High,,51.6
+2026-09-23T08:30:00Z,UK,S&P Global Composite PMI,High,,52.5
+2026-09-23T08:30:00Z,UK,S&P Global Manufacturing PMI,High,,51.7
+2026-09-23T08:30:00Z,UK,S&P Global Services PMI,High,,52.5
+2026-09-23T13:45:00Z,US,S&P Global Composite PMI,Medium,,56
+2026-09-23T13:45:00Z,US,S&P Global Manufacturing PMI,High,,53.9
+2026-09-23T13:45:00Z,US,S&P Global Services PMI,High,,56.5
+2026-09-24T01:30:00Z,AU,Employment Change s.a.,High,,-15.8
+2026-09-24T01:30:00Z,AU,Full-Time Employment,Medium,,16.3
+2026-09-24T01:30:00Z,AU,Part-Time Employment,Medium,,-32.2
+2026-09-24T01:30:00Z,AU,Participation Rate,Medium,,66.9
+2026-09-24T01:30:00Z,AU,Unemployment Rate s.a.,High,,4.5
+2026-09-24T07:15:00Z,FR,HCOB Composite PMI,Medium,,48.5
+2026-09-24T07:15:00Z,FR,HCOB Manufacturing PMI,Medium,,51.1
+2026-09-24T07:15:00Z,FR,HCOB Services PMI,Medium,,48
+2026-09-24T07:30:00Z,CH,SNB Interest Rate Decision,High,,0
+2026-09-24T07:30:00Z,CH,SNB Monetary Policy Assessment,High,,
+2026-09-24T07:30:00Z,SE,Riksbank Interest Rate Decision,Medium,,1.75
+2026-09-24T08:00:00Z,CH,SNB Press Conference,High,,
+2026-09-24T08:00:00Z,DE,IFO – Business Climate,Medium,,88.8
+2026-09-24T08:00:00Z,DE,IFO – Current Assessment,Medium,,88.5
+2026-09-24T08:00:00Z,DE,IFO – Expectations,Medium,,89.1
+2026-09-24T08:00:00Z,NO,Norges Bank Interest Rate Decision,Medium,,4.25
+2026-09-24T12:30:00Z,CA,Retail Sales (MoM),Medium,,0.6
+2026-09-24T12:30:00Z,CA,Retail Sales ex Autos (MoM),Medium,,0.5
+2026-09-24T12:30:00Z,US,Initial Jobless Claims,Medium,,
+2026-09-24T14:00:00Z,US,New Home Sales Change (MoM),Medium,,-10.5
+2026-09-24T19:00:00Z,MX,Banxico Interest Rate Decision,Medium,,6.5
+2026-09-24T23:01:00Z,UK,GfK Consumer Confidence,Medium,,-14
+2026-09-25T06:00:00Z,DE,GfK Consumer Confidence Survey,Medium,,-26.6
+2026-09-25T07:00:00Z,ES,Gross Domestic Product (QoQ),Medium,,0.6
+2026-09-25T12:30:00Z,US,Durable Goods Orders,Medium,,1.1
+2026-09-25T12:30:00Z,US,Durable Goods Orders ex Defense,Medium,,1.3
+2026-09-25T12:30:00Z,US,Durable Goods Orders ex Transportation,Medium,,0.4
+2026-09-25T12:30:00Z,US,Nondefense Capital Goods Orders ex Aircraft,Medium,,0.2
+2026-09-25T14:00:00Z,US,Michigan Consumer Expectations Index,Medium,,
+2026-09-25T14:00:00Z,US,Michigan Consumer Sentiment Index,Medium,,
+2026-09-25T14:00:00Z,US,UoM 1-year Consumer Inflation Expectations,Medium,,
+2026-09-25T14:00:00Z,US,UoM 5-year Consumer Inflation Expectation,Medium,,
+2026-09-27T23:50:00Z,JP,BoJ Monetary Policy Meeting Minutes,Medium,,
+2026-09-29T04:30:00Z,AU,RBA Interest Rate Decision,High,,4.35
+2026-09-29T04:30:00Z,AU,RBA Monetary Policy Statement,High,,
+2026-09-29T04:30:00Z,AU,RBA Rate Statement,High,,
+2026-09-29T05:30:00Z,AU,RBA Press Conference,High,,
+2026-09-29T06:00:00Z,UK,Gross Domestic Product (QoQ),High,,0.4
+2026-09-29T06:00:00Z,UK,Gross Domestic Product (YoY),High,,1.2
+2026-09-29T07:00:00Z,ES,Harmonized Index of Consumer Prices (YoY),Medium,,
+2026-09-29T08:00:00Z,EMU,Business Climate,Medium,,-0.23
+2026-09-29T08:00:00Z,EMU,Consumer Confidence,Medium,,
+2026-09-29T08:00:00Z,EMU,Economic Sentiment Indicator,Medium,,98.4
+2026-09-29T13:00:00Z,US,Housing Price Index (MoM),Medium,,0
+2026-09-29T14:00:00Z,US,Consumer Confidence,Medium,,
+2026-09-29T23:30:00Z,JP,Tokyo Consumer Price Index (YoY),High,,1.9
+2026-09-29T23:30:00Z,JP,"Tokyo CPI ex Food, Energy (YoY)",High,,2
+2026-09-29T23:30:00Z,JP,Tokyo CPI ex Fresh Food (YoY),Medium,,1.8
+2026-09-30T01:30:00Z,AU,Consumer Price Index (MoM),Medium,,1
+2026-09-30T01:30:00Z,AU,Consumer Price Index (YoY),High,,3.5
+2026-09-30T01:30:00Z,AU,Trimmed Mean CPI (MoM),Medium,,0.5
+2026-09-30T01:30:00Z,AU,Trimmed Mean CPI (YoY),High,,3.6
+2026-09-30T01:30:00Z,CN,NBS Manufacturing PMI,High,,49.8
+2026-09-30T01:30:00Z,CN,NBS Non-Manufacturing PMI,High,,49
+2026-09-30T06:00:00Z,DE,Retail Sales (MoM),Medium,,-3.4
+2026-09-30T06:00:00Z,DE,Retail Sales (YoY),High,,-2.5
+2026-09-30T06:45:00Z,FR,Consumer Price Index (EU norm) (YoY),Medium,,
+2026-09-30T07:55:00Z,DE,Unemployment Change,Medium,,4
+2026-09-30T07:55:00Z,DE,Unemployment Rate s.a.,Medium,,6.4
+2026-09-30T08:00:00Z,CH,ZEW Survey – Expectations,Medium,,12.1
+2026-09-30T09:00:00Z,IT,Consumer Price Index (EU Norm) (YoY),Medium,,
+2026-09-30T09:00:00Z,IT,Consumer Price Index (YoY),Medium,,
+2026-09-30T12:00:00Z,DE,Consumer Price Index (MoM),High,,
+2026-09-30T12:00:00Z,DE,Consumer Price Index (YoY),High,,
+2026-09-30T12:00:00Z,DE,Harmonized Index of Consumer Prices (MoM),Medium,,
+2026-09-30T12:00:00Z,DE,Harmonized Index of Consumer Prices (YoY),High,,
+2026-09-30T12:15:00Z,US,ADP Employment Change,High,,38
+2026-09-30T12:30:00Z,CA,Gross Domestic Product (MoM),Medium,,0.3
+2026-09-30T12:30:00Z,US,Core Personal Consumption Expenditures - Price Index (MoM),High,,0.2
+2026-09-30T12:30:00Z,US,Core Personal Consumption Expenditures - Price Index (YoY),High,,3.3
+2026-09-30T12:30:00Z,US,Core Personal Consumption Expenditures (QoQ),Medium,,3.6
+2026-09-30T12:30:00Z,US,Gross Domestic Product Annualized,Medium,,1.5
+2026-09-30T12:30:00Z,US,Gross Domestic Product Price Index,Medium,,6.4
+2026-09-30T12:30:00Z,US,Personal Consumption Expenditures - Price Index (MoM),Medium,,0.2
+2026-09-30T12:30:00Z,US,Personal Consumption Expenditures - Price Index (YoY),Medium,,3.7
+2026-09-30T12:30:00Z,US,Personal Consumption Expenditures Prices (QoQ),Medium,,5.3
+2026-09-30T12:30:00Z,US,Personal Income (MoM),Medium,,0.4
+2026-09-30T12:30:00Z,US,Personal Spending,Medium,,0.2
+2026-09-30T13:00:00Z,CH,SNB Quarterly Bulletin,Medium,,
+2026-09-30T13:45:00Z,US,Chicago PMI,Medium,,47.1
+2026-09-30T14:00:00Z,US,Pending Home Sales (MoM),Medium,,-2.3
+2026-09-30T20:05:00Z,US,Fed's Goolsbee speech,Medium,,
+2026-09-30T21:45:00Z,NZ,Building Permits s.a. (MoM),Medium,,-4.3
+2026-09-30T23:50:00Z,JP,Large Retailer Sales,Medium,,1.4
+2026-09-30T23:50:00Z,JP,Retail Trade (YoY),Medium,,4
+2026-09-30T23:50:00Z,JP,Retail Trade s.a (MoM),Medium,,2.4
+2026-09-30T23:50:00Z,JP,Tankan Large All Industry Capex,Medium,,11.5
+2026-09-30T23:50:00Z,JP,Tankan Large Manufacturing Index,High,,22
+2026-09-30T23:50:00Z,JP,Tankan Large Manufacturing Outlook,Medium,,17
+2026-10-01T00:30:00Z,AU,Exports (MoM),Medium,,-3.3
+2026-10-01T00:30:00Z,AU,Imports (MoM),Medium,,-2.5
+2026-10-01T00:30:00Z,AU,Trade Balance (MoM),High,,1923
+2026-10-01T01:30:00Z,AU,Financial Stability Review,Medium,,
+2026-10-01T01:45:00Z,CN,RatingDog Manufacturing PMI,High,,51.5
+2026-10-01T05:00:00Z,IN,HSBC Manufacturing PMI,Medium,,
+2026-10-01T06:30:00Z,CH,Consumer Price Index (MoM),Medium,,0.4
+2026-10-01T06:30:00Z,CH,Consumer Price Index (YoY),High,,0.8
+2026-10-01T07:15:00Z,ES,HCOB Manufacturing PMI,Medium,,49.5
+2026-10-01T07:45:00Z,IT,HCOB Manufacturing PMI,Medium,,49.6
+2026-10-01T07:55:00Z,DE,HCOB Manufacturing PMI,Medium,,
+2026-10-01T09:00:00Z,EMU,Harmonized Index of Consumer Prices (MoM),High,,
+2026-10-01T11:30:00Z,US,Challenger Job Cuts,Medium,,52.881
+2026-10-01T12:30:00Z,US,Initial Jobless Claims,Medium,,
+2026-10-01T13:30:00Z,CA,S&P Global Manufacturing PMI,Medium,,53
+2026-10-01T14:00:00Z,US,ISM Manufacturing Employment Index,Medium,,51.2
+2026-10-01T14:00:00Z,US,ISM Manufacturing New Orders Index,Medium,,53.7
+2026-10-01T14:00:00Z,US,ISM Manufacturing PMI,High,,54.6
+2026-10-01T14:00:00Z,US,ISM Manufacturing Prices Paid,Medium,,71.1
+2026-10-01T21:00:00Z,NZ,ANZ – Roy Morgan Consumer Confidence,Medium,,98
+2026-10-01T23:30:00Z,JP,Unemployment Rate,Medium,,2.4
+2026-10-02T04:30:00Z,IN,RBI Interest Rate Decision (Repo Rate),Medium,,5.25
+2026-10-02T06:30:00Z,CH,Real Retail Sales (YoY),Medium,,2.3
+2026-10-02T09:00:00Z,EMU,Core Harmonized Index of Consumer Prices (MoM),High,,
+2026-10-02T09:00:00Z,EMU,Core Harmonized Index of Consumer Prices (YoY),High,,
+2026-10-02T09:00:00Z,EMU,Harmonized Index of Consumer Prices (YoY),High,,
+2026-10-02T09:00:00Z,EMU,Unemployment Rate,Medium,,6.4
+2026-10-02T12:30:00Z,US,Average Hourly Earnings (MoM),High,,0.3
+2026-10-02T12:30:00Z,US,Average Hourly Earnings (YoY),High,,3.1
+2026-10-02T12:30:00Z,US,Labor Force Participation Rate,Medium,,61.6
+2026-10-02T12:30:00Z,US,Nonfarm Payrolls,High,,162
+2026-10-02T12:30:00Z,US,U6 Underemployment Rate,Medium,,7.7
+2026-10-02T12:30:00Z,US,Unemployment Rate,Medium,,4.1
+2026-10-02T14:00:00Z,US,Factory Orders (MoM),Medium,,0.9
+2026-10-04T23:00:00Z,AU,S&P Global Composite PMI,Medium,,
+2026-10-04T23:00:00Z,AU,S&P Global Services PMI,Medium,,
+2026-10-05T00:00:00Z,AU,TD-MI Inflation Gauge (YoY),Medium,,4.8
+2026-10-05T01:45:00Z,CN,RatingDog Services PMI,High,,51.4
+2026-10-05T05:00:00Z,IN,HSBC Composite PMI,Medium,,
+2026-10-05T05:00:00Z,IN,HSBC Services PMI,Medium,,
+2026-10-05T07:00:00Z,TR,Consumer Price Index (YoY),Medium,,31.51
+2026-10-05T07:15:00Z,ES,HCOB Services PMI,Medium,,57.8
+2026-10-05T07:55:00Z,DE,HCOB Composite PMI,Medium,,
+2026-10-05T07:55:00Z,DE,HCOB Services PMI,Medium,,
+2026-10-05T08:00:00Z,EMU,HCOB Composite PMI,Medium,,
+2026-10-05T08:30:00Z,EMU,Sentix Investor Confidence,Medium,,
+2026-10-05T13:45:00Z,US,S&P Global Composite PMI,Medium,,
+2026-10-05T14:00:00Z,US,ISM Services Employment Index,Medium,,47.8
+2026-10-05T14:00:00Z,US,ISM Services New Orders Index,Medium,,60.9
+2026-10-05T14:00:00Z,US,ISM Services PMI,High,,55.4
+2026-10-05T14:00:00Z,US,ISM Services Prices Paid,Medium,,72.6
+2026-10-05T21:00:00Z,NZ,NZIER Business Confidence (QoQ),Medium,,8
+2026-10-06T00:30:00Z,AU,Building Permits (MoM),Medium,,-3.6
+2026-10-06T06:00:00Z,DE,Factory Orders n.s.a. (YoY),Medium,,13.1
+2026-10-06T06:00:00Z,DE,Factory Orders s.a. (MoM),Medium,,2.5
+2026-10-06T09:00:00Z,EMU,Producer Price Index (MoM),Medium,,1.6
+2026-10-06T09:00:00Z,EMU,Producer Price Index (YoY),Medium,,5.8
+2026-10-06T09:00:00Z,EMU,Retail Sales (MoM),Medium,,-0.6
+2026-10-06T09:00:00Z,EMU,Retail Sales (YoY),High,,0.6
+2026-10-06T12:15:00Z,US,ADP Employment Change 4-week average,Medium,,
+2026-10-06T14:00:00Z,US,JOLTS Job Openings,Medium,,7.271
+2026-10-06T22:00:00Z,AU,AiG Industry Index,Medium,,-3.5
+2026-10-07T18:00:00Z,US,FOMC Minutes,High,,
+2026-10-07T23:50:00Z,JP,Current Account n.s.a.,Medium,,
+2026-10-08T06:00:00Z,DE,Industrial Production n.s.a. w.d.a. (YoY),Medium,,
+2026-10-08T06:00:00Z,DE,Industrial Production s.a. (MoM),Medium,,
+2026-10-08T06:00:00Z,DE,Trade Balance s.a.,Medium,,
+2026-10-08T12:00:00Z,MX,Headline Inflation,Medium,,
+2026-10-08T12:30:00Z,US,Initial Jobless Claims,Medium,,
+2026-10-08T14:00:00Z,CA,Ivey Purchasing Managers Index,Medium,,62.7
+2026-10-08T14:00:00Z,CA,Ivey Purchasing Managers Index s.a,Medium,,64.3
+2026-10-08T15:00:00Z,MX,Banxico Monetary Policy Meeting Minutes,Medium,,
+2026-10-08T23:30:00Z,JP,Labor Cash Earnings (YoY),Medium,,
+2026-10-09T01:30:00Z,CN,Consumer Price Index (MoM),Medium,,
+2026-10-09T01:30:00Z,CN,Consumer Price Index (YoY),High,,
+2026-10-09T01:30:00Z,CN,Producer Price Index (YoY),Medium,,
+2026-10-09T12:30:00Z,CA,Average Hourly Wages (YoY),Medium,,2
+2026-10-09T12:30:00Z,CA,Net Change in Employment,Medium,,-41.7
+2026-10-09T12:30:00Z,CA,Unemployment Rate,High,,6.4
+2026-10-09T14:00:00Z,US,Michigan Consumer Expectations Index,Medium,,
+2026-10-09T14:00:00Z,US,Michigan Consumer Sentiment Index,High,,
+2026-10-09T14:00:00Z,US,UoM 1-year Consumer Inflation Expectations,Medium,,
+2026-10-09T14:00:00Z,US,UoM 5-year Consumer Inflation Expectation,Medium,,
+2026-10-12T00:00:00Z,US,IMF Meeting,Medium,,
+2026-10-12T03:00:00Z,ID,Consumer Confidence,Medium,,
+2026-10-12T18:00:00Z,US,Monthly Budget Statement,Medium,,
+2026-10-12T23:01:00Z,UK,BRC Like-For-Like Retail Sales (YoY),Medium,,
+2026-10-12T23:30:00Z,AU,Westpac Consumer Confidence,Medium,,
+2026-10-13T00:00:00Z,US,IMF Meeting,Medium,,
+2026-10-13T00:30:00Z,AU,RBA Meeting Minutes,High,,
+2026-10-13T06:00:00Z,DE,Harmonized Index of Consumer Prices (MoM),Medium,,
+2026-10-13T06:00:00Z,DE,Harmonized Index of Consumer Prices (YoY),High,,
+2026-10-13T12:15:00Z,US,ADP Employment Change 4-week average,Medium,,
+2026-10-13T14:00:00Z,US,Existing Home Sales Change (MoM),Medium,,
+2026-10-14T00:00:00Z,US,IMF Meeting,Medium,,
+2026-10-14T03:00:00Z,CN,Exports (YoY),Medium,,
+2026-10-14T03:00:00Z,CN,Exports (YoY) CNY,Medium,,
+2026-10-14T03:00:00Z,CN,Imports (YoY),Medium,,
+2026-10-14T03:00:00Z,CN,Imports (YoY) CNY,Medium,,
+2026-10-14T03:00:00Z,CN,Trade Balance CNY,Medium,,
+2026-10-14T03:00:00Z,CN,Trade Balance USD,Medium,,
+2026-10-14T06:45:00Z,FR,Consumer Price Index (EU norm) (YoY),Medium,,
+2026-10-14T07:00:00Z,ES,Harmonized Index of Consumer Prices (YoY),Medium,,
+2026-10-14T12:30:00Z,US,Consumer Price Index (MoM),High,,
+2026-10-14T12:30:00Z,US,Consumer Price Index (YoY),High,,
+2026-10-14T12:30:00Z,US,Consumer Price Index ex Food & Energy (MoM),High,,
+2026-10-14T12:30:00Z,US,Consumer Price Index ex Food & Energy (YoY),High,,
+2026-10-15T00:00:00Z,AU,Consumer Inflation Expectations,Medium,,
+2026-10-15T00:00:00Z,US,IMF Meeting,Medium,,
+2026-10-15T00:30:00Z,AU,Employment Change s.a.,High,,
+2026-10-15T00:30:00Z,AU,Full-Time Employment,Medium,,
+2026-10-15T00:30:00Z,AU,National Australia Bank's Business Confidence (QoQ),Medium,,-19
+2026-10-15T00:30:00Z,AU,Part-Time Employment,Medium,,
+2026-10-15T00:30:00Z,AU,Participation Rate,Medium,,
+2026-10-15T00:30:00Z,AU,Unemployment Rate s.a.,High,,
+2026-10-15T06:00:00Z,UK,Gross Domestic Product (MoM),Medium,,
+2026-10-15T06:00:00Z,UK,Industrial Production (MoM),Medium,,
+2026-10-15T06:00:00Z,UK,Manufacturing Production (MoM),Medium,,
+2026-10-15T08:00:00Z,IT,Consumer Price Index (EU Norm) (YoY),Medium,,
+2026-10-15T08:00:00Z,IT,Consumer Price Index (YoY),Medium,,
+2026-10-15T09:00:00Z,EMU,Industrial Production s.a. (MoM),Medium,,
+2026-10-15T12:30:00Z,US,Initial Jobless Claims,Medium,,
+2026-10-15T12:30:00Z,US,Philadelphia Fed Manufacturing Survey,Medium,,
+2026-10-15T12:30:00Z,US,Producer Price Index (MoM),Medium,,
+2026-10-15T12:30:00Z,US,Producer Price Index (YoY),Medium,,
+2026-10-15T12:30:00Z,US,Producer Price Index ex Food & Energy (MoM),Medium,,
+2026-10-15T12:30:00Z,US,Producer Price Index ex Food & Energy (YoY),High,,
+2026-10-15T12:30:00Z,US,Retail Sales (MoM),High,,
+2026-10-15T12:30:00Z,US,Retail Sales Control Group,High,,
+2026-10-15T12:30:00Z,US,Retail Sales ex Autos (MoM),Medium,,
+2026-10-15T21:30:00Z,NZ,Business NZ PMI,Medium,,
+2026-10-16T00:00:00Z,US,IMF Meeting,Medium,,
+2026-10-16T02:00:00Z,CN,Gross Domestic Product (QoQ),High,,0.9
+2026-10-16T02:00:00Z,CN,Gross Domestic Product (YoY),High,,4.3
+2026-10-16T02:00:00Z,CN,Industrial Production (YoY),High,,
+2026-10-16T02:00:00Z,CN,Retail Sales (YoY),High,,
+2026-10-16T09:00:00Z,EMU,Core Harmonized Index of Consumer Prices (MoM),Medium,,
+2026-10-16T09:00:00Z,EMU,Core Harmonized Index of Consumer Prices (YoY),Medium,,
+2026-10-16T12:30:00Z,US,NY Empire State Manufacturing Index,Medium,,
+2026-10-16T13:15:00Z,US,Industrial Production (MoM),Medium,,
+2026-10-17T00:00:00Z,US,IMF Meeting,Medium,,
+2026-10-18T00:00:00Z,US,IMF Meeting,Medium,,
+2026-10-18T21:30:00Z,NZ,Business NZ PSI,Medium,,
+2026-10-18T21:45:00Z,NZ,Exports,Medium,,
+2026-10-18T21:45:00Z,NZ,Imports,Medium,,
+2026-10-18T21:45:00Z,NZ,Trade Balance NZD (YoY),Medium,,
+2026-10-19T10:00:00Z,DE,German Buba Monthly Report,Medium,,
+2026-10-19T12:30:00Z,CA,BoC Consumer Price Index Core (MoM),Medium,,
+2026-10-19T12:30:00Z,CA,BoC Consumer Price Index Core (YoY),High,,
+2026-10-19T12:30:00Z,CA,Consumer Price Index (MoM),Medium,,
+2026-10-19T12:30:00Z,CA,Consumer Price Index (YoY),Medium,,
+2026-10-19T14:30:00Z,CA,Bank of Canada Business Outlook Survey,Medium,,
+2026-10-20T06:00:00Z,DE,Producer Price Index (MoM),Medium,,
+2026-10-20T06:00:00Z,DE,Producer Price Index (YoY),Medium,,
+2026-10-20T06:00:00Z,UK,Average Earnings Excluding Bonus (3Mo/Yr),Medium,,
+2026-10-20T06:00:00Z,UK,Average Earnings Including Bonus (3Mo/Yr),Medium,,
+2026-10-20T06:00:00Z,UK,Claimant Count Change,High,,
+2026-10-20T06:00:00Z,UK,Claimant Count Rate,Medium,,
+2026-10-20T06:00:00Z,UK,Employment Change (3M),High,,
+2026-10-20T06:00:00Z,UK,ILO Unemployment Rate (3M),High,,
+2026-10-20T09:00:00Z,DE,ZEW Survey – Current Situation,Medium,,
+2026-10-20T09:00:00Z,DE,ZEW Survey – Economic Sentiment,Medium,,
+2026-10-20T09:00:00Z,EMU,Harmonized Index of Consumer Prices (MoM),Medium,,
+2026-10-20T09:00:00Z,EMU,ZEW Survey – Economic Sentiment,Medium,,
+2026-10-20T12:15:00Z,US,ADP Employment Change 4-week average,Medium,,
+2026-10-20T12:30:00Z,US,Building Permits (MoM),Medium,,
+2026-10-20T12:30:00Z,US,Housing Starts (MoM),Medium,,
+2026-10-20T23:50:00Z,JP,Adjusted Merchandise Trade Balance,Medium,,
+2026-10-20T23:50:00Z,JP,Exports (YoY),Medium,,
+2026-10-20T23:50:00Z,JP,Imports (YoY),Medium,,
+2026-10-20T23:50:00Z,JP,Merchandise Trade Balance Total,Medium,,
+2026-10-21T01:15:00Z,CN,PBoC Interest Rate Decision,Medium,,
+2026-10-21T06:00:00Z,UK,Consumer Price Index (MoM),High,,
+2026-10-21T06:00:00Z,UK,Consumer Price Index (YoY),High,,
+2026-10-21T06:00:00Z,UK,Core Consumer Price Index (YoY),High,,
+2026-10-21T06:00:00Z,UK,PPI Core Output (MoM) n.s.a,Medium,,
+2026-10-21T06:00:00Z,UK,PPI Core Output (YoY) n.s.a,Medium,,
+2026-10-21T06:00:00Z,UK,Producer Price Index - Output (MoM) n.s.a,Medium,,
+2026-10-21T06:00:00Z,UK,Retail Price Index (MoM),Medium,,
+2026-10-21T06:00:00Z,UK,Retail Price Index (YoY),Medium,,
+2026-10-21T21:45:00Z,NZ,Consumer Price Index (QoQ),High,,1.5
+2026-10-21T21:45:00Z,NZ,Consumer Price Index (YoY),High,,4.1
+2026-10-21T22:00:00Z,AU,S&P Global Composite PMI,Medium,,
+2026-10-21T22:00:00Z,AU,S&P Global Manufacturing PMI,Medium,,
+2026-10-21T22:00:00Z,AU,S&P Global Services PMI,Medium,,
+2026-10-22T11:00:00Z,TR,CBRT Interest Rate Decision,Medium,,
+2026-10-22T12:30:00Z,CA,Retail Sales (MoM),Medium,,
+2026-10-22T12:30:00Z,CA,Retail Sales ex Autos (MoM),Medium,,
+2026-10-22T12:30:00Z,US,Initial Jobless Claims,Medium,,
+2026-10-22T14:00:00Z,EMU,Consumer Confidence,Medium,,
+2026-10-22T23:01:00Z,UK,GfK Consumer Confidence,Medium,,
+2026-10-22T23:30:00Z,JP,National Consumer Price Index (YoY),Medium,,
+2026-10-22T23:30:00Z,JP,"National CPI ex Food, Energy (YoY)",Medium,,
+2026-10-22T23:30:00Z,JP,National CPI ex Fresh Food (YoY),Medium,,
+2026-10-23T05:00:00Z,IN,HSBC Composite PMI,Medium,,
+2026-10-23T05:00:00Z,IN,HSBC Manufacturing PMI,Medium,,
+2026-10-23T05:00:00Z,IN,HSBC Services PMI,Medium,,
+2026-10-23T06:00:00Z,UK,Retail Sales (MoM),High,,
+2026-10-23T06:00:00Z,UK,Retail Sales (YoY),Medium,,
+2026-10-23T06:00:00Z,UK,Retail Sales ex-Fuel (MoM),Medium,,
+2026-10-23T06:00:00Z,UK,Retail Sales ex-Fuel (YoY),Medium,,
+2026-10-23T07:15:00Z,FR,HCOB Composite PMI,Medium,,
+2026-10-23T07:15:00Z,FR,HCOB Manufacturing PMI,Medium,,
+2026-10-23T07:15:00Z,FR,HCOB Services PMI,Medium,,
+2026-10-23T07:30:00Z,DE,HCOB Composite PMI,High,,
+2026-10-23T07:30:00Z,DE,HCOB Manufacturing PMI,High,,
+2026-10-23T07:30:00Z,DE,HCOB Services PMI,High,,
+2026-10-23T08:00:00Z,EMU,HCOB Composite PMI,High,,
+2026-10-23T08:00:00Z,EMU,HCOB Manufacturing PMI,High,,
+2026-10-23T08:00:00Z,EMU,HCOB Services PMI,High,,
+2026-10-23T08:30:00Z,UK,S&P Global Composite PMI,High,,
+2026-10-23T08:30:00Z,UK,S&P Global Manufacturing PMI,High,,
+2026-10-23T08:30:00Z,UK,S&P Global Services PMI,High,,
+2026-10-23T10:30:00Z,RU,Interest Rate Decision,Medium,,
+2026-10-23T13:45:00Z,US,S&P Global Composite PMI,Medium,,
+2026-10-23T13:45:00Z,US,S&P Global Manufacturing PMI,High,,
+2026-10-23T13:45:00Z,US,S&P Global Services PMI,High,,
+2026-10-23T14:00:00Z,US,Michigan Consumer Expectations Index,Medium,,
+2026-10-23T14:00:00Z,US,Michigan Consumer Sentiment Index,Medium,,
+2026-10-23T14:00:00Z,US,UoM 1-year Consumer Inflation Expectations,Medium,,
+2026-10-23T14:00:00Z,US,UoM 5-year Consumer Inflation Expectation,Medium,,
+2026-10-26T23:00:00Z,KR,Gross Domestic Product Growth (QoQ),Medium,,
+2026-10-27T09:00:00Z,DE,IFO – Business Climate,Medium,,
+2026-10-27T09:00:00Z,DE,IFO – Current Assessment,Medium,,
+2026-10-27T09:00:00Z,DE,IFO – Expectations,Medium,,
+2026-10-27T09:00:00Z,EMU,ECB Bank Lending Survey,High,,
+2026-10-27T12:15:00Z,US,ADP Employment Change 4-week average,Medium,,
+2026-10-27T12:30:00Z,US,Durable Goods Orders,Medium,,
+2026-10-27T12:30:00Z,US,Durable Goods Orders ex Defense,Medium,,
+2026-10-27T12:30:00Z,US,Durable Goods Orders ex Transportation,Medium,,
+2026-10-27T12:30:00Z,US,Nondefense Capital Goods Orders ex Aircraft,Medium,,
+2026-10-27T13:00:00Z,US,Housing Price Index (MoM),Medium,,
+2026-10-27T14:00:00Z,US,Consumer Confidence,Medium,,
+2026-10-27T14:00:00Z,US,New Home Sales Change (MoM),Medium,,
+2026-10-28T00:30:00Z,AU,Consumer Price Index (MoM),Medium,,
+2026-10-28T00:30:00Z,AU,Consumer Price Index (YoY),High,,
+2026-10-28T00:30:00Z,AU,Trimmed Mean CPI (MoM),Medium,,
+2026-10-28T00:30:00Z,AU,Trimmed Mean CPI (YoY),High,,
+2026-10-28T01:00:00Z,NZ,RBNZ Interest Rate Decision,High,,2.75
+2026-10-28T01:00:00Z,NZ,RBNZ Monetary Policy Review,High,,
+2026-10-28T01:00:00Z,NZ,RBNZ Monetary Policy Statement,High,,
+2026-10-28T07:00:00Z,DE,GfK Consumer Confidence Survey,Medium,,
+2026-10-28T09:00:00Z,CH,ZEW Survey – Expectations,Medium,,
+2026-10-28T13:45:00Z,CA,BoC Interest Rate Decision,High,,2.25
+2026-10-28T13:45:00Z,CA,BoC Monetary Policy Report,High,,
+2026-10-28T13:45:00Z,CA,BoC Monetary Policy Statement,High,,
+2026-10-28T14:30:00Z,CA,BoC Press Conference,High,,
+2026-10-28T18:00:00Z,US,Fed Interest Rate Decision,High,,
+2026-10-28T18:00:00Z,US,Fed Monetary Policy Statement,High,,
+2026-10-28T18:30:00Z,US,FOMC Press Conference,High,,
+2026-10-29T01:00:00Z,KR,BoK Interest Rate Decision,Medium,,3
+2026-10-29T09:00:00Z,EMU,Business Climate,Medium,,
+2026-10-29T09:00:00Z,EMU,Consumer Confidence,Medium,,
+2026-10-29T09:00:00Z,EMU,Economic Sentiment Indicator,Medium,,
+2026-10-29T12:30:00Z,US,Core Personal Consumption Expenditures (QoQ),Medium,,
+2026-10-29T12:30:00Z,US,Gross Domestic Product Annualized,High,,
+2026-10-29T12:30:00Z,US,Gross Domestic Product Price Index,High,,
+2026-10-29T12:30:00Z,US,Initial Jobless Claims,Medium,,
+2026-10-29T12:30:00Z,US,Personal Consumption Expenditures Prices (QoQ),Medium,,
+2026-10-29T13:15:00Z,EMU,ECB Main Refinancing Operations Rate,High,,
+2026-10-29T13:15:00Z,EMU,ECB Monetary Policy Statement,High,,
+2026-10-29T13:15:00Z,EMU,ECB Rate On Deposit Facility,High,,
+2026-10-29T13:45:00Z,EMU,ECB Press Conference,High,,
+2026-10-29T14:00:00Z,US,Pending Home Sales (MoM),Medium,,
+2026-10-29T21:00:00Z,NZ,ANZ – Roy Morgan Consumer Confidence,Medium,,
+2026-10-29T23:30:00Z,JP,Tokyo Consumer Price Index (YoY),High,,
+2026-10-29T23:30:00Z,JP,"Tokyo CPI ex Food, Energy (YoY)",High,,
+2026-10-29T23:30:00Z,JP,Tokyo CPI ex Fresh Food (YoY),Medium,,
+2026-10-29T23:30:00Z,JP,Unemployment Rate,Medium,,
+2026-10-29T23:50:00Z,JP,Large Retailer Sales,Medium,,
+2026-10-29T23:50:00Z,JP,Retail Trade (YoY),Medium,,
+2026-10-29T23:50:00Z,JP,Retail Trade s.a (MoM),Medium,,
+2026-10-30T00:30:00Z,AU,Producer Price Index (YoY),Medium,,3.6
+2026-10-30T03:00:00Z,JP,BoJ Interest Rate Decision,High,,
+2026-10-30T03:00:00Z,JP,BoJ Monetary Policy Statement,High,,
+2026-10-30T03:00:00Z,JP,BoJ Outlook Report,Medium,,
+2026-10-30T06:30:00Z,JP,BoJ Press Conference,High,,
+2026-10-30T07:00:00Z,DE,Gross Domestic Product (QoQ),High,,0.3
+2026-10-30T07:00:00Z,DE,Gross Domestic Product (YoY),High,,1
+2026-10-30T07:00:00Z,DE,Gross Domestic Product w.d.a (YoY),Medium,,1
+2026-10-30T07:45:00Z,FR,Consumer Price Index (EU norm) (YoY),Medium,,
+2026-10-30T07:45:00Z,FR,Gross Domestic Product (QoQ),Medium,,0
+2026-10-30T08:00:00Z,ES,Gross Domestic Product - Estimated (QoQ),Medium,,0.7
+2026-10-30T08:00:00Z,ES,Harmonized Index of Consumer Prices (YoY),Medium,,
+2026-10-30T08:55:00Z,DE,Unemployment Change,Medium,,
+2026-10-30T08:55:00Z,DE,Unemployment Rate s.a.,Medium,,
+2026-10-30T09:00:00Z,IT,Gross Domestic Product (QoQ),Medium,,0.2
+2026-10-30T09:00:00Z,IT,Gross Domestic Product (YoY),Medium,,1
+2026-10-30T10:00:00Z,EMU,Gross Domestic Product s.a. (QoQ),High,,
+2026-10-30T10:00:00Z,EMU,Gross Domestic Product s.a. (YoY),High,,
+2026-10-30T10:00:00Z,IT,Consumer Price Index (EU Norm) (YoY),Medium,,
+2026-10-30T10:00:00Z,IT,Consumer Price Index (YoY),Medium,,
+2026-10-30T12:30:00Z,CA,Gross Domestic Product (MoM),Medium,,
+2026-10-30T12:30:00Z,US,Core Personal Consumption Expenditures - Price Index (MoM),High,,
+2026-10-30T12:30:00Z,US,Core Personal Consumption Expenditures - Price Index (YoY),High,,
+2026-10-30T12:30:00Z,US,Employment Cost Index,Medium,,0.9
+2026-10-30T12:30:00Z,US,Personal Consumption Expenditures - Price Index (MoM),Medium,,
+2026-10-30T12:30:00Z,US,Personal Consumption Expenditures - Price Index (YoY),Medium,,
+2026-10-30T12:30:00Z,US,Personal Income (MoM),Medium,,
+2026-10-30T12:30:00Z,US,Personal Spending,Medium,,
+2026-10-30T13:00:00Z,DE,Consumer Price Index (MoM),High,,
+2026-10-30T13:00:00Z,DE,Consumer Price Index (YoY),High,,
+2026-10-30T13:00:00Z,DE,Harmonized Index of Consumer Prices (MoM),Medium,,
+2026-10-30T13:00:00Z,DE,Harmonized Index of Consumer Prices (YoY),High,,
+2026-10-30T13:45:00Z,US,Chicago PMI,Medium,,
+2026-10-31T01:30:00Z,CN,NBS Manufacturing PMI,High,,
+2026-10-31T01:30:00Z,CN,NBS Non-Manufacturing PMI,High,,

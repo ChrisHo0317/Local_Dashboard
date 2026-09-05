@@ -15,7 +15,7 @@ from datetime import date, timedelta
 import build_static
 from bond_data import CSV_PATH as BOND_CSV, merge_yields
 from bond_scraper import MoneyDJBondScraper
-from calendar_data import CSV_PATH as CAL_CSV, merge_events
+from calendar_data import CSV_PATH as CAL_CSV, drop_legacy_overlap, merge_events
 from calendar_scraper import ForexFactoryCalendarScraper
 from dram_data import CSV_PATH as DRAM_CSV, merge_prices
 from f1_data import (CSV_PATH as F1_CSV, SERIES_CSV, STANDINGS_CSV,
@@ -90,14 +90,17 @@ def update_gold() -> int:
 
 
 def update_calendar() -> int:
-    """財經行事曆：ForexFactory 只提供「本週」一個 feed，逐週累積。"""
+    """財經行事曆：一次抓本月與下個月（來源可指定區間）。"""
     rows = ForexFactoryCalendarScraper(logger=log).fetch_events()
     if not rows:
-        log.warning("行事曆：未取得任何事件（ForexFactory 可能限流），本次不更新")
+        log.warning("行事曆：未取得任何事件，本次不更新")
         return 0
     added = merge_events(rows)
+    dropped = drop_legacy_overlap()
+    if dropped:
+        log.info(f"行事曆：清掉 {dropped} 筆換來源前的重複資料")
     log.info(f"行事曆：抓取 {len(rows)} 筆，新增 {added} 筆至 {CAL_CSV.name}")
-    return added
+    return added + dropped
 
 
 def update_f1() -> int:

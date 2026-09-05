@@ -37,7 +37,7 @@ GitHub Pages 只能託管靜態檔案，無法執行 Dash 的伺服器端 callba
 | 財經 | DRAM | DRAM 現貨報價（TrendForce）|
 | 財經 | 美債殖利率 | 美國公債 1／2／5／10／20／30 年期殖利率（MoneyDJ）|
 | 財經 | 黃金 | 國際金價 COMEX 近月期貨，USD／盎司（Yahoo Finance）|
-| 財經 | 行事曆 | 財經事件行事曆，中文化、表格呈現（ForexFactory）|
+| 財經 | 行事曆 | 財經事件行事曆，本月與下月、中／高影響，中文化、表格呈現（FXStreet）|
 | 個人追蹤 | F1 | 賽程（清單列出每場大獎賽，點進去看該站場次）／積分（車手、車隊：走勢圖 + 積分榜）（F1 Calendar、f1-boxbox）|
 | 財經 | SpaceX | 發射排程，依月份分組、繁體中文（SpaceX 官方 API）|
 | 財經 | 個股 | 查詢（即時向證交所查行情與本益比／殖利率／股價淨值比）／營收／重訊／財報（公開資訊觀測站開放資料）|
@@ -103,7 +103,7 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `gold_data.py` | 讀寫 `data/gold_prices.csv` |
 | `gold_scraper.py` | Yahoo Finance 金價爬蟲 |
 | `calendar_data.py` | 讀寫 `data/calendar_events.csv` |
-| `calendar_scraper.py` | ForexFactory 行事曆爬蟲（官方 JSON feed）|
+| `calendar_scraper.py` | FXStreet 行事曆爬蟲（可指定區間，抓本月與下月）|
 | `calendar_i18n.py` | 事件名稱／國別／影響程度的中文化 |
 | `calendar_render.py` | 行事曆分頁的 HTML 產生 |
 | `f1_data.py` | 讀寫 `data/f1_schedule.csv` |
@@ -224,7 +224,7 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 ## 版本
 
-目前 **v0.3.036**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
+目前 **v0.3.037**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
 
 格式 `vMAJOR.MINOR.PATCH`，PATCH 固定三位數。**一般改動一律只遞增 PATCH**；前兩組除非明確指示否則不變更。改 `version.py` 後重跑 `build_static.py` 即可。
 
@@ -232,7 +232,7 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 ---
 
-資料來源：[TrendForce 集邦科技](https://www.trendforce.com.tw/price/dram/dram_spot)　·　[MoneyDJ 債券](https://www.moneydj.com/bond/defaultBD.xdjhtm)　·　[Yahoo Finance](https://finance.yahoo.com/quote/GC%3DF/)　·　[ForexFactory](https://www.forexfactory.com/calendar)　·　[非凡新聞](https://news.ustv.com.tw/)　·　[Yahoo 財經](https://tw.news.yahoo.com/finance/)　·　[自由財經](https://ec.ltn.com.tw/)　·　[DIGITIMES](https://www.digitimes.com.tw/)　·　[TechNews](https://technews.tw/)
+資料來源：[TrendForce 集邦科技](https://www.trendforce.com.tw/price/dram/dram_spot)　·　[MoneyDJ 債券](https://www.moneydj.com/bond/defaultBD.xdjhtm)　·　[Yahoo Finance](https://finance.yahoo.com/quote/GC%3DF/)　·　[FXStreet](https://www.fxstreet.com/economic-calendar)　·　[非凡新聞](https://news.ustv.com.tw/)　·　[Yahoo 財經](https://tw.news.yahoo.com/finance/)　·　[自由財經](https://ec.ltn.com.tw/)　·　[DIGITIMES](https://www.digitimes.com.tw/)　·　[TechNews](https://technews.tw/)
 
 ---
 
@@ -247,14 +247,29 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 ## 關於行事曆
 
-forexfactory.com 本站有 Cloudflare，直接抓會 403，但官方另外提供 JSON feed
-（`nfs.faireconomy.media/ff_calendar_thisweek.json`）可以正常取得。
+原本用 ForexFactory 的 JSON feed（`ff_calendar_thisweek.json`），但那個 feed 只有
+「本週」一種 —— nextweek／lastweek／thismonth 全是 404，所以永遠只看得到本週剩下
+的日子。本站 HTML 有 Cloudflare，連真實 Chrome 開 `/calendar?month=this` 都是 403，
+月曆抓不到。
 
-兩個限制要知道：
+改用 FXStreet 行事曆頁背後的端點，可以指定任意區間：
 
-- **只有「本週」一個 feed**，nextweek／lastweek／thismonth 都是 404。所以看得到的
-  未來事件僅限本週剩下的日子，歷史則靠每天執行逐週累積。
-- **有速率限制**，短時間連抓會回 HTTP 429。每次執行只抓一次，遇到 429 就跳過本次更新。
+```
+https://calendar-api.fxsstatic.com/en/api/v2/eventDates/{起}/{迄}
+```
+
+每次抓本月 1 日到下個月底，涵蓋頁面要顯示的「過去 3 天 + 未來 45 天」。
+
+**只留 HIGH 與 MEDIUM**：LOW 一個月有七百多筆，多是次要國家的次要指標，
+全放進頁面只會讓真正該注意的事件被淹掉。
+
+換來源之後名稱寫法也變了（週期是 `(YoY)` 而不是 `y/y`、PMI 前面掛編製機構、
+國別欄放國碼而不是貨幣碼），所以 `calendar_i18n.py` 多了一層 `normalize()`
+把這些整理成既有規則吃得下的樣子，`COUNTRIES` 也同時認貨幣碼與國碼 ——
+換來源之前累積的舊資料才不會變成空白。
+
+兩邊對同一場事件的寫法完全不同，去重比對不到，重疊的日子會列出兩套，
+所以 `drop_legacy_overlap()` 會把新來源已涵蓋日期內的舊資料清掉（更早的歷史保留）。
 
 事件以表格呈現（時間／影響／事件／預估／前值），每天一個 `<tbody>` 讓各天欄位對齊，
 並在今天「已過去」與「還沒到」的事件之間插入紅色的現在時間標示線，每 30 秒更新一次。

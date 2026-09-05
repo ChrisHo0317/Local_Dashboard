@@ -8,7 +8,7 @@ hover、框選縮放、時間軸縮圖等 Plotly 原生互動全部保留。
   DRAM    DRAM 現貨報價（TrendForce）
   美債    美國公債各年期殖利率（MoneyDJ）
   黃金    國際金價（Yahoo Finance）
-  行事曆  財經事件行事曆（ForexFactory）
+  行事曆  財經事件行事曆（FXStreet）
   設定    外觀、各資料集資訊、關於
 
 圖例不使用 Plotly 內建的那一份（項目一多在手機上會佔掉大半畫面），
@@ -120,9 +120,9 @@ PANELS = [
         "kind": "calendar",
         "tab": "行事曆",
         "title": "財經行事曆",
-        "meta": "資料來源：ForexFactory　·　時間為台北時間（UTC+8）",
-        "source_name": "ForexFactory",
-        "source_url": "https://www.forexfactory.com/calendar",
+        "meta": "資料來源：FXStreet　·　本月與下月，中／高影響　·　時間為台北時間（UTC+8）",
+        "source_name": "FXStreet",
+        "source_url": "https://www.fxstreet.com/economic-calendar",
         "csv": CAL_CSV,
         "load": load_events,
         "render": cal_panel_html,
