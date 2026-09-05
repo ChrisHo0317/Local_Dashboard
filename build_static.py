@@ -1569,11 +1569,23 @@ function applyVisibility(reselect) {
 
   var cur = tabs.filter(function (t) { return t.getAttribute('aria-selected') === 'true'; })[0];
   if (!cur || cur.hidden) {
-    var next = tabs.filter(function (t) { return !t.hidden; })[0];
+    var next = firstTabOfGroup();
     if (next) selectTab(next.dataset.tab, false);
   } else {
     movePill(cur, false);   // 分頁數變了，指示器要重新定位
   }
+}
+
+// 目前這一組的第一個分頁 —— 依設定裡的排序，不是頁面產生時的順序。
+// tabs 這個陣列是初始化時抓的，順序固定；使用者拖曳過之後要看 groups。
+function firstTabOfGroup() {
+  var g = groups.filter(function (x) { return x.id === curGroup; })[0];
+  var ids = g ? g.tabs : [];
+  for (var i = 0; i < ids.length; i++) {
+    var t = document.querySelector('.tab[data-tab="' + ids[i] + '"]');
+    if (t && !t.hidden) return t;
+  }
+  return document.querySelector('.tab[data-tab="settings"]');
 }
 
 document.querySelectorAll('.switch[data-panel]').forEach(function (sw) {
@@ -2857,7 +2869,7 @@ document.querySelectorAll('.legend-bar').forEach(buildLegend);
 applyTheme();
 renderGroupBar();
 selectGroup(curGroup, false);
-var firstTab = tabs.filter(function (t) { return !t.hidden; })[0];
+var firstTab = firstTabOfGroup();
 selectTab(firstTab ? firstTab.dataset.tab : 'settings', false);   // 只會畫出這一張圖
 syncSticky();
 Object.keys(CHARTS).forEach(function (k) {
