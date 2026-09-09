@@ -720,3 +720,4 @@ launch_time,title,vehicle,launch_site,return_site,mission_type,status,return_tim
 2026-09-02T01:42:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,,sl-15-23
 2026-09-06T07:26:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,,sl-15-24
 2026-09-10T15:37:00Z,USSF-153 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,upcoming,,ussf153
+2026-09-20T00:00:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,upcoming,,sl-15-27
