@@ -22,14 +22,14 @@ driver,20,角田裕毅,Yuki Tsunoda,賽車公牛,1,0,0,0,#6c98ff
 driver,21,蘭斯·斯特羅爾,Lance Stroll,阿斯頓·馬丁,0,0,0,0,#229971
 driver,22,瓦爾特利·博塔斯,Valtteri Bottas,凱迪拉克,0,0,0,0,#909090
 driver,23,塞爾吉奧·佩雷斯,Sergio Pérez,凱迪拉克,0,0,0,0,#909090
-constructor,1,梅賽德斯,Mercedes,,503,10,19,0,#00d7b6
-constructor,2,法拉利,Ferrari,,358,2,9,0,#ed1131
-constructor,3,邁凱倫,McLaren,,306,2,7,0,#f47600
-constructor,4,紅牛,Red Bull,,230,0,7,0,#4781d7
-constructor,5,賽車公牛,Racing Bulls,,77,0,0,0,#6c98ff
-constructor,6,阿爾派,Alpine,,68,0,0,0,#00a1e8
+constructor,1,梅賽德斯,Mercedes,,468,10,19,0,#00d7b6
+constructor,2,法拉利,Ferrari,,346,2,9,0,#ed1131
+constructor,3,邁凱倫,McLaren,,287,2,7,0,#f47600
+constructor,4,紅牛,Red Bull,,204,0,7,0,#4781d7
+constructor,5,賽車公牛,Racing Bulls,,75,0,0,0,#6c98ff
+constructor,6,阿爾派,Alpine,,62,0,0,0,#00a1e8
 constructor,7,哈斯,Haas,,21,0,0,0,#9c9fa2
-constructor,8,奧迪,Audi,,17,0,0,0,#f50537
+constructor,8,奧迪,Audi,,16,0,0,0,#f50537
 constructor,9,威廉姆斯,Williams,,11,0,0,0,#1868db
 constructor,10,阿斯頓·馬丁,Aston Martin,,3,0,0,0,#229971
 constructor,11,凱迪拉克,Cadillac,,0,0,0,0,#909090
