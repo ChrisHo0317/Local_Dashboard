@@ -77,9 +77,25 @@ def panel_html(df: pd.DataFrame) -> str:
         '  </div>'
     )
 
+    # 月曆格狀圖：完全由前端 JS 產生（今天是哪一天、月份怎麼排都是瀏覽器端算的），
+    # 這裡只留容器殼，理由與「現在時間標示線」相同——頁面會被 CDN 快取。
+    month_grid = (
+        '  <div class="cal-month" id="cal-month">\n'
+        '    <div class="cal-month-head">\n'
+        '      <button type="button" class="iconbtn cal-month-prev" aria-label="上個月">&#8249;</button>\n'
+        '      <span class="cal-month-label">—</span>\n'
+        '      <button type="button" class="iconbtn cal-month-next" aria-label="下個月">&#8250;</button>\n'
+        '    </div>\n'
+        '    <div class="cal-month-wd">\n'
+        + "".join(f'      <span>{w}</span>\n' for w in WEEKDAYS) +
+        '    </div>\n'
+        '    <div class="cal-month-grid"></div>\n'
+        '  </div>'
+    )
+
     view = window(df)
     if view.empty:
-        return head + '\n  <p class="cal-empty">目前沒有事件資料。</p>'
+        return head + "\n" + month_grid + '\n  <p class="cal-empty">目前沒有事件資料。</p>'
 
     bodies = []
     for day, group in view.groupby(view["_ts"].dt.tz_convert(TAIPEI).dt.date, sort=True):
@@ -129,4 +145,4 @@ def panel_html(df: pd.DataFrame) -> str:
         '    </thead>\n'
         + "\n".join(bodies) + "\n  </table>"
     )
-    return head + "\n" + table
+    return head + "\n" + month_grid + "\n" + table

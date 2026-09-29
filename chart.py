@@ -194,6 +194,12 @@ def build_gold_figure(df: pd.DataFrame, dark: bool = False,
     return _line_figure(df, "price_usd", "USD / 盎司", "%{y:,.1f}", dark, showlegend)
 
 
+def build_btc_figure(df: pd.DataFrame, dark: bool = False,
+                     showlegend: bool = True) -> go.Figure:
+    """比特幣價格走勢圖（欄位 item / price_date / price_usd）。"""
+    return _line_figure(df, "price_usd", "USD", "%{y:,.0f}", dark, showlegend)
+
+
 def build_points_figure(df: pd.DataFrame, dark: bool = False,
                         showlegend: bool = True) -> go.Figure:
     """

@@ -28,7 +28,7 @@ jobs:
 
       - name: Fetch latest prices and rebuild page
         # 新聞不在這裡跑，它有自己的十分鐘排程（news.yml）
-        run: python update_data.py dram bonds gold calendar f1 f1standings spacex stock
+        run: python update_data.py dram bonds gold btc calendar f1 f1standings spacex stock
 
       - name: Commit if changed
         run: |

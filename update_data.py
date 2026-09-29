@@ -15,6 +15,8 @@ from datetime import date, timedelta
 import build_static
 from bond_data import CSV_PATH as BOND_CSV, merge_yields
 from bond_scraper import MoneyDJBondScraper
+from btc_data import CSV_PATH as BTC_CSV, merge_prices as merge_btc
+from btc_scraper import YahooBTCScraper
 from calendar_data import CSV_PATH as CAL_CSV, drop_legacy_overlap, merge_events
 from calendar_scraper import ForexFactoryCalendarScraper
 from dram_data import CSV_PATH as DRAM_CSV, merge_prices
@@ -42,6 +44,10 @@ BOND_LOOKBACK_DAYS = 30
 # 金價同理：平常只取近一個月，首次執行才整段回補
 GOLD_HISTORY_RANGE = "5y"
 GOLD_LOOKBACK_RANGE = "1mo"
+
+# 比特幣同理
+BTC_HISTORY_RANGE = "5y"
+BTC_LOOKBACK_RANGE = "1mo"
 
 
 def update_dram() -> int:
@@ -86,6 +92,23 @@ def update_gold() -> int:
         return 0
     added = merge_gold(rows)
     log.info(f"黃金：抓取 {len(rows)} 筆，新增 {added} 筆至 {GOLD_CSV.name}")
+    return added
+
+
+def update_btc() -> int:
+    """比特幣價格：Yahoo Finance 提供歷史區間，回頭抓一段可自我修補缺漏。"""
+    if BTC_CSV.exists():
+        period = BTC_LOOKBACK_RANGE
+    else:
+        period = BTC_HISTORY_RANGE
+        log.info(f"比特幣：首次執行，整段回補 {period}")
+
+    rows = YahooBTCScraper(logger=log).fetch_prices(period)
+    if not rows:
+        log.warning("比特幣：未取得任何資料（Yahoo Finance 可能拒絕請求），本次不更新")
+        return 0
+    added = merge_btc(rows)
+    log.info(f"比特幣：抓取 {len(rows)} 筆，新增 {added} 筆至 {BTC_CSV.name}")
     return added
 
 
@@ -182,6 +205,7 @@ JOBS = {
     "dram": update_dram,
     "bonds": update_bonds,
     "gold": update_gold,
+    "btc": update_btc,
     "calendar": update_calendar,
     "f1": update_f1,
     "f1standings": update_f1_standings,

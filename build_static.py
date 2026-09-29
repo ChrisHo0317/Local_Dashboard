@@ -25,14 +25,16 @@ hover、框選縮放、時間軸縮圖等 Plotly 原生互動全部保留。
 """
 import json
 from datetime import datetime, timedelta, timezone
+from html import escape
 from pathlib import Path
 
 import plotly.io as pio
 
 from bond_data import CSV_PATH as BOND_CSV, latest_date as bond_latest, load_bonds
+from btc_data import CSV_PATH as BTC_CSV, latest_date as btc_latest, load_btc
 from calendar_data import CSV_PATH as CAL_CSV, load_events
 from calendar_render import panel_html as cal_panel_html, stats as cal_stats
-from chart import (build_bond_figure, build_figure, build_gold_figure,
+from chart import (build_bond_figure, build_btc_figure, build_figure, build_gold_figure,
                    build_points_figure, series_colors)
 from dram_data import BASE_DIR, CSV_PATH as DRAM_CSV, latest_date as dram_latest, load_dram
 from f1_data import CSV_PATH as F1_CSV, load_all as load_f1_all, load_points_series
@@ -55,12 +57,11 @@ OUTPUT = DOCS_DIR / "index.html"
 NEWS_DIR = DOCS_DIR / "news"
 STOCK_DIR = DOCS_DIR / "stock"
 
-# 圖表分頁定義。新增一組資料只要在這裡加一筆。
-PANELS = [
+# 走勢圖：合併在同一個分頁裡的子分頁（避免底部標籤列一個個排開）。
+# 各項目沿用原本各自的欄位定義，只是不再各自佔一個頂層分頁。
+TREND_CHARTS = [
     {
         "id": "dram",
-        "group": "finance",
-        "kind": "chart",
         "tab": "DRAM",
         "title": "DRAM 現貨報價趨勢",
         "meta": "資料來源：TrendForce　·　單位：USD（盤平均）",
@@ -71,15 +72,9 @@ PANELS = [
         "load": load_dram,
         "figure": build_figure,
         "latest": dram_latest,
-        # 折線圖圖示
-        "icon": '<path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21"/>'
-                '<path d="M7 15l3.5-4 3 2.5L20 7"/>'
-                '<circle cx="20" cy="7" r="1.4" fill="currentColor" stroke="none"/>',
     },
     {
         "id": "bond",
-        "group": "finance",
-        "kind": "chart",
         "tab": "美債",
         "title": "美國公債殖利率",
         "meta": "資料來源：MoneyDJ　·　單位：%（各年期）",
@@ -90,15 +85,9 @@ PANELS = [
         "load": load_bonds,
         "figure": build_bond_figure,
         "latest": bond_latest,
-        # 百分比圖示
-        "icon": '<line x1="19" y1="5" x2="5" y2="19"/>'
-                '<circle cx="6.6" cy="6.6" r="2.4"/>'
-                '<circle cx="17.4" cy="17.4" r="2.4"/>',
     },
     {
         "id": "gold",
-        "group": "finance",
-        "kind": "chart",
         "tab": "黃金",
         "title": "國際金價",
         "meta": "資料來源：Yahoo Finance　·　單位：USD／盎司（COMEX 近月期貨）",
@@ -109,10 +98,36 @@ PANELS = [
         "load": load_gold,
         "figure": build_gold_figure,
         "latest": gold_latest,
-        # 金幣堆疊圖示
-        "icon": '<ellipse cx="12" cy="6.4" rx="7" ry="3"/>'
-                '<path d="M5 6.4v5c0 1.66 3.13 3 7 3s7-1.34 7-3v-5"/>'
-                '<path d="M5 11.4v5c0 1.66 3.13 3 7 3s7-1.34 7-3v-5"/>',
+    },
+    {
+        "id": "btc",
+        "tab": "BTC",
+        "title": "比特幣走勢",
+        "meta": "資料來源：Yahoo Finance　·　單位：USD",
+        "item_label": "幣別",
+        "source_name": "Yahoo Finance",
+        "source_url": "https://finance.yahoo.com/quote/BTC-USD/",
+        "csv": BTC_CSV,
+        "load": load_btc,
+        "figure": build_btc_figure,
+        "latest": btc_latest,
+    },
+]
+
+# 圖表分頁定義。新增一組資料只要在這裡加一筆。
+PANELS = [
+    {
+        "id": "trend",
+        "group": "finance",
+        "kind": "chartgroup",
+        "tab": "走勢圖",
+        "title": TREND_CHARTS[0]["title"],
+        "meta": TREND_CHARTS[0]["meta"],
+        "members": TREND_CHARTS,
+        # 折線圖圖示
+        "icon": '<path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21"/>'
+                '<path d="M7 15l3.5-4 3 2.5L20 7"/>'
+                '<circle cx="20" cy="7" r="1.4" fill="currentColor" stroke="none"/>',
     },
     {
         "id": "calendar",
@@ -247,8 +262,6 @@ def _default_groups() -> list:
         for g in GROUPS
     ]
 
-CHART_PANELS = [p for p in PANELS if p.get("kind", "chart") == "chart"]
-
 # 不自成一個分頁、而是嵌在別的分頁裡的圖表（F1 積分子分頁的走勢圖）
 EXTRA_CHARTS = [
     {"key": "f1drivers", "kind": "driver", "item_label": "車手"},
@@ -298,13 +311,46 @@ def _groupbar_html() -> str:
             '  </nav>')
 
 
-def _panels_html(panel_data) -> str:
+def _trend_group_html(members: list, head: dict) -> str:
+    """走勢圖分頁：子分頁列 + 各一個圖表空殼（由前端 Plotly 繪製）。
+
+    子分頁的標頭沿用各自算好的 head（含最後更新日），與合併前一致。
+    """
+    sub_btns = []
+    sub_panels = []
+    for i, m in enumerate(members):
+        selected = "true" if i == 0 else "false"
+        h = head[m["id"]]
+        # meta 裡含 <br>，是刻意讓前端當 HTML 插入（setHead 用 innerHTML）——
+        # 這裡只跳脫屬性值本身需要的 & 與 "，不跳脫 <br>。
+        meta_attr = h["meta"].replace("&", "&amp;").replace('"', "&quot;")
+        sub_btns.append(
+            f'    <button type="button" class="subtab" data-sub="{m["id"]}"'
+            f' data-title="{escape(h["title"])}" data-meta="{meta_attr}"'
+            f' aria-selected="{selected}">{m["tab"]}</button>'
+        )
+        hidden = "" if i == 0 else " hidden"
+        sub_panels.append(
+            f'  <div class="subpanel" data-sub="{m["id"]}"{hidden}>\n'
+            f'    <div class="chart" id="chart-{m["id"]}"></div>\n'
+            f'    <div class="legend-bar" data-chart="{m["id"]}"></div>\n'
+            f'  </div>'
+        )
+    subtabs = ('  <div class="subtabs" role="tablist" aria-label="走勢圖子分頁">\n'
+               + "\n".join(sub_btns) + "\n  </div>")
+    return subtabs + "\n" + "\n".join(sub_panels)
+
+
+def _panels_html(panel_data, head: dict) -> str:
     """各分頁的內容。圖表分頁留空殼由 JS 繪製，行事曆分頁在此直接產生 HTML。"""
     out = []
     for i, p in enumerate(PANELS):
         hidden = "" if i == 0 else " hidden"
-        if p.get("kind", "chart") == "calendar":
+        kind = p.get("kind", "chart")
+        if kind == "calendar":
             body = p["render"](panel_data[p["id"]])
+        elif kind == "chartgroup":
+            body = _trend_group_html(p["members"], head)
         else:
             body = (f'    <div class="chart" id="chart-{p["id"]}"></div>\n'
                     f'    <div class="legend-bar" data-chart="{p["id"]}"></div>')
@@ -330,9 +376,38 @@ def _stats(p: dict) -> dict:
     }
 
 
+def _trend_settings_card(p: dict, stats: dict) -> str:
+    """走勢圖分頁的資料卡片：一張卡彙整底下每個子分頁的來源與更新日。"""
+    rows = []
+    for m in p["members"]:
+        s = stats[m["id"]]
+        rows.append(
+            f'      <div class="row"><span>{m["tab"]}　最後更新日</span><b>{s["latest"]}</b></div>\n'
+            f'      <div class="row"><span>{m["tab"]}　資料來源</span>'
+            f'<a href="{m["source_url"]}" target="_blank" rel="noopener">{m["source_name"]}</a></div>'
+        )
+    body = "\n".join(rows)
+    return f'''    <div class="card fold" data-card="{p["id"]}">
+      <div class="card-h">
+        <button type="button" class="card-t" aria-expanded="false"
+                aria-controls="cardbody-{p["id"]}">
+          <span class="card-chev">&#9656;</span><span>{p["tab"]}　資料</span>
+        </button>
+        <button class="switch sw-sm" type="button" role="switch" data-panel="{p["id"]}"
+                aria-checked="true" aria-label="顯示{p["tab"]}分頁"><span class="knob"></span></button>
+      </div>
+      <div class="card-body" id="cardbody-{p["id"]}">
+{body}
+      </div>
+    </div>'''
+
+
 def _settings_cards(stats: dict) -> str:
     cards = []
     for p in PANELS:
+        if p.get("kind") == "chartgroup":
+            cards.append(_trend_settings_card(p, stats))
+            continue
         s = stats[p["id"]]
         if s.get("local"):
             # 筆記存在讀者自己的瀏覽器，建置時沒有任何數字可寫；
@@ -624,6 +699,26 @@ TPL = """<!doctype html>
   .cal-now .now-tag { font-size:11px; font-weight:600; color:#fff; background:#e03131;
                       border-radius:999px; padding:1px 8px; font-variant-numeric:tabular-nums; }
   .cal-empty { color:var(--muted); font-size:13px; }
+
+  /* 月曆格狀圖：本月一覽，格子內容全由 JS 依表格既有資料填入 */
+  .cal-month { margin-bottom:16px; }
+  .cal-month-head { display:flex; align-items:center; justify-content:center;
+                    gap:16px; margin-bottom:8px; }
+  .cal-month-label { font-size:14px; font-weight:600; min-width:92px; text-align:center;
+                     font-variant-numeric:tabular-nums; }
+  .cal-month-wd { display:grid; grid-template-columns:repeat(7,1fr); text-align:center;
+                 font-size:11px; color:var(--muted); margin-bottom:4px; }
+  .cal-month-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+  .cal-month-cell { position:relative; aspect-ratio:1; display:flex; flex-direction:column;
+                    align-items:center; justify-content:center; gap:3px; border-radius:8px;
+                    font-size:12px; font-variant-numeric:tabular-nums; }
+  .cal-month-cell.empty { visibility:hidden; }
+  .cal-month-cell.no-data { opacity:.35; }
+  .cal-month-cell.clickable { cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .cal-month-cell.clickable:hover { background:var(--hover); }
+  .cal-month-cell.today { background:var(--pill); font-weight:700; color:var(--accent); }
+  .cmd-dots { display:flex; gap:2px; height:5px; }
+  .cmd-dots i { width:5px; height:5px; margin:0; }
 
   /* 分類切換：底部標籤列一次只顯示一組分頁 */
   .groupbar { position:relative; display:flex; gap:4px; margin:0 0 16px;
@@ -1778,10 +1873,121 @@ function initTouch(gd, opts) {
 // 財經行事曆與 F1 賽程共用同一套表格結構，所以逐個 .cal-table 各自初始化。
 // 所有跟「現在」有關的東西都在瀏覽器端算，不在產生頁面時寫死 ——
 // 頁面會被 CDN 快取，寫死的話隔天再開就會標錯。
+// 月曆格狀圖：只有財經行事曆分頁有這個容器（calendar_render.py 才會產生
+// .cal-month），其餘沿用 .cal-table 的分頁（F1、SpaceX）沒有就直接跳過。
+// 資料不重新查——直接讀同一張表裡既有的 .cal-day / .cal-row，
+// 這樣篩選（勾選式影響程度）改變時，格子上的圓點也會跟著更新。
+function initMonthGrid(panel, table) {
+  var container = panel ? panel.querySelector('.cal-month') : null;
+  if (!container) return null;
+
+  var grid = container.querySelector('.cal-month-grid');
+  var label = container.querySelector('.cal-month-label');
+  var prevBtn = container.querySelector('.cal-month-prev');
+  var nextBtn = container.querySelector('.cal-month-next');
+  var view = null;   // null＝跟著今天走；使用者按過上／下個月後才固定成 {y, m}
+  var DOT_ORDER = [[3, 'i-high'], [2, 'i-mid'], [0, 'i-hol']];
+
+  function taipei() {
+    return new Date(Date.now() + (8 * 60 + new Date().getTimezoneOffset()) * 60000);
+  }
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  // 該天在表格裡有沒有資料：回傳「出現過的影響程度」集合，沒有這一天就是 null
+  // （代表超出表格涵蓋的區間，不是「當天沒事件」）。
+  function dayRanks(iso) {
+    var day = table.querySelector('.cal-day[data-date="' + iso + '"]');
+    if (!day) return null;
+    var ranks = {};
+    Array.prototype.slice.call(day.querySelectorAll('.cal-row')).forEach(function (r) {
+      if (r.hidden) return;
+      ranks[Number(r.dataset.impact)] = true;
+    });
+    return ranks;
+  }
+
+  function jumpTo(iso) {
+    var target = table.querySelector('.cal-day[data-date="' + iso + '"]');
+    if (!target) return;
+    var top = target.getBoundingClientRect().top + window.pageYOffset
+              - (pageHeader.offsetHeight + 12);
+    window.scrollTo({top: top, behavior: 'smooth'});
+  }
+
+  function render() {
+    var t = taipei();
+    var y = view ? view.y : t.getFullYear();
+    var m = view ? view.m : t.getMonth();       // 0-based
+    var todayIso = t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
+
+    label.textContent = y + ' 年 ' + (m + 1) + ' 月';
+
+    var first = new Date(y, m, 1);
+    var lead = (first.getDay() + 6) % 7;        // 週一為每列第一格
+    var daysInMonth = new Date(y, m + 1, 0).getDate();
+
+    var cells = [];
+    for (var i = 0; i < lead; i++) cells.push(null);
+    for (var d = 1; d <= daysInMonth; d++) cells.push(d);
+    while (cells.length % 7 !== 0) cells.push(null);
+
+    grid.innerHTML = '';
+    cells.forEach(function (d) {
+      var cell = document.createElement('div');
+      cell.className = 'cal-month-cell';
+      if (d == null) {
+        cell.classList.add('empty');
+        grid.appendChild(cell);
+        return;
+      }
+      var iso = y + '-' + pad(m + 1) + '-' + pad(d);
+      var num = document.createElement('span');
+      num.textContent = String(d);
+      cell.appendChild(num);
+      if (iso === todayIso) cell.classList.add('today');
+
+      var ranks = dayRanks(iso);
+      if (ranks) {
+        var dots = document.createElement('span');
+        dots.className = 'cmd-dots';
+        DOT_ORDER.forEach(function (pair) {
+          if (ranks[pair[0]]) {
+            var dot = document.createElement('i');
+            dot.className = 'dot ' + pair[1];
+            dots.appendChild(dot);
+          }
+        });
+        if (dots.children.length) cell.appendChild(dots);
+        cell.classList.add('clickable');
+        cell.addEventListener('click', function () { jumpTo(iso); });
+      } else {
+        cell.classList.add('no-data');
+      }
+      grid.appendChild(cell);
+    });
+  }
+
+  function shift(delta) {
+    var t = taipei();
+    var y = view ? view.y : t.getFullYear();
+    var m = view ? view.m : t.getMonth();
+    m += delta;
+    if (m < 0) { m = 11; y -= 1; } else if (m > 11) { m = 0; y += 1; }
+    view = {y: y, m: m};
+    render();
+  }
+
+  if (prevBtn) prevBtn.addEventListener('click', function () { shift(-1); });
+  if (nextBtn) nextBtn.addEventListener('click', function () { shift(1); });
+
+  return {render: render};
+}
+
 function initCalendarTable(table) {
   var days = Array.prototype.slice.call(table.querySelectorAll('.cal-day'));
   var panel = table.closest('.panel');
   var clock = panel ? panel.querySelector('.cal-clock') : null;
+  var monthGrid = initMonthGrid(panel, table);
   var chips = panel
     ? Array.prototype.slice.call(panel.querySelectorAll('.cal-filter .chip'))
     : [];
@@ -1894,6 +2100,7 @@ function initCalendarTable(table) {
     markDays();
     applyFilter();
     placeNow();
+    if (monthGrid) monthGrid.render();
     if (clock) {
       var t = taipei();
       clock.textContent = '現在 ' + (t.getMonth() + 1) + '/' + pad(t.getDate()) + ' ' +
@@ -2992,13 +3199,31 @@ def build() -> Path:
     panel_data = {}
 
     for p in PANELS:
-        if p.get("kind", "chart") == "calendar":
+        kind = p.get("kind", "chart")
+        if kind == "calendar":
             panel_data[p["id"]] = p["load"]()
             stats[p["id"]] = p["stats"](panel_data[p["id"]])
             # 本機資料（筆記）沒有「最後更新日」可寫
             suffix = ("" if stats[p["id"]].get("local")
                       else f'<br>最後更新日：{stats[p["id"]]["latest"]}')
             head[p["id"]] = {"title": p["title"], "meta": f'{p["meta"]}{suffix}'}
+            continue
+
+        if kind == "chartgroup":
+            # 走勢圖分頁：底下每個子分頁各自算圖表／統計／標頭，
+            # 分頁本身的標頭沿用第一個子分頁的（切到子分頁後前端會立刻換掉）。
+            for m in p["members"]:
+                df = m["load"]()
+                fig_light = m["figure"](df, dark=False, showlegend=False)
+                fig_dark = m["figure"](df, dark=True, showlegend=False)
+
+                charts[m["id"]] = _chart_entry(m["id"], fig_light, fig_dark, m["item_label"])
+                stats[m["id"]] = _stats(m)
+                head[m["id"]] = {
+                    "title": m["title"],
+                    "meta": f'{m["meta"]}<br>最後更新日：{stats[m["id"]]["latest"]}',
+                }
+            head[p["id"]] = head[p["members"][0]["id"]]
             continue
 
         df = p["load"]()
@@ -3033,14 +3258,14 @@ def build() -> Path:
            .replace("__GROUPS__", json.dumps(_default_groups(), ensure_ascii=False))
            .replace("__TAB_LABELS__", json.dumps(
                {p["id"]: p["tab"] for p in PANELS}, ensure_ascii=False))
-           .replace("__CHART_PANELS__", _panels_html(panel_data))
+           .replace("__CHART_PANELS__", _panels_html(panel_data, head))
            .replace("__SETTINGS_CARDS__", _settings_cards(stats))
            .replace("__TABBAR__", _tabbar_html())
            .replace("__CHARTS__", json.dumps(charts, ensure_ascii=False, separators=(",", ":")))
            .replace("__HEAD__", json.dumps(head, ensure_ascii=False))
            .replace("__PANEL_IDS__", json.dumps([p["id"] for p in PANELS]))
-           .replace("__TITLE0__", first["title"])
-           .replace("__META0__", f'{first["meta"]}<br>最後更新日：{stats[first["id"]]["latest"]}')
+           .replace("__TITLE0__", head[first["id"]]["title"])
+           .replace("__META0__", head[first["id"]]["meta"])
            .replace("__BUILT__", built)
            .replace("__VERSION__", __version__)
     )
