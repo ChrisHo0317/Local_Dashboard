@@ -200,6 +200,18 @@ def build_btc_figure(df: pd.DataFrame, dark: bool = False,
     return _line_figure(df, "price_usd", "USD", "%{y:,.0f}", dark, showlegend)
 
 
+def build_us_index_figure(df: pd.DataFrame, dark: bool = False,
+                          showlegend: bool = True) -> go.Figure:
+    """美股指數（費城半導體、那斯達克；欄位 item / price_date / price）。"""
+    return _line_figure(df, "price", "指數", "%{y:,.2f}", dark, showlegend)
+
+
+def build_fx_figure(df: pd.DataFrame, dark: bool = False,
+                    showlegend: bool = True) -> go.Figure:
+    """匯率（美元兌台幣；欄位 item / price_date / price）。"""
+    return _line_figure(df, "price", "新台幣", "%{y:.3f}", dark, showlegend)
+
+
 def build_points_figure(df: pd.DataFrame, dark: bool = False,
                         showlegend: bool = True) -> go.Figure:
     """

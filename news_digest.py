@@ -112,10 +112,17 @@ def _summary(body: str, title: str = "") -> str:
     return first
 
 
-def build(df: pd.DataFrame) -> list[dict]:
-    """把所有來源的新聞壓成重點清單，分數高的在前。"""
+WATCH_BONUS = 5           # 提到自選股（代號或公司名）的加分
+
+
+def build(df: pd.DataFrame, watch_terms: list[str] | None = None) -> list[dict]:
+    """
+    把所有來源的新聞壓成重點清單，分數高的在前。
+    watch_terms：自選股的代號與簡稱，標題或開頭提到就加分並掛上「自選股」標籤。
+    """
     if df.empty:
         return []
+    watch_terms = [t for t in (watch_terms or []) if t and len(t) >= 2]
 
     now = pd.Timestamp.now(tz="UTC")
     items = []
@@ -156,6 +163,9 @@ def build(df: pd.DataFrame) -> list[dict]:
         text = " ".join(m["title"] for m in members)
         topic_score, topics = _topics(text + lead["body"][:120])
         score = topic_score + (len(sources) - 1) * 4
+        if watch_terms and any(t in text + lead["body"][:120] for t in watch_terms):
+            score += WATCH_BONUS
+            topics = ["自選股"] + topics
         score += max(_fresh(m["published"], now) for m in members)
         if ROUTINE.match(lead["title"]):
             score -= 5

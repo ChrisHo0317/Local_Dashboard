@@ -73,30 +73,17 @@ def _when(value: str) -> str:
 
 
 def _source_html(source: dict, part: pd.DataFrame) -> str:
+    """
+    各來源的清單不寫在頁面裡（五個來源約三百則，佔掉首頁一百多 KB），
+    只留空殼，點進子分頁時才下載 news/list-{來源}.json 由前端排出來。
+    """
     if part.empty:
         return ('    <p class="cal-empty">目前沒有抓到這個來源的新聞。</p>')
 
-    items = []
-    for n, (_, e) in enumerate(part.iterrows()):
-        when = _when(e["published"])
-        meta = " · ".join(x for x in (when, source["label"]) if x)
-        # 標題、時間、連結都掛在清單項目上，內文檢視要用時再取 ——
-        # 每則各存一份內文檢視的話，同樣的標題會在頁面裡出現兩次。
-        items.append(
-            f'      <li class="news-item" data-n="{n}"'
-            f' data-body="{"1" if e["body"] else "0"}"'
-            f' data-url="{escape(e["url"])}" role="button" tabindex="0">\n'
-            f'        <span class="news-no">{n + 1}</span>\n'
-            f'        <span class="news-main">\n'
-            f'          <span class="news-title">{escape(e["title"])}</span>\n'
-            f'          <span class="news-meta">{escape(meta)}</span>\n'
-            f'        </span>\n'
-            f'      </li>'
-        )
-
     # .news-more 同時是捲動哨兵與備援按鈕，超過首批則數時才會出現；
     # .news-article 是共用的內文殼，點哪一則就填哪一則。
-    return ('    <ul class="news-list">\n' + "\n".join(items) + "\n    </ul>\n"
+    return (f'    <ul class="news-list" data-list="{source["id"]}">\n'
+            '      <li class="cal-empty">載入中…</li>\n    </ul>\n'
             '    <button type="button" class="news-more" hidden>載入更多</button>\n'
             '    <div class="news-article" hidden>\n'
             '      <h2 class="news-h"></h2>\n'
@@ -104,6 +91,21 @@ def _source_html(source: dict, part: pd.DataFrame) -> str:
             '      <div class="news-body"></div>\n'
             '      <a class="news-link" target="_blank" rel="noopener">看原文 ↗</a>\n'
             '    </div>')
+
+
+def lists(data: dict) -> dict:
+    """每個來源的清單 [[序號, 有無內文, 網址, 標題, 時間與來源]]，寫成 news/list-{來源}.json。"""
+    df = data.get("news", pd.DataFrame())
+    out = {}
+    for source in SOURCES:
+        part = df[df["source"] == source["id"]] if not df.empty else df
+        rows = []
+        for n, (_, e) in enumerate(part.iterrows()):
+            when = _when(e["published"])
+            meta = " · ".join(x for x in (when, source["label"]) if x)
+            rows.append([n, 1 if e["body"] else 0, e["url"], e["title"], meta])
+        out[source["id"]] = rows
+    return out
 
 
 def bodies(data: dict) -> dict:
@@ -118,9 +120,22 @@ def bodies(data: dict) -> dict:
     return out
 
 
+def watch_terms() -> list[str]:
+    """自選股的代號與簡稱，給新聞重點加分用。"""
+    from intel_data import stock_master
+    from watchlist import load_watchlist
+
+    codes = {w["code"] for w in load_watchlist()}
+    if not codes:
+        return []
+    master = stock_master()
+    names = master[master["code"].isin(codes)]["name"].tolist()
+    return sorted(codes) + [n for n in names if len(n) >= 2]
+
+
 def _digest_html(df: pd.DataFrame) -> str:
     """重點：跨來源合併去重、依重要性排序後的短清單。"""
-    events = build_digest(df) if not df.empty else []
+    events = build_digest(df, watch_terms()) if not df.empty else []
     if not events:
         return ('  <div class="subpanel" data-sub="digest">\n'
                 '    <p class="cal-empty">目前沒有可整理的新聞。</p>\n  </div>')

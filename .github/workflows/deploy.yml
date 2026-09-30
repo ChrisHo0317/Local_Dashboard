@@ -1,0 +1,71 @@
+name: Deploy site
+
+# 建置 site/ 並用 deploy-pages 發布到 GitHub Pages —— 網頁本身不進 git，
+# repo 不會再被每十分鐘一份的 index.html 撐大，本機推送也不會再跟排程衝突。
+#
+# 第一次使用前要到 repo 的 Settings → Pages，把 Source 改成「GitHub Actions」。
+#
+# 觸發：
+#   push 到 main        程式碼、自選清單（watchlist.csv）有改就重新發布
+#   workflow_call      資料排程（update.yml、news.yml）有新資料時呼叫
+#   workflow_dispatch  手動
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 被資料排程呼叫時要拿到它剛推上去的那一版資料，不是觸發當下的舊 commit
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Test
+        # 測試失敗就不發布，線上維持上一版
+        run: python -m pytest -q
+
+      - name: Build
+        run: python build_static.py
+
+      - name: Check page size
+        run: |
+          size=$(stat -c %s site/index.html)
+          echo "index.html: $((size / 1024)) KB"
+          if [ "$size" -gt 307200 ]; then
+            echo "::warning::首頁超過 300 KB，手機第一次開啟會變慢"
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # 同一時間只發布一次；排隊中的舊版本會被新的取代
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

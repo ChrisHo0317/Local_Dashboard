@@ -1,6 +1,11 @@
 # 圖表與資料
 pandas>=2.2
 plotly>=6.7
+# 全市場日資料與基本面歷史存成 Parquet（比 CSV 小很多，git 也長得慢）
+pyarrow>=17
+
+# 測試（部署前先跑，失敗就不發布）
+pytest>=8
 
 # 本地 Dash 版（app.py）。GitHub Actions 其實用不到，但排程直接安裝整份
 # requirements.txt，避免再發生「加了套件卻忘了同步 workflow」的問題。

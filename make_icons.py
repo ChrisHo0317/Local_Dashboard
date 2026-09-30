@@ -3,7 +3,7 @@
 
     python make_icons.py
 
-輸出到 docs/：icon-180.png（iOS apple-touch-icon）、icon-192.png、
+輸出到 web/：icon-180.png（iOS apple-touch-icon）、icon-192.png、
 icon-512.png（Android / manifest）、favicon-32.png。
 
 只在需要重做圖示時執行；平常不會用到。需要 Pillow：
@@ -20,7 +20,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-OUT_DIR = Path(__file__).resolve().parent / "docs"
+OUT_DIR = Path(__file__).resolve().parent / "web"   # 建置時原樣複製到 site/
 
 BG   = (22, 26, 43)       # #161a2b 深藍底（與 chart 深色主題同調）
 UP   = (61, 220, 151)     # 上漲燭身（薄荷綠）

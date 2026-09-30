@@ -1,37 +1,52 @@
 """
-更新各資料集 → 併入 CSV → 重建 docs/index.html
+更新各資料集 → 併入 data/
 
-    python update_data.py
+    python update_data.py                    全部
+    python update_data.py market chips       只跑其中幾項
+    python update_data.py market --since 2026-09-09   從某天開始補全市場日資料
 
-供 GitHub Actions 每日排程與手動更新共用。
+供 GitHub Actions 排程與手動更新共用。網頁不在這裡產生：排程更新完資料後，
+由 deploy 工作流程執行 build_static.py 並發布；本機要看就自己跑 build_static.py。
 
 任一來源抓不到資料時「只警告、不失敗」（exit code 0），避免對方擋爬蟲時
-把 workflow 弄成紅燈，也絕不會覆寫既有的 CSV。
+把 workflow 弄成紅燈，也絕不會覆寫既有的資料。
 """
 import logging
 import sys
 from datetime import date, timedelta
 
-import build_static
+import pandas as pd
+from curl_cffi import requests as cffi_requests
+
+import fundamentals as fund
+import market_data as md
 from bond_data import CSV_PATH as BOND_CSV, merge_yields
 from bond_scraper import MoneyDJBondScraper
 from btc_data import CSV_PATH as BTC_CSV, merge_prices as merge_btc
 from btc_scraper import YahooBTCScraper
 from calendar_data import CSV_PATH as CAL_CSV, drop_legacy_overlap, merge_events
 from calendar_scraper import ForexFactoryCalendarScraper
+from chip_data import merge_futures, save_tdcc
+from chip_scraper import ChipScraper
 from dram_data import CSV_PATH as DRAM_CSV, merge_prices
 from f1_data import (CSV_PATH as F1_CSV, SERIES_CSV, STANDINGS_CSV,
                      merge_points_series, merge_schedule, merge_standings)
 from f1_scraper import F1CalendarScraper, F1StandingsScraper
 from gold_data import CSV_PATH as GOLD_CSV, merge_prices as merge_gold
 from gold_scraper import YahooGoldScraper
+from finmind_fallback import FinMindFallback
+from intel_data import today_taipei
+from market_scraper import MarketScraper
 from news_data import CSV_PATH as NEWS_CSV, known_articles, merge_news
 from news_scraper import NewsScraper
 from scraper import TrendForceScraper
-from stock_data import merge as merge_stock
+from stock_data import load as load_stock, merge as merge_stock
 from stock_scraper import StockScraper
 from spacex_data import CSV_PATH as SPACEX_CSV, merge_launches
 from spacex_scraper import SpaceXScraper
+from watchlist import load_watchlist
+from xmarket_data import CSV_PATH as XMARKET_CSV, merge_prices as merge_xmarket
+from xmarket_scraper import XMarketScraper
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 log = logging.getLogger("update_data")
@@ -48,6 +63,10 @@ GOLD_LOOKBACK_RANGE = "1mo"
 # 比特幣同理
 BTC_HISTORY_RANGE = "5y"
 BTC_LOOKBACK_RANGE = "1mo"
+
+# 全市場日資料：每次回頭檢查幾天，缺什麼補什麼（休市、晚公布、上次失敗都能自己補上）
+MARKET_LOOKBACK_DAYS = 7
+CLOSED_PATH = md.MARKET_DIR / "closed.txt"
 
 
 def update_dram() -> int:
@@ -189,15 +208,142 @@ def update_news() -> int:
 
 
 def update_stock() -> int:
-    """個股：三個資料集各自整批取代，抓不到的那個保留舊資料。"""
+    """
+    個股：最新一期的清單（營收、重訊、財報、除權息，上市＋上櫃）以市場為單位
+    整批取代；同時把月營收、單季損益、重訊併進歷史（fundamentals）。
+    """
     got = StockScraper(logger=log).fetch_all()
     if not got:
-        log.warning("個股：三個資料集都沒抓到，本次不更新")
+        log.warning("個股：所有資料集都沒抓到，本次不更新")
         return 0
-    changed = sum(merge_stock(key, rows) for key, rows in got.items())
-    log.info(f"個股：更新 {len(got)} 個資料集，"
-             + (f"共 {changed} 筆有異動" if changed else "與現有資料相同"))
+    changed = 0
+    for key, by_market in got.items():
+        for market, rows in by_market.items():
+            changed += merge_stock(key, market, rows)
+
+    rev_list = load_stock("revenue")
+    cur, prev = fund.revenue_from_list(rev_list)
+    added = fund.upsert_revenue(cur) + fund.upsert_revenue(prev, overwrite=False)
+    if not cur.empty:
+        latest = (int(cur["year"].max()), int(cur[cur["year"] == cur["year"].max()]["month"].max()))
+        gaps = fund.revenue_gaps(latest)
+        if gaps:
+            session = cffi_requests.Session(impersonate="chrome124")
+            for y, m in gaps:
+                filled = fund.upsert_revenue(fund.fetch_mops_revenue(y, m, session, log),
+                                             overwrite=False)
+                log.info(f"月營收：補 {y}-{m:02d}，新增 {filled} 筆")
+                added += filled
+    ytd = fund.income_from_list(load_stock("income"))
+    single = fund.to_single_quarter(ytd, fund.load_income())
+    added += fund.upsert_income(single)
+    ann = load_stock("announce")
+    added += fund.append_announce(ann)
+    log.info(f"個股：清單異動 {changed} 筆，歷史新增或修正 {added} 筆")
+    return changed + added
+
+
+def _closed_days() -> set:
+    if not CLOSED_PATH.exists():
+        return set()
+    return set(CLOSED_PATH.read_text(encoding="utf-8").split())
+
+
+def _mark_closed(day: date) -> None:
+    days = _closed_days() | {day.isoformat()}
+    CLOSED_PATH.parent.mkdir(parents=True, exist_ok=True)
+    CLOSED_PATH.write_text("\n".join(sorted(days)) + "\n", encoding="utf-8")
+
+
+def _history_end() -> date | None:
+    path = md.MARKET_DIR / "history_base.parquet"
+    if not path.exists():
+        return None
+    return pd.read_parquet(path, columns=["date"])["date"].max().date()
+
+
+def _fallback(day: date, fm: FinMindFallback) -> int:
+    """官方來源那天還缺的資料，只替自選股向 FinMind 補。"""
+    watch = [w["code"] for w in load_watchlist()]
+    if not watch:
+        return 0
+    stocks = md.load_stocks()
+    markets = dict(zip(stocks["code"], stocks["market"]))
+    present = md.present_groups(day)
+    changed = 0
+    for market in ("twse", "tpex"):
+        missing = [g for g in ("quotes", "insti", "margin") if g not in present[market]]
+        codes = [c for c in watch if markets.get(c) == market]
+        if missing and codes:
+            log.info(f"全市場：{day} {market} 缺 {missing}，改用 FinMind 補自選股 {len(codes)} 檔")
+            changed += md.save_day(day, fm.fill(day, missing, codes, markets))
     return changed
+
+
+def update_market(since: date | None = None) -> int:
+    """
+    上市＋上櫃每日收盤、三大法人、融資融券、本益比。每次回頭檢查幾天，
+    只抓缺的那幾類。休市日記在 closed.txt，之後不再重問。
+    """
+    today = today_taipei()
+    start = since or today - timedelta(days=MARKET_LOOKBACK_DAYS)
+    base_end = _history_end()
+    closed = _closed_days()
+    scraper = MarketScraper(logger=log)
+    fm = None
+    changed = 0
+    day = start
+    while day <= today:
+        if day.weekday() >= 5 or day.isoformat() in closed or (base_end and day <= base_end):
+            day += timedelta(days=1)
+            continue
+        present = md.present_groups(day)
+        need = {m: set(md.GROUPS) - present[m] for m in ("twse", "tpex")}
+        if any(need.values()):
+            out = scraper.fetch(day, need)
+            if out["closed"]:
+                if day < today:
+                    _mark_closed(day)
+                    log.info(f"全市場：{day} 休市")
+            else:
+                n = sum(md.save_day(day, f) for f in out["frames"])
+                n += md.merge_summary(day, out["summary"])
+                for names in out["names"]:
+                    md.merge_stocks(names)
+                log.info(f"全市場：{day} 抓 {len(out['frames'])} 類，檔案{'有更新' if n else '無變動'}")
+                changed += n
+                if day < today:
+                    fm = fm or FinMindFallback(logger=log)
+                    changed += _fallback(day, fm)
+        day += timedelta(days=1)
+    return changed
+
+
+def update_chips() -> int:
+    """集保股權分散（每週）、期貨三大法人未平倉（每日）。"""
+    scraper = ChipScraper(logger=log)
+    changed = 0
+    day, tdcc = scraper.fetch_tdcc()
+    if tdcc is not None and save_tdcc(day, tdcc):
+        log.info(f"集保：新增 {day} 共 {len(tdcc)} 檔")
+        changed += 1
+    fut = scraper.fetch_futures()
+    if merge_futures(fut):
+        log.info(f"期貨法人：新增 {fut['date']}")
+        changed += 1
+    return changed
+
+
+def update_xmarket() -> int:
+    """加權指數、費半、那斯達克、美元兌台幣（Yahoo Finance）。"""
+    period = "1mo" if XMARKET_CSV.exists() else "5y"
+    rows = XMarketScraper(logger=log).fetch_prices(period)
+    if not rows:
+        log.warning("跨市場：未取得任何資料，本次不更新")
+        return 0
+    added = merge_xmarket(rows)
+    log.info(f"跨市場：抓取 {len(rows)} 筆，新增 {added} 筆")
+    return added
 
 
 # 命令列可以只跑其中一項：python update_data.py news
@@ -212,29 +358,33 @@ JOBS = {
     "spacex": update_spacex,
     "news": update_news,
     "stock": update_stock,
+    "market": update_market,
+    "chips": update_chips,
+    "xmarket": update_xmarket,
 }
 
 
 def main(argv: list[str] | None = None) -> int:
-    argv = argv if argv is not None else sys.argv[1:]
+    argv = list(argv if argv is not None else sys.argv[1:])
+    since = None
+    if "--since" in argv:
+        i = argv.index("--since")
+        since = date.fromisoformat(argv[i + 1])
+        del argv[i:i + 2]
     if argv:
         unknown = [a for a in argv if a not in JOBS]
         if unknown:
             log.error(f"不認得的項目：{' '.join(unknown)}；"
                       f"可用的有 {' '.join(JOBS)}")
             return 2
-        jobs = [JOBS[a] for a in argv]
+        names = argv
     else:
-        jobs = list(JOBS.values())
+        names = list(JOBS)
 
-    added = sum(job() for job in jobs)
-
-    if added == 0:
-        log.info("無新資料，略過重建 HTML")
-        return 0
-
-    path = build_static.build()
-    log.info(f"已重建 {path.name}")
+    added = 0
+    for name in names:
+        added += update_market(since) if name == "market" else JOBS[name]()
+    log.info("有新資料" if added else "無新資料")
     return 0
 
 

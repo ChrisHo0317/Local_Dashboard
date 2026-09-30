@@ -35,9 +35,10 @@ COUNTRIES = {
 
 # ── 影響程度 ───────────────────────────────────────────────
 IMPACTS = {
-    "High": "高", "Medium": "中", "Low": "低", "Holiday": "假日",
+    "High": "高", "Medium": "中", "Low": "低", "Holiday": "假日", "TW": "台股",
 }
-IMPACT_ORDER = {"High": 3, "Medium": 2, "Low": 1, "Holiday": 0}
+# TW 是台股事件（除權息、營收公布），不是來源的等級，單獨一顆勾選
+IMPACT_ORDER = {"High": 3, "Medium": 2, "Low": 1, "Holiday": 0, "TW": 4}
 
 # ── 名稱前綴（國別／地區修飾）─────────────────────────────
 PREFIXES = [

@@ -1,17 +1,32 @@
 name: Update market data
 
+# 三個時段（台北時間）：
+#   09:00  DRAM、美債、黃金、BTC、行事曆、F1、SpaceX，並補抓前一天盤後還缺的資料
+#   17:30  收盤行情、三大法人、本益比（證交所、櫃買中心約傍晚公布）
+#   21:40  融資融券、重大訊息、月營收、財報
+# 全市場日資料每次都回頭檢查幾天，缺什麼補什麼；公布時間晚了也會在下一次補上。
+# GitHub 的排程常延遲十幾分鐘到半小時，不影響盤後資料。
 on:
   schedule:
-    # 每日 UTC 01:00 ≈ 台灣時間 09:00
     - cron: "0 1 * * *"
+    - cron: "30 9 * * 1-5"
+    - cron: "40 13 * * 1-5"
   workflow_dispatch:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: update-market
+  cancel-in-progress: false
 
 jobs:
   update:
     runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -26,18 +41,53 @@ jobs:
         # F1 車手名字寫成簡體（沒有 opencc 時 _to_tw 原樣回傳）。
         run: pip install -r requirements.txt
 
-      - name: Fetch latest prices and rebuild page
+      - name: Fetch data
         # 新聞不在這裡跑，它有自己的十分鐘排程（news.yml）
-        run: python update_data.py dram bonds gold btc calendar f1 f1standings spacex stock
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          if [ "${{ github.event.schedule }}" = "0 1 * * *" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket stock
+          else
+            python update_data.py market chips xmarket stock
+          fi
+
+      - name: Alerts
+        # 自選股推播。BARK_KEY 沒設定就只記在執行紀錄；ALERTS_ENABLED 設成 false 就完全不推
+        env:
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+          ALERTS_ENABLED: ${{ vars.ALERTS_ENABLED }}
+        run: python alerts.py
 
       - name: Commit if changed
+        id: commit
         run: |
-          if git diff --quiet -- data docs/index.html docs/news docs/stock; then
+          if git diff --quiet -- data && [ -z "$(git ls-files --others --exclude-standard data)" ]; then
             echo "無變更，略過 commit"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data docs/index.html docs/news docs/stock
-          git commit -m "chore: 更新行情資料 ($(date -u +%Y-%m-%d))"
-          git push
+          git add data
+          git commit -m "chore: 更新行情資料 ($(date -u +'%Y-%m-%d %H:%M') UTC)"
+          # 新聞排程可能同時在推，兩邊改的檔案不同，重新 rebase 就能推上去
+          for i in 1 2 3; do
+            if git pull --rebase origin main && git push; then
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            git rebase --abort || true
+            sleep 10
+          done
+          echo "::error::推送失敗三次"
+          exit 1
+
+  deploy:
+    needs: update
+    if: needs.update.outputs.changed == 'true'
+    uses: ./.github/workflows/deploy.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write

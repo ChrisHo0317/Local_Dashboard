@@ -15,3 +15,9 @@ Thumbs.db
 *.log
 
 # 注意：data/ 底下的 dram_prices.csv 必須被追蹤，不可加入 data/ 忽略規則
+
+# 產生的網站：由 GitHub Actions 建置後用 deploy-pages 直接發布，不進 git
+site/
+
+# pytest
+.pytest_cache/

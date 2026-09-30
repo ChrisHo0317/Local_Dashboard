@@ -1,36 +1,36 @@
 """
 個股分頁的靜態 HTML
 
-四個子分頁：
+五個子分頁：
 
-    查詢   輸入股號或公司名，當場向證交所查行情與評價指標（真的即時）
-    營收   上市公司每月營業收入
+    個股   深度頁：K 線、三大法人、融資、月營收、EPS、本益比河流圖、集保、重訊
+    選股   四個條件每天掃一次全市場的命中清單（全部「未驗證」：尚未回測）
+    營收   上市櫃每月營業收入（最新一期）
     重訊   重大訊息，點開看全文
-    財報   綜合損益表（單季）
+    財報   綜合損益表（最新一季，年初至今累計）
 
-只有「查詢」是即時的：證交所的 www.twse.com.tw/rwd/ 端點帶
-Access-Control-Allow-Origin: *，頁面上的 JS 可以直接呼叫。另外三個
-來自公開資訊觀測站的開放資料，那組沒有 CORS 標頭，瀏覽器連不了，
-所以改成排程抓下來存成 docs/stock/{資料集}.json，進子分頁時才載。
-
-表格內容全部由 JS 依 JSON 產生，這裡只鋪空殼。
+資料都是排程抓下來、產生頁面時整理好的 JSON（data/stock/{代號}.json、
+data/screen.json、stock/{資料集}.json），進子分頁或查某一檔時才下載。
+這裡只鋪空殼，內容由前端 JS 依 JSON 產生。
 """
 from html import escape
 
 import pandas as pd
 
-META = "資料來源：臺灣證券交易所　·　查詢為即時，其餘為每日更新"
+META = "資料來源：證交所、櫃買、公開資訊觀測站、集保　·　盤後更新"
 
 # (id, 標籤, 頁面標題, 說明)
 SUBTABS = [
-    ("query", "查詢", "個股查詢",
-     "資料來源：臺灣證券交易所　·　輸入股號或公司名，當場查詢"),
+    ("query", "個股", "個股",
+     "上市櫃都查得到　·　盤後資料"),
+    ("screen", "選股", "選股（未驗證）",
+     "每天盤後掃描全市場　·　尚未回測，只當觀察名單"),
     ("revenue", "營收", "每月營收",
-     "資料來源：公開資訊觀測站　·　上市公司每月營業收入"),
+     "資料來源：公開資訊觀測站　·　上市櫃公司每月營業收入（最新一期）"),
     ("announce", "重訊", "重大訊息",
      "資料來源：公開資訊觀測站　·　點標題可看全文"),
     ("income", "財報", "季報損益",
-     "資料來源：公開資訊觀測站　·　綜合損益表（單季）"),
+     "資料來源：公開資訊觀測站　·　綜合損益表，年初至今累計（不是單季）"),
 ]
 
 
@@ -92,26 +92,63 @@ def _subtabs_html() -> str:
 
 
 def _query_html() -> str:
-    """即時查詢：輸入框、建議清單、區間鈕、指標列、走勢圖。"""
+    """個股深度頁：搜尋框、標頭數字、區間鈕、五張圖、重訊時間軸。"""
+    sections = [
+        ("sd-price", "價量與籌碼", "K 線與 5／20／60 日均線、成交量、三大法人買賣超、融資餘額共用時間軸"),
+        ("sd-rev", "月營收", "近 36 個月，長條是營收（億元），折線是年增率"),
+        ("sd-eps", "季 EPS 與利潤率", "近 12 季單季 EPS，折線是毛利率與營益率"),
+        ("sd-pe", "本益比河流圖", "月底股價疊在歷史本益比區間帶上"),
+        ("sd-tdcc", "千張大戶持股比例", "集保結算所每週公布，從 2026 年 9 月開始累積"),
+    ]
+    blocks = "".join(
+        f'      <section class="sd-sec" data-sec="{sid}">\n'
+        f'        <h3 class="sd-h">{title}</h3>\n'
+        f'        <p class="sd-note">{note}</p>\n'
+        f'        <div class="ichart ichart-{"lg" if sid == "sd-price" else "sm"}" id="{sid}"></div>\n'
+        f'      </section>\n'
+        for sid, title, note in sections
+    )
     return (
         '  <div class="subpanel" data-sub="query">\n'
         '    <div class="sq-box">\n'
-        '      <input class="sq-input" type="search" inputmode="search"'
-        ' placeholder="輸入股號或公司名，例如 2330 或 台積電"'
+        '      <input class="sq-input" id="sd-input" type="search" inputmode="search"'
+        ' placeholder="輸入股號或公司名，例如 2330 或 環球晶"'
         ' aria-label="股票代號或公司名" autocomplete="off">\n'
         '      <div class="sq-suggest" hidden role="listbox"></div>\n'
         '    </div>\n'
-        '    <div class="sq-range" role="group" aria-label="查詢區間" hidden>\n'
-        '      <button type="button" class="chip" data-months="3" aria-pressed="true">3 個月</button>\n'
-        '      <button type="button" class="chip" data-months="6" aria-pressed="false">6 個月</button>\n'
-        '      <button type="button" class="chip" data-months="12" aria-pressed="false">1 年</button>\n'
-        '    </div>\n'
-        '    <p class="sq-hint">還沒查詢。輸入股號或公司名，資料當場向證交所取得。</p>\n'
-        '    <div class="sq-result" hidden>\n'
-        '      <div class="sq-name"></div>\n'
+        '    <div class="sd-watch" hidden></div>\n'
+        '    <p class="sq-hint">輸入代號或名稱，上市、上櫃都查得到。也可以點上面的自選股。</p>\n'
+        '    <div class="sd" hidden>\n'
+        '      <div class="sd-top">\n'
+        '        <div>\n'
+        '          <div class="sq-name"></div>\n'
+        '          <div class="sd-sub"></div>\n'
+        '        </div>\n'
+        '        <a class="sd-edit" target="_blank" rel="noopener">編輯自選清單 ↗</a>\n'
+        '      </div>\n'
         '      <div class="sq-stats"></div>\n'
-        '      <div class="chart sq-chart" id="chart-stockquery"></div>\n'
+        '      <div class="sq-range" role="group" aria-label="顯示區間">\n'
+        '        <button type="button" class="chip" data-days="66" aria-pressed="true">3 個月</button>\n'
+        '        <button type="button" class="chip" data-days="130" aria-pressed="false">6 個月</button>\n'
+        '        <button type="button" class="chip" data-days="0" aria-pressed="false">1 年</button>\n'
+        '      </div>\n'
+        f'{blocks}'
+        '      <section class="sd-sec" data-sec="sd-ann">\n'
+        '        <h3 class="sd-h">重大訊息</h3>\n'
+        '        <ul class="sd-ann"></ul>\n'
+        '      </section>\n'
         '    </div>\n'
+        '  </div>'
+    )
+
+
+def _screen_html() -> str:
+    """選股：每個條件一張卡，內容由 JS 讀 data/screen.json 產生。"""
+    return (
+        '  <div class="subpanel" data-sub="screen" hidden>\n'
+        '    <p class="scr-warn"><b>未驗證</b>　這些條件還沒有回測過，只能當觀察名單，'
+        '不能當成買賣依據。</p>\n'
+        '    <div class="scr-body"><p class="cal-empty">載入中…</p></div>\n'
         '  </div>'
     )
 
@@ -135,6 +172,7 @@ def panel_html(data: dict) -> str:
     return "\n".join([
         _subtabs_html(),
         _query_html(),
+        _screen_html(),
         _list_html("revenue", "篩選公司或產業"),
         _list_html("announce", "篩選公司或主旨"),
         _list_html("income", "篩選公司"),

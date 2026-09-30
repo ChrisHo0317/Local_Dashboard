@@ -1,6 +1,8 @@
-# Local_Dashboard — 市場走勢
+# Local_Dashboard — 市場走勢與台股情報中心
 
-DRAM 現貨報價、美國公債殖利率、國際金價的歷史走勢圖，以及中文化的財經行事曆與 F1 賽程表，資料每日自動更新。
+台股情報中心（全市場盤後數字、自選股、個股深度頁、選股條件、Bark 推播），加上
+DRAM、美債、黃金、BTC、費半、匯率的走勢圖，中文化的財經行事曆、新聞重點、F1 與 SpaceX。
+資料由 GitHub Actions 排程自動更新。
 
 **線上瀏覽：** https://chrisho0317.github.io/Local_Dashboard/
 
@@ -8,14 +10,18 @@ DRAM 現貨報價、美國公債殖利率、國際金價的歷史走勢圖，以
 
 ## 為什麼有兩個版本
 
-GitHub Pages 只能託管靜態檔案，無法執行 Dash 的伺服器端 callback，因此本專案提供兩種呈現方式，兩者共用同一份資料與同一個 `chart.build_figure()`：
+GitHub Pages 只能託管靜態檔案，無法執行 Dash 的伺服器端 callback，因此本專案提供兩種呈現方式：
 
 | 版本 | 進入點 | 說明 |
 |------|--------|------|
-| 本地 Dash | `app.py` | 在自己電腦跑，`http://localhost:8051` |
-| 靜態頁面 | `build_static.py` → `docs/index.html` | GitHub Pages 對外瀏覽 |
+| 本地 Dash | `app.py` | 在自己電腦跑，`http://localhost:8051`（只有 DRAM 圖）|
+| 靜態網站 | `build_static.py` → `site/` | GitHub Pages 對外瀏覽 |
 
-靜態版把淺色 / 深色兩份圖表 JSON 內嵌進頁面，由前端 `Plotly.react` 切換。hover、框選縮放等 Plotly 原生互動都保留。
+靜態網站由前端 `Plotly.react` 繪圖，hover、縮放等原生互動都保留。圖表與情報中心的資料
+都另存 JSON（`site/data/`），要看的時候才下載，首頁只有兩百多 KB。
+
+`site/` 不進 git：排程建置後用 **deploy-pages** 直接交給 GitHub Pages 發布，
+repo 只留原始資料，不會再被每十分鐘一份的網頁撐大，本機推送也不會再跟排程衝突。
 
 ## 頁面結構
 
@@ -35,16 +41,17 @@ GitHub Pages 只能託管靜態檔案，無法執行 Dash 的伺服器端 callba
 
 | 分類 | 分頁 | 內容 |
 |------|------|------|
-| 財經 | DRAM | DRAM 現貨報價（TrendForce）|
-| 財經 | 美債殖利率 | 美國公債 1／2／5／10／20／30 年期殖利率（MoneyDJ）|
-| 財經 | 黃金 | 國際金價 COMEX 近月期貨，USD／盎司（Yahoo Finance）|
-| 財經 | 行事曆 | 財經事件行事曆，本月與下月、中／高影響，中文化、表格呈現（FXStreet）|
-| 個人追蹤 | F1 | 賽程（清單列出每場大獎賽，點進去看該站場次）／積分（車手、車隊：走勢圖 + 積分榜）（F1 Calendar、f1-boxbox）|
-| 財經 | SpaceX | 發射排程，依月份分組、繁體中文（SpaceX 官方 API）|
-| 財經 | 個股 | 查詢（即時向證交所查行情與本益比／殖利率／股價淨值比）／營收／重訊／財報（公開資訊觀測站開放資料）|
-| 財經 | 新聞 | 第一個子分頁是**重點**（五個來源合併去重、依重要性排序的 30 則，附一句摘要與主題標籤）；其餘子分頁是各來源的完整清單，各 60 則（非凡新聞 30 則）|
+| 財經 | 總覽 | 今日重點（市場數字、自選股異動、近期事件、選股條件命中數、重點新聞）／大盤（加權指數＋法人買賣超）／類股（產業熱力圖）／法人籌碼（外資、投信排行＋期貨未平倉）|
+| 財經 | 走勢圖 | DRAM／美債／黃金／BTC／美股（費半、那斯達克）／匯率（美元兌台幣）|
+| 財經 | 行事曆 | 月曆格＋事件清單：總經事件（FXStreet，中／高影響）＋台股事件（自選股除權息、營收公布截止日）|
+| 財經 | 新聞 | 第一個子分頁是**重點**（五個來源合併去重、依重要性排序的 30 則，提到自選股的加分）；其餘子分頁是各來源的完整清單 |
+| 財經 | 個股 | 個股深度頁（上市櫃都查得到）／選股（未驗證）／營收／重訊／財報 |
+| 個人追蹤 | F1 | 賽程／積分（F1 Calendar、f1-boxbox）|
+| 個人追蹤 | SpaceX | 發射排程（SpaceX 官方 API）|
 | 個人追蹤 | 筆記 | 純本機的文字筆記，存在瀏覽器的 localStorage，不上傳也不進 repo |
-| — | 設定 | 外觀（深色模式）、各資料集資訊與顯示開關、關於 |
+| — | 設定 | 外觀（深色模式）、分類、各資料集資訊與顯示開關、關於 |
+
+漲跌一律**紅漲綠跌**（台股慣例）。
 
 新聞內文、筆記編輯、F1 單站賽程這類「進到某一則」的畫面，返回鍵和頁面標題一起釘在畫面上方，捲到中段也按得到；
 在畫面上**往右滑**也等於按返回鍵。手勢只在有東西可返回時才生效，起點在會橫向捲動的東西上（底部標籤列、
@@ -85,12 +92,22 @@ pip install -r requirements.txt
 ## 使用
 
 ```bash
-python app.py            # 本地 Dash 版 → http://localhost:8051
-python build_static.py   # 重新產生 docs/index.html
-python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
+python app.py                  # 本地 Dash 版 → http://localhost:8051
+python update_data.py          # 爬取全部資料 → 併入 data/
+python update_data.py market   # 只跑某幾項（見下方「自動更新」）
+python build_static.py         # 產生 site/
+python -m http.server -d site  # 本機預覽（要用 HTTP 開，JSON 才載得到）
+python -m pytest -q            # 測試
 ```
 
-`export_from_sqlite.py`（匯出初始資料）與 `make_icons.py`（產生圖示）都是一次性工具，一般使用不會用到。
+一次性工具（一般使用不會用到）：
+
+| 工具 | 用途 |
+|------|------|
+| `export_from_market_db.py` | 從本機 market_db（Cowork 的 DuckDB）匯出近一年日資料、月營收、季損益、月本益比。要用 Cowork 的虛擬環境執行 |
+| `update_data.py market --since 2026-09-09` | 從某天開始補全市場日資料（官方依日期查詢，不耗 FinMind 額度）|
+| `export_from_sqlite.py` | 自本機 SQLite 匯出 DRAM 初始資料 |
+| `make_icons.py` | 產生 `web/` 底下的網站圖示（需 Pillow）|
 
 ## 加入 iPhone / Android 主畫面
 
@@ -125,18 +142,32 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `news_digest.py` | 新聞重點：跨來源合併同一件事、依重要性評分、取內文首段當摘要 |
 | `news_render.py` | 新聞分頁的 HTML 產生：重點、各來源清單 + 內文檢視 |
 | `notes_render.py` | 筆記分頁的空殼 HTML（內容全在 localStorage，由頁面 JS 繪製）|
-| `stock_sources.py` | 個股三個資料集的端點與欄位對照 |
-| `stock_scraper.py` | 證交所開放資料爬蟲（月營收、重大訊息、季報損益）|
-| `stock_data.py` | 讀寫 `data/stock_*.csv`，整批取代 |
-| `stock_render.py` | 個股分頁的 HTML 空殼與 JSON 輸出 |
-| `chart.py` | `build_figure()` / `build_bond_figure()` — 唯一的圖表定義來源 |
-| `docs/` | 發佈目錄：`index.html`（產生）+ 圖示與 `manifest.webmanifest`（靜態） |
+| `stock_sources.py` | 個股清單（營收、重訊、財報、除權息）上市＋上櫃的端點與欄位對照 |
+| `stock_scraper.py` | 證交所、櫃買中心開放資料爬蟲 |
+| `stock_data.py` | 讀寫 `data/stock_*.csv`（最新一期），以市場為單位整批取代 |
+| `stock_render.py` | 個股分頁的 HTML 空殼 |
+| `market_data.py` | 全市場每日快照（`data/market/`）：日期檔、大盤摘要、股票清單 |
+| `market_scraper.py` | 證交所、櫃買中心依日期查詢：收盤行情、三大法人、融資融券、本益比 |
+| `fundamentals.py` | 基本面歷史：月營收、單季損益（由年初累計換算）、重訊、月本益比 |
+| `chip_data.py` / `chip_scraper.py` | 集保股權分散（每週）、期貨三大法人未平倉 |
+| `xmarket_data.py` / `xmarket_scraper.py` | 加權指數、費半、那斯達克、美元兌台幣（Yahoo Finance）|
+| `finmind_fallback.py` | FinMind 備援：官方來源失敗時只補自選股，每日上限 200 次 |
+| `watchlist.py` / `watchlist.csv` | 自選清單 |
+| `signals.py` | 選股條件（未驗證，尚未回測）|
+| `alerts.py` | 自選股 Bark 推播 |
+| `intel_data.py` | 情報中心共用的資料準備 |
+| `intel_build.py` | 產生情報中心的網頁資料（`site/data/`）|
+| `overview_render.py` | 總覽分頁的 HTML 空殼 |
+| `tw_events.py` | 台股事件（除權息、營收公布截止）併入行事曆 |
+| `chart.py` | 走勢圖的圖表定義 |
+| `web/` | 靜態檔：`app.css`、`app.js`（主程式）、`intel.js`（情報中心）、圖示、`manifest.webmanifest` |
+| `site/` | 產生的網站（不進 git）|
+| `docs/` | 舊的發布目錄，改用 deploy-pages 後不再更新 |
 | `scraper.py` | TrendForce DRAM 現貨報價爬蟲（僅提供當日快照）|
-| `update_data.py` | 爬蟲 → 合併 CSV → 重建靜態頁 |
-| `build_static.py` | 產生 `docs/index.html` |
+| `update_data.py` | 爬蟲 → 併入 data/ |
+| `build_static.py` | 產生 `site/` |
 | `app.py` | 本地 Dash 版 |
-| `export_from_sqlite.py` | 自本機 SQLite 匯出初始 CSV |
-| `make_icons.py` | 產生 `docs/` 底下的網站圖示：K 線 + 趨勢線（需 Pillow）|
+| `tests/` | 解析、資料層、選股條件、推播的測試 |
 | `version.py` | 版本號，顯示於頁尾與本地 Dash 標頭 |
 
 ## 資料格式
@@ -186,12 +217,25 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 | `body` | 內文（截斷至 1200 字；抓不到時留空）|
 
 清單一次列 12 則，捲到底再接 10 則。內文不寫進 index.html，而是每個來源一份
-`docs/news/{來源}.json`，點開某一則時才抓、同一個來源只抓一次 —— 內文佔了新聞資料的
-九成以上，全部內嵌會讓首頁大到不合理。
+`site/news/{來源}.json`，點開某一則時才抓；各來源的清單（`list-{來源}.json`）也是
+點進子分頁才下載，首頁只放「重點」那一份。
 
-因此**本機要用 HTTP 開才看得到內文**（`python -m http.server -d docs`）；
-用 `file://` 直接開 `docs/index.html` 會被瀏覽器的 CORS 規則擋掉，
-此時內文區會顯示載入失敗並提示改看原文，其餘功能不受影響。
+因此**本機要用 HTTP 開**（`python -m http.server -d site`）；用 `file://` 直接開
+會被瀏覽器的 CORS 規則擋掉。
+
+情報中心的資料：
+
+| 路徑 | 內容 |
+|------|------|
+| `data/market/history_base.parquet` | 一次匯出的近一年日資料（依代號＋日期排序，壓縮率比逐日檔好）|
+| `data/market/daily/YYYY-MM-DD.parquet` | 之後每個交易日一個檔：開高低收、量值、三大法人（股）、融資融券（張）、本益比、殖利率、股價淨值比 |
+| `data/market/summary.csv` | 每日大盤摘要：指數、成交值、法人金額、融資金額（上市、上櫃分欄）|
+| `data/market/stocks.csv` | 股票清單：代號、名稱、市場、產業 |
+| `data/market/closed.txt` | 已知的休市日，不再重問 |
+| `data/fundamental/*.parquet` | 月營收（千元）、單季損益、月本益比、重大訊息歷史 |
+| `data/chips/` | 集保股權分散（每週一檔）、期貨未平倉 |
+| `data/alerts_sent.csv` | 已推播過的事件（同一件事只推一次）|
+| `data/finmind_usage.json` | FinMind 當日用量 |
 
 新聞每天換一批，舊的不保留，`update_data.py` 會整批覆寫這個檔案。
 
@@ -199,40 +243,86 @@ python update_data.py    # 爬取最新報價 → 更新 CSV → 重建 HTML
 
 ## 自動更新
 
-兩個排程：
-
-| Workflow | 頻率 | 做什麼 |
-|----------|------|--------|
-| `update.yml` | 每日 UTC 01:00（台灣 09:00）| 行情、行事曆、F1、SpaceX |
+| Workflow | 頻率（台北時間）| 做什麼 |
+|----------|----------------|--------|
+| `update.yml` | 09:00 | DRAM、美債、黃金、BTC、行事曆、F1、SpaceX＋下面全部 |
+| `update.yml` | 平日 17:30、21:40 | 全市場日資料、集保、期貨、跨市場指數、個股清單與基本面、自選股推播 |
 | `news.yml` | 每 10 分鐘 | 只更新新聞 |
+| `deploy.yml` | 上面兩個有新資料時、或程式碼推上 main | 跑測試 → 建置 `site/` → deploy-pages 發布 |
+| `bark-test.yml` | 手動 | 送一則 Bark 測試通知 |
 
-兩者都有新資料才 commit，也都可在 Actions 分頁手動觸發。
+全市場日資料每次都回頭檢查 7 天，**缺什麼補什麼**：公布得晚、上次失敗、遇到休市都會
+自己處理。可用的項目：`dram bonds gold btc calendar f1 f1standings spacex news market chips xmarket stock`。
 
-新聞另外排程是因為一天更新一次等於永遠在看昨天的頭條。為了撐得起這個頻率，
-抓取是**增量**的：清單上已經看過的文章直接沿用 CSV 裡的內文，只有新出現的
-才連文章頁 —— 一輪通常只有幾篇要抓，十幾秒就跑完（第一次或整批換新時才會久）。
+測試失敗就不發布，線上維持上一版。
 
-`python update_data.py news` 可以只跑新聞；不帶參數則全跑。可用的項目有
-`dram bonds gold calendar f1 f1standings spacex news`。
+> GitHub 的排程本來就不準，實際間隔可能是十幾分鐘到半小時；加上 Pages 的 CDN 快取
+> （約 10 分鐘），手機上看到的還會再晚一些。**在頁面最上方往下拉**會重新載入並繞過快取。
 
-> GitHub 的排程本來就不準，高頻的 cron 尤其如此，實際間隔可能是十幾分鐘到半小時；
-> 加上 Pages 的 CDN 快取（約 10 分鐘），手機上看到的還會再晚一些。**在頁面最上方
-> 往下拉**會重新載入並帶一次性參數，可以繞過快取。
-
-> GitHub Actions 使用資料中心 IP，TrendForce 的 Cloudflare 有可能擋下請求。`update_data.py` 在抓不到資料時只印警告並正常結束，不會讓 workflow 變紅，也不會覆寫既有 CSV。若長期無法在雲端爬取，可改於本機排程執行 `update_data.py` 後推送。
+> GitHub Actions 使用資料中心 IP，TrendForce 的 Cloudflare 有可能擋下請求。抓不到資料時
+> 只印警告並正常結束，不會讓 workflow 變紅，也不會覆寫既有資料。
 
 ## 設定（首次部署）
 
-- **Settings → Pages** → Source: `Deploy from a branch` → `main` / `/docs`
+- **Settings → Pages** → Source：**GitHub Actions**（改用 deploy-pages 之後必須設定，網址不變）
 - **Settings → Actions → General → Workflow permissions** → `Read and write permissions`
+- **Settings → Secrets and variables → Actions**
+  - Secret `BARK_KEY`：Bark App 給的金鑰（沒有就不推播，只記在執行紀錄）
+  - Secret `FINMIND_TOKEN`：選用，FinMind 備援用
+  - Variable `ALERTS_ENABLED`：設成 `false` 就停止所有推播（不設定＝開啟）
 
----
+## 自選清單與推播
+
+自選清單是 repo 根目錄的 `watchlist.csv`：
+
+```
+代號,備註,推播
+2330,範例，可刪除,否
+```
+
+- **新增／移除**：在 GitHub 網頁或 App 直接編輯這個檔案並儲存。推上 main 會自動重新發布網頁，
+  推播從下一次排程生效。個股深度頁右上角的「編輯自選清單」會直接連到編輯頁
+- **某一檔不推播**：「推播」改成否，網頁上仍然顯示
+- **一次停掉所有推播**：Variable `ALERTS_ENABLED` 設成 `false`
+- **注意**：repo 是公開的，刪除只會讓目前版本看不到，舊版本仍留在 git 歷史裡
+
+推播（`alerts.py`，只看「推播」為是的股票）：
+
+| 事件 | 觸發 | 通知方式 |
+|------|------|---------|
+| 重大訊息 | 近 3 天的新重訊 | 每則一個，時效性通知 |
+| 月營收公布 | 最新一個月的營收進來 | 彙整成一則 |
+| 法人連買／連賣 | 外資或投信連續 3 日同方向（第 3 天那次）| 彙整 |
+| 站上／跌破季線 | 收盤穿越 60 日均線 | 彙整 |
+| 選股條件命中 | — | 不推播（條件尚未回測）|
+
+同一件事只推一次（`data/alerts_sent.csv`）。**第一次執行只記錄、不推播**，免得一開始就收到一堆舊消息。
+設好 `BARK_KEY` 後，到 Actions 手動執行「Bark test notification」確認收得到。
+
+## 選股條件
+
+`signals.py` 的四個條件每天盤後掃一次全市場（ETF 不列入），**全部未經回測，只能當觀察名單**：
+
+| 條件 | 規則 |
+|------|------|
+| 營收成長加速 | 近 6 個月每月營收都比去年同月高；近 3 個月合計年增率高於前 3 個月；近 3 個月平均月營收至少 1 億；排除建設公司（完工一次認列）|
+| 投信開始連買 | 投信連買 3 日以上，且之前 20 個交易日投信累計為賣超或持平 |
+| 低估值高殖利率 | 本益比位於自己近 5 年（至少 3 年）月本益比的最低 20%，殖利率高於 5% |
+| 籌碼集中 | 千張大戶持股比例連 3 週上升，同期融資餘額下降（集保資料從 2026-09 開始累積，要 4 週才能判斷）|
+
+規則文字與程式寫在同一個檔，改規則時兩邊一起改。日後要回測，可以直接拿同一份函式去跑。
+
+## 資料來源與 FinMind 額度
+
+日常資料一律用官方開放資料（證交所、櫃買中心、期交所、集保結算所），沒有額度限制；
+歷史從本機 market_db 一次匯出。FinMind 只在官方來源某天抓不到時，替**自選股**補那一天，
+每日硬上限 200 次（免費會員的額度大約是每小時 600 次，以官網公告為準），不輪替多組帳號。
 
 ## 版本
 
-目前 **v0.3.041**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
+目前 **v0.3.043**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
 
-格式 `vMAJOR.MINOR.PATCH`，PATCH 固定三位數。**一般改動一律只遞增 PATCH**；前兩組除非明確指示否則不變更。改 `version.py` 後重跑 `build_static.py` 即可。
+格式 `vMAJOR.MINOR.PATCH`，PATCH 固定三位數。**一般改動一律只遞增 PATCH**；前兩組除非明確指示否則不變更。改 `version.py` 後重跑 `build_static.py` 即可（`app.css`、`app.js` 也用版本號避開快取）。
 
 每日自動更新報價**不算**版本變更，workflow 不會動到 `version.py`。
 
@@ -380,21 +470,17 @@ XHR，判斷需登入才看得到清單，因此沒有納入。
 DIGITIMES 只公開文章的前導段落，所以內文較短；點「看原文 ↗」可到原站閱讀全文。
 非凡新聞有部分是影音報導，這類沒有可抽取的內文。
 
-## 關於個股的即時查詢
+## 關於個股分頁
 
-公開資訊觀測站（MOPS）自己的 API 沒有 `Access-Control-Allow-Origin` 標頭，
-瀏覽器不能直接呼叫，靜態頁面又沒有後端可以代打，所以「即時」只做得到一半：
+| 子分頁 | 內容 |
+|--------|------|
+| 個股 | 深度頁：K 線＋均線、成交量、三大法人、融資共用時間軸；月營收 36 個月（含年增率）、單季 EPS 與利潤率 12 季、本益比河流圖、千張大戶持股比例、重大訊息。資料是 `site/data/stock/{代號}.json`，查哪一檔才下載哪一檔。網址帶 `?stock=2330` 會直接打開那一檔（推播的連結就是這樣來的）|
+| 選股 | 四個條件的命中清單，每一列附命中原因與近 20 日小走勢圖 |
+| 營收／重訊／財報 | 官方最新一期的清單（上市＋上櫃），進子分頁時才載 |
 
-| 子分頁 | 怎麼來的 |
-|--------|---------|
-| 查詢 | **即時**（走勢圖是單指拖曳往回看、雙指縮放、輕點顯示當日收盤，再點一次收起）。`www.twse.com.tw/rwd/` 這組端點帶 `Access-Control-Allow-Origin: *`，頁面上的 JS 當場呼叫 —— 股號建議、逐月成交、本益比／殖利率／股價淨值比都是按下去才去要的 |
-| 營收 / 重訊 / 財報 | 排程更新。證交所開放資料（`openapi.twse.com.tw`）沒有 CORS，只能由 GitHub Actions 抓下來存成 `docs/stock/*.json`，進子分頁時才載 |
+**財報是年初至今累計，不是單季**（官方開放資料的格式）；深度頁的 EPS 圖是換算過的單季數字。
 
-三份 JSON 加起來六百多 KB，所以不內嵌在 `index.html` 裡，跟新聞內文一樣按需下載。
-
-查過某一檔之後（例如 2330），營收／重訊／財報就只列那一檔 —— 清單上方會出現
-「只看 2330　台積電 ✕」，按 ✕ 或查另一檔就換掉。鎖定的公司在某份資料裡沒有東西時
-（例如最近沒發重大訊息），會直接說明是哪一種空，而不是給一個看起來像壞掉的空清單。
+查過某一檔之後，營收／重訊／財報就只列那一檔 —— 清單上方會出現「只看 2330　台積電 ✕」，按 ✕ 或查另一檔就換掉。
 
 ## 新聞重點是怎麼挑的
 
@@ -405,8 +491,8 @@ DIGITIMES 只公開文章的前導段落，所以內文較短；點「看原文 
    但例行稿格式一模一樣（「胡連8月營收月減0.1%」對「立積8月營收月增0.7%」），
    鬆門檻會把它們錯併成一則。
 2. **評分**：命中關注主題加分（半導體／AI 4 分、台股與總體經濟 3 分、公司營運與
-   能源太空 2 分），多一家媒體報導 +4，越新越加分；個股營收流水帳 −5、盤中盤後
-   例行稿 −3、公司自己發的公告 −6。
+   能源太空 2 分），多一家媒體報導 +4，提到自選股（代號或簡稱）+5 並掛上「自選股」標籤，
+   越新越加分；個股營收流水帳 −5、盤中盤後例行稿 −3、公司自己發的公告 −6。
 3. **摘要**：取內文第一段的前 90 字；跟標題講一樣的話就不重複顯示。
 
 關注主題寫在 `news_digest.py` 的 `TOPICS`，想改看什麼直接改那份清單即可。

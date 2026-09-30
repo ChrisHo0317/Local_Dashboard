@@ -1,0 +1,72 @@
+"""
+跨市場指標資料層（Yahoo Finance 日收盤）
+
+資料以 CSV 保存（data/xmarket_prices.csv），欄位：
+    item        項目名稱
+    price_date  日期 YYYY-MM-DD（交易所當地日期）
+    price       收盤
+
+加權指數給總覽的大盤圖用；費半、那斯達克、美元兌台幣進走勢圖分頁。
+櫃買指數 Yahoo 沒有，改由 market_scraper 從櫃買中心取得。
+"""
+from pathlib import Path
+
+import pandas as pd
+
+BASE_DIR = Path(__file__).resolve().parent
+CSV_PATH = BASE_DIR / "data" / "xmarket_prices.csv"
+COLUMNS = ["item", "price_date", "price"]
+
+# (Yahoo 代碼, 顯示名稱)
+SYMBOLS = [
+    ("^TWII", "加權指數"),
+    ("^SOX", "費城半導體"),
+    ("^IXIC", "那斯達克"),
+    ("TWD=X", "美元兌台幣"),
+]
+SYMBOL_ORDER = [name for _, name in SYMBOLS]
+
+
+def load_xmarket(items: list[str] | None = None) -> pd.DataFrame:
+    if not CSV_PATH.exists():
+        return pd.DataFrame(columns=COLUMNS)
+    df = pd.read_csv(CSV_PATH)
+    if df.empty:
+        return pd.DataFrame(columns=COLUMNS)
+    df["price_date"] = pd.to_datetime(df["price_date"], errors="coerce")
+    df = df.dropna(subset=["price_date"])
+    if items:
+        df = df[df["item"].isin(items)]
+    order = {name: i for i, name in enumerate(SYMBOL_ORDER)}
+    df = df.assign(_o=df["item"].map(order)).sort_values(["price_date", "_o"])
+    return df.drop(columns="_o").reset_index(drop=True)
+
+
+def latest_date(df: pd.DataFrame) -> str:
+    if df.empty:
+        return ""
+    return pd.to_datetime(df["price_date"]).max().strftime("%Y-%m-%d")
+
+
+def merge_prices(rows: list[dict]) -> int:
+    """rows: [{"項目", "收盤", "日期"}]；已存在的 (item, price_date) 不覆寫。"""
+    if not rows:
+        return 0
+    incoming = pd.DataFrame(
+        [{"item": r["項目"], "price_date": r["日期"], "price": r["收盤"]} for r in rows
+         if r.get("收盤") is not None],
+        columns=COLUMNS,
+    )
+    if CSV_PATH.exists():
+        existing = pd.read_csv(CSV_PATH, dtype={"price_date": str})
+    else:
+        existing = pd.DataFrame(columns=COLUMNS)
+    before = len(existing)
+    combined = pd.concat([existing, incoming], ignore_index=True)
+    combined = combined.drop_duplicates(subset=["item", "price_date"], keep="first")
+    combined = combined.sort_values(["price_date", "item"]).reset_index(drop=True)
+    added = len(combined) - before
+    if added > 0:
+        CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
+        combined.to_csv(CSV_PATH, index=False, encoding="utf-8", lineterminator="\n")
+    return added

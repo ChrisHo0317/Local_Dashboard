@@ -14,6 +14,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 # 上一輪還沒跑完就不要再開一輪
 concurrency:
@@ -23,6 +25,8 @@ concurrency:
 jobs:
   news:
     runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -34,24 +38,37 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Fetch news and rebuild page
+      - name: Fetch news
         run: python update_data.py news
 
       - name: Commit if changed
+        id: commit
         run: |
-          if git diff --quiet -- data/news_articles.csv docs/index.html docs/news; then
+          if git diff --quiet -- data/news_articles.csv; then
             echo "無新新聞，略過 commit"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/news_articles.csv docs/index.html docs/news
+          git add data/news_articles.csv
           git commit -m "chore: 更新新聞 ($(date -u +'%Y-%m-%d %H:%M') UTC)"
-          # 每日的行情排程可能同時在推。衝突就放棄這一輪 ——
-          # 十分鐘後會再跑一次，硬解衝突反而可能推出壞掉的頁面。
+          # 行情排程可能同時在推。衝突就放棄這一輪 ——
+          # 十分鐘後會再跑一次，硬解衝突反而可能推出壞掉的資料。
           if ! git pull --rebase origin main; then
             git rebase --abort || true
             echo "與遠端衝突，本輪放棄"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: news
+    if: needs.news.outputs.changed == 'true'
+    uses: ./.github/workflows/deploy.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write

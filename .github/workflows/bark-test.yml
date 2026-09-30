@@ -1,0 +1,28 @@
+name: Bark test notification
+
+# 手動執行：送一則測試通知到 iPhone，確認 BARK_KEY 設定正確。
+# 到 Actions 頁面選這個工作流程，按「Run workflow」。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Send test notification
+        env:
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+        run: python alerts.py --test

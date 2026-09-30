@@ -1,0 +1,7 @@
+# 資料檔一律 LF：Windows 本機建置時才不會把 \r\n 帶進頁面內容，
+# 本機與雲端建置的結果也才會一致
+*.csv     text eol=lf
+*.json    text eol=lf
+*.txt     text eol=lf
+*.parquet binary
+*.png     binary
