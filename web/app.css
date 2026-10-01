@@ -583,3 +583,9 @@
   .mo-pick { display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; font-size:13px;
              padding:10px 12px; border-radius:10px; background:var(--hover); margin:8px 0; }
   .mo-pick span { font-variant-numeric:tabular-nums; }
+  /* 強勢股動畫：播放鈕＋日期滑桿 */
+  .mo-play { display:flex; align-items:center; gap:10px; margin:6px 0 2px; }
+  .mo-btn { flex:none; min-width:84px; }
+  .mo-slider { flex:1; min-width:0; accent-color:var(--accent); height:28px; }
+  .mo-date { flex:none; min-width:76px; text-align:right; font-size:13px;
+             font-variant-numeric:tabular-nums; color:var(--fg); }
