@@ -341,6 +341,49 @@ def _sectors(panel: pd.DataFrame, master: pd.DataFrame, days: list) -> dict:
             "industries": industries, "stocks": stocks}
 
 
+MOMENTUM_DAYS = 41           # 20 日強度＋往回畫 5 天軌跡＋前 5 日比較，留一點餘裕
+MOMENTUM_MIN_TURNOVER = 3e7  # 20 日平均成交值至少 3,000 萬，成交太少的不列（自選股例外）
+
+
+def _momentum(panel: pd.DataFrame, master: pd.DataFrame, days: list, xm: pd.DataFrame,
+              watch_codes: set) -> dict:
+    """
+    強勢股（漲幅變化）：每一檔近 41 個交易日的收盤，前端據此算
+    強度（20 日漲幅）、加速度（近 5 日 − 前 5 日漲幅）與軌跡。
+    stocks：[[代號, 名稱, 產業序號, 20 日均成交值億, [收盤 × 41]]]
+    bench：加權指數同一段的收盤（基準線）
+    """
+    window = days[-MOMENTUM_DAYS:]
+    if len(window) < 31:
+        return {"asof": "", "dates": [], "industries": [], "stocks": [], "bench": []}
+    part = panel[panel["date"].isin(window) & ~panel["code"].str.startswith("00")]
+    closes = part.pivot_table(index="date", columns="code", values="close").reindex(window).ffill()
+    avg_turnover = part[part["date"].isin(window[-20:])].groupby("code")["turnover"].mean()
+    info = master.set_index("code")
+    industries = sorted({(info["industry"].get(c) or "其他") for c in closes.columns
+                         if c in info.index} | {"其他"})
+    ind_index = {name: i for i, name in enumerate(industries)}
+    stocks = []
+    for code in closes.columns:
+        series = closes[code]
+        # 至少要能算出 5 天前的 20 日強度（index 15 起有值）
+        if series.iloc[MOMENTUM_DAYS - 31:].isna().any() or series.iloc[-1] != series.iloc[-1]:
+            continue
+        liquid = avg_turnover.get(code, 0) >= MOMENTUM_MIN_TURNOVER
+        if not liquid and code not in watch_codes:
+            continue
+        industry = (info["industry"].get(code) if code in info.index else "") or "其他"
+        stocks.append([code, info["name"].get(code, "") if code in info.index else "",
+                       ind_index[industry], _yi(avg_turnover.get(code, 0), 2),
+                       [_r(v) for v in series]])
+    bench = xm[xm["item"] == "加權指數"].set_index("price_date")["price"]
+    bench = bench.reindex(pd.to_datetime(window)).ffill()
+    return {"asof": pd.Timestamp(window[-1]).strftime("%Y-%m-%d"),
+            "dates": [pd.Timestamp(d).strftime("%Y-%m-%d") for d in window],
+            "industries": industries, "stocks": stocks,
+            "bench": [_r(v) for v in bench]}
+
+
 def _flows(panel: pd.DataFrame, names: dict, latest) -> dict:
     day = panel[(panel["date"] == latest) & ~panel["code"].str.startswith("00")]
     out = {}
@@ -443,6 +486,7 @@ def build(out_dir: Path) -> dict:
         "futures": _futures(),
     }
     _dump(overview, data_dir / "overview.json")
-    # 類股有全部股票的漲跌，比較大，點進類股子分頁才下載
+    # 類股、強勢股的資料比較大，點進子分頁才下載
     _dump(_sectors(panel, master, days), data_dir / "sectors.json")
+    _dump(_momentum(panel, master, days, xm, watch_codes), data_dir / "momentum.json")
     return {"latest": latest.strftime("%Y-%m-%d"), "stocks": shards, "watch": len(watch)}

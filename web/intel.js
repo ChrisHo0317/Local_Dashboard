@@ -426,9 +426,11 @@
         type: 'treemap', ids: ids, labels: labels, parents: parents, values: values,
         branchvalues: 'total', maxdepth: 3, customdata: custom,
         level: sec.pick >= 0 ? 'I' + sec.pick : 'all',
-        texttemplate: '<b>%{label}</b><br>%{customdata[0]:+.2f}%',
+        // 漲跌先在這裡排成字串：上市不到 N 天的沒有 N 日漲跌，交給 Plotly 格式化會出警告
+        text: custom.map(function (cd) { return cd[0] == null ? '—' : signed(cd[0], 2, '%'); }),
+        texttemplate: '<b>%{label}</b><br>%{text}',
         hovertemplate: '%{label}　%{customdata[1]}<br>成交值 %{value:,.2f} 億' +
-                       '<br>' + PERIOD_LABEL[p] + '漲跌 %{customdata[0]:+.2f}%<extra></extra>',
+                       '<br>' + PERIOD_LABEL[p] + '漲跌 %{text}<extra></extra>',
         marker: {colors: colors,
                  colorscale: [[0, c.down], [0.5, dark ? '#3a3f55' : '#e9ecef'], [1, c.up]],
                  cmin: -lim, cmax: lim, cmid: 0,
@@ -621,7 +623,283 @@
       });
     });
 
-    var RENDER = {today: today, market: market, sectors: sectors, flows: flows};
+    // ── 強勢股：強度（20 日漲幅）× 加速度（近 5 日 − 前 5 日漲幅）──────────
+    // momentum.json 的 stocks：[代號, 名稱, 產業序號, 20 日均成交值億, [近 41 日收盤]]
+    var MO_TOP = 10;          // 畫軌跡、畫累積漲幅曲線的檔數
+    var MO_TAIL = 5;          // 軌跡往回畫幾天
+    var MO_PAGE = 30;
+    var MO_COLORS = ['#e03131', '#1c7ed6', '#f08c00', '#7048e8', '#2f9e44',
+                     '#d6336c', '#0c8599', '#5c940d', '#ae3ec9', '#495057'];
+    var mo = {data: null, ind: -1, min: 1, sort: 'a', desc: true, shown: MO_PAGE};
+
+    // 第 i 天的強度與加速度
+    function moAt(c, i) {
+      var r5 = (c[i] / c[i - 5] - 1) * 100;
+      var p5 = (c[i - 5] / c[i - 10] - 1) * 100;
+      return {s: (c[i] / c[i - 20] - 1) * 100, r5: r5, p5: p5, a: r5 - p5};
+    }
+
+    function moRows() {
+      var d = mo.data, last = d.dates.length - 1;
+      return d.stocks.filter(function (x) {
+        return (mo.ind < 0 || x[2] === mo.ind) && (x[3] || 0) >= mo.min;
+      }).map(function (x) {
+        var m = moAt(x[4], last);
+        return {code: x[0], name: x[1], ind: x[2], tv: x[3], c: x[4],
+                s: m.s, r5: m.r5, p5: m.p5, a: m.a};
+      }).filter(function (r) { return isFinite(r.s) && isFinite(r.a); });
+    }
+
+    // 越來越強：已經在漲（強度 > 0），而且最近漲得比之前快（加速度 > 0），依加速度排
+    function moStrong(rows) {
+      return rows.filter(function (r) { return r.s > 0 && r.a > 0; })
+        .sort(function (a, b) { return b.a - a.a; });
+    }
+
+    function quantile(values, q) {
+      var v = values.slice().sort(function (a, b) { return a - b; });
+      if (!v.length) return 0;
+      var i = (v.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i);
+      return v[lo] + (v[hi] - v[lo]) * (i - lo);
+    }
+
+    function moPicked(pane, r) {
+      var box = pane.querySelector('.mo-pick');
+      box.textContent = '';
+      box.appendChild(el('b', null, r.code + ' ' + r.name));
+      box.appendChild(el('span', null, '　強度 ' + signed(r.s, 1, '%') + '　近 5 日 ' + signed(r.r5, 1, '%') +
+                                       '　前 5 日 ' + signed(r.p5, 1, '%') + '　加速 ' + signed(r.a, 1, ' 點')));
+      var go = el('button', 'chip', '看個股 ›');
+      go.type = 'button';
+      go.addEventListener('click', function () { openStock(r.code); });
+      box.appendChild(go);
+      box.hidden = false;
+    }
+
+    function moScatter(pane, rows, top) {
+      var c = palette(), d = mo.data, last = d.dates.length - 1;
+      var color = function (r) {
+        if (r.s > 0 && r.a > 0) return c.up;          // 越來越強
+        if (r.s <= 0 && r.a > 0) return c.orange;     // 弱轉強
+        if (r.s > 0) return c.blue;                   // 強但減速
+        return c.gray;                                // 弱且續弱
+      };
+      var xs = rows.map(function (r) { return r.s; }), ys = rows.map(function (r) { return r.a; });
+      // 前幾名的軌跡：最近 5 天每一天的位置
+      var tails = top.map(function (r) {
+        var tx = [], ty = [];
+        for (var i = last - MO_TAIL + 1; i <= last; i++) {
+          var m = moAt(r.c, i);
+          tx.push(m.s); ty.push(m.a);
+        }
+        return {r: r, x: tx, y: ty};
+      });
+      // 座標範圍取 2%～98%，少數暴漲暴跌的不會把其他點擠成一團（雙擊可看全部）；
+      // 但前幾名的軌跡一定要完整畫在圖內，那是這張圖的重點
+      var xr = [quantile(xs, 0.02), quantile(xs, 0.98)], yr = [quantile(ys, 0.02), quantile(ys, 0.98)];
+      tails.forEach(function (t) {
+        xr = [Math.min.apply(null, [xr[0]].concat(t.x)), Math.max.apply(null, [xr[1]].concat(t.x))];
+        yr = [Math.min.apply(null, [yr[0]].concat(t.y)), Math.max.apply(null, [yr[1]].concat(t.y))];
+      });
+      var px = (xr[1] - xr[0]) * 0.06 || 1, py = (yr[1] - yr[0]) * 0.08 || 1;
+      xr = [Math.min(xr[0] - px, -px), Math.max(xr[1] + px, px)];
+      yr = [Math.min(yr[0] - py, -py), Math.max(yr[1] + py * 1.5, py)];
+      var traces = [{
+        type: 'scatter', mode: 'markers', x: xs, y: ys,
+        marker: {color: rows.map(color), opacity: 0.75,
+                 size: rows.map(function (r) { return 5 + Math.min(16, Math.sqrt(r.tv || 0) * 1.2); }),
+                 line: {width: 0}},
+        customdata: rows.map(function (r) { return [r.code, r.name, r.r5, r.p5, r.tv]; }),
+        hovertemplate: '%{customdata[1]} %{customdata[0]}<br>強度（20 日）%{x:+.1f}%' +
+                       '<br>近 5 日 %{customdata[2]:+.1f}%　前 5 日 %{customdata[3]:+.1f}%' +
+                       '<br>加速 %{y:+.1f} 點　均量 %{customdata[4]:,.1f} 億<extra></extra>',
+        showlegend: false
+      }];
+      // 軌跡：前 4 天是小點、線很淡，今天是箭頭並標上名稱（手機只標前 5 名，名字才不會疊在一起）
+      var labelled = window.innerWidth < 600 ? 5 : MO_TOP;
+      tails.forEach(function (t, k) {
+        var r = t.r, n = t.x.length;
+        var name = k < labelled ? r.name : '';
+        traces.push({
+          type: 'scatter', mode: 'lines', x: t.x, y: t.y, showlegend: false,
+          line: {color: c.up, width: 1}, opacity: 0.45, hoverinfo: 'skip'
+        });
+        traces.push({
+          type: 'scatter', mode: 'markers+text', x: t.x, y: t.y, showlegend: false,
+          marker: {color: c.up, angleref: 'previous',
+                   symbol: t.x.map(function (_, k) { return k === n - 1 ? 'arrow' : 'circle'; }),
+                   size: t.x.map(function (_, k) { return k === n - 1 ? 13 : 3; })},
+          text: t.x.map(function (_, j) { return j === n - 1 ? name : ''; }),
+          textposition: 'top center', textfont: {size: 11, color: c.text},
+          customdata: t.x.map(function () { return [r.code, r.name, r.r5, r.p5, r.tv]; }),
+          hovertemplate: '%{customdata[1]} %{customdata[0]}<br>強度 %{x:+.1f}%　加速 %{y:+.1f} 點' +
+                         '<extra></extra>'
+        });
+      });
+      var corner = function (text, x, y, xa, ya) {
+        return {text: text, xref: 'paper', yref: 'paper', x: x, y: y, xanchor: xa, yanchor: ya,
+                showarrow: false, font: {size: 12, color: c.fg}};
+      };
+      var L = layout({
+        hovermode: 'closest',
+        dragmode: COARSE ? false : 'zoom',
+        xaxis: {title: {text: '強度：近 20 日漲幅（%）', font: {size: 11}}, gridcolor: c.grid,
+                zeroline: true, zerolinecolor: c.gray, zerolinewidth: 1.5, range: xr,
+                ticksuffix: '%', automargin: true},
+        yaxis: {title: {text: '加速度：近 5 日 − 前 5 日（點）', font: {size: 11}}, gridcolor: c.grid,
+                zeroline: true, zerolinecolor: c.gray, zerolinewidth: 1.5, range: yr,
+                automargin: true},
+        annotations: [corner('越來越強 ↗', 1, 1, 'right', 'top'), corner('弱轉強', 0, 1, 'left', 'top'),
+                      corner('強但減速', 1, 0, 'right', 'bottom'), corner('弱且續弱', 0, 0, 'left', 'bottom')],
+        margin: {l: 58, r: 14, t: 12, b: 48}
+      });
+      var gd = document.getElementById('ov-momentum');
+      Plotly.react(gd, traces, L, {displayModeBar: false, responsive: true, scrollZoom: !COARSE,
+                                   doubleClick: COARSE ? false : 'reset+autosize'});
+      if (!gd._moBound) {
+        gd._moBound = true;
+        gd.on('plotly_click', function (ev) {
+          var p = ev && ev.points && ev.points[0];
+          if (!p || !p.customdata) return;
+          var row = moRows().filter(function (r) { return r.code === p.customdata[0]; })[0];
+          if (!row) return;
+          // 手機：先顯示這一檔的數字，按鈕再打開；電腦直接打開
+          if (COARSE) moPicked(pane, row); else openStock(row.code);
+        });
+      }
+    }
+
+    function moTable(pane, strong) {
+      var box = pane.querySelector('.mo-table');
+      box.textContent = '';
+      var rows = strong.slice();
+      if (mo.sort !== 'a' || !mo.desc) {
+        rows.sort(function (a, b) { return mo.desc ? b[mo.sort] - a[mo.sort] : a[mo.sort] - b[mo.sort]; });
+      }
+      var cols = [['股票', null], ['強度', 's'], ['近 5 日', 'r5'], ['前 5 日', 'p5'], ['加速', 'a'],
+                  ['近 20 日', undefined]];
+      var t = el('table', 'ov-table scr-table');
+      var h = el('tr');
+      cols.forEach(function (col) {
+        var th = el('th');
+        if (!col[1]) { th.textContent = col[0]; h.appendChild(th); return; }
+        var on = mo.sort === col[1];
+        var b = el('button', 'th-sort', col[0] + (on ? (mo.desc ? ' ↓' : ' ↑') : ''));
+        b.type = 'button';
+        th.setAttribute('aria-sort', on ? (mo.desc ? 'descending' : 'ascending') : 'none');
+        b.addEventListener('click', function () {
+          if (mo.sort === col[1]) mo.desc = !mo.desc; else { mo.sort = col[1]; mo.desc = true; }
+          moTable(pane, strong);
+        });
+        th.appendChild(b);
+        h.appendChild(th);
+      });
+      var thead = el('thead'); thead.appendChild(h); t.appendChild(thead);
+      var tb = el('tbody');
+      rows.slice(0, mo.shown).forEach(function (r, i) {
+        var tr = el('tr', 'go');
+        var c0 = el('td');
+        c0.appendChild(el('span', 'ov-name', (i + 1) + '.'));
+        c0.appendChild(el('span', 'ov-code', ' ' + r.code));
+        c0.appendChild(el('span', 'ov-name', r.name));
+        c0.appendChild(el('span', 'scr-reason', mo.data.industries[r.ind] + '　·　均量 ' + fmt(r.tv, 1) + ' 億'));
+        tr.appendChild(c0);
+        [r.s, r.r5, r.p5].forEach(function (v) { tr.appendChild(el('td', dir(v), signed(v, 1, '%'))); });
+        tr.appendChild(el('td', dir(r.a), signed(r.a, 1)));
+        var c5 = el('td');
+        c5.appendChild(sparkSvg(r.c.slice(-21)));
+        tr.appendChild(c5);
+        tr.addEventListener('click', function () { openStock(r.code); });
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb);
+      var wrap = el('div', 'ov-table-wrap');
+      wrap.appendChild(t);
+      box.appendChild(wrap);
+      if (rows.length > mo.shown) {
+        var more = el('button', 'scr-more', '再顯示 ' + Math.min(MO_PAGE * 2, rows.length - mo.shown) +
+                      ' 檔（共 ' + rows.length + ' 檔）');
+        more.type = 'button';
+        more.addEventListener('click', function () { mo.shown += MO_PAGE * 2; moTable(pane, strong); });
+        box.appendChild(more);
+      }
+    }
+
+    function moLines(top) {
+      var d = mo.data, c = palette(), last = d.dates.length - 1, base = last - 20;
+      var x = d.dates.slice(base);
+      var traces = top.map(function (r, k) {
+        return {type: 'scatter', mode: 'lines', x: x, name: r.name,
+                y: r.c.slice(base).map(function (v) { return (v / r.c[base] - 1) * 100; }),
+                line: {width: 2, color: MO_COLORS[k % MO_COLORS.length]},
+                hovertemplate: '%{y:+.1f}%<extra>' + r.name + '</extra>'};
+      });
+      if (d.bench && d.bench[base]) {
+        traces.push({type: 'scatter', mode: 'lines', x: x, name: '加權指數',
+                     y: d.bench.slice(base).map(function (v) { return v == null ? null : (v / d.bench[base] - 1) * 100; }),
+                     line: {width: 2, dash: 'dash', color: c.gray},
+                     hovertemplate: '%{y:+.1f}%<extra>加權指數</extra>'});
+      }
+      plot('ov-mo-lines', traces, layout({
+        showlegend: true, legend: {orientation: 'h', x: 0, y: -0.18, font: {size: 11}},
+        xaxis: {type: 'category', gridcolor: c.grid, nticks: 6, tickangle: 0, automargin: true},
+        yaxis: {gridcolor: c.grid, ticksuffix: '%', zeroline: true, zerolinecolor: c.gray,
+                automargin: true},
+        margin: {l: 52, r: 14, t: 10, b: 30}
+      }));
+    }
+
+    function moDraw(pane) {
+      var rows = moRows();
+      var strong = moStrong(rows);
+      var top = strong.slice(0, MO_TOP);
+      pane.querySelector('.mo-count').textContent =
+        '符合 ' + strong.length + ' 檔（目前篩選共 ' + rows.length + ' 檔）';
+      pane.querySelector('.mo-pick').hidden = true;
+      moScatter(pane, rows, top);
+      moTable(pane, strong);
+      moLines(top);
+    }
+
+    function moControls(pane) {
+      var sel = pane.querySelector('.mo-ind');
+      if (sel.options.length) return;
+      var all = el('option', null, '全部產業');
+      all.value = '-1';
+      sel.appendChild(all);
+      mo.data.industries.forEach(function (name, i) {
+        var n = mo.data.stocks.filter(function (x) { return x[2] === i; }).length;
+        if (!n) return;
+        var o = el('option', null, name + '（' + n + ' 檔）');
+        o.value = String(i);
+        sel.appendChild(o);
+      });
+      sel.addEventListener('change', function () {
+        mo.ind = Number(sel.value);
+        mo.shown = MO_PAGE;
+        moDraw(pane);
+      });
+      bindChips(pane.querySelector('.mo-liq'), function (chip) {
+        mo.min = Number(chip.dataset.min);
+        mo.shown = MO_PAGE;
+        moDraw(pane);
+      });
+    }
+
+    function momentum(pane) {
+      return getJSON('data/momentum.json').then(function (d) {
+        mo.data = d;
+        pane.querySelector('.ov-asof').textContent = '資料日期 ' + d.asof + '（盤後）';
+        var hint = pane.querySelector('.zoom-hint');
+        hint.textContent = COARSE ? '點圓點看那一檔的數字。'
+                                  : '點圓點打開個股頁；拖曳框選放大、雙擊還原（再雙擊看全部）。';
+        moControls(pane);
+        moDraw(pane);
+      });
+    }
+
+    var RENDER = {today: today, market: market, sectors: sectors, momentum: momentum,
+                  flows: flows};
 
     function show(sub) {
       if (!sub || !RENDER[sub]) return;

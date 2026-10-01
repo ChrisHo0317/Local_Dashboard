@@ -38,3 +38,25 @@ def test_sector_periods():
     # 依成交值加權：1111 佔 1/4、2222（0%）佔 3/4
     assert semi["chg"][4] == round(60.0 * 0.25, 2)
     assert semi["up"][4] == 1 and semi["down"][4] == 0
+
+
+def test_momentum_universe_and_window():
+    days = pd.bdate_range("2026-06-01", periods=50)
+    rows = []
+    for i, d in enumerate(days):
+        rows.append({"date": d, "code": "1111", "market": "twse", "close": 100.0 + i, "turnover": 5e8})
+        rows.append({"date": d, "code": "2222", "market": "twse", "close": 10.0, "turnover": 1e6})
+        rows.append({"date": d, "code": "0050", "market": "twse", "close": 50.0, "turnover": 9e9})
+    panel = pd.DataFrame(rows)
+    master = pd.DataFrame({"code": ["1111", "2222"], "name": ["甲", "乙"],
+                           "market": ["twse", "twse"], "industry": ["半導體業", "光電業"]})
+    xm = pd.DataFrame({"item": ["加權指數"] * len(days), "price_date": days,
+                       "price": [20000.0 + i for i in range(len(days))]})
+    d = ib._momentum(panel, master, list(days), xm, watch_codes={"2222"})
+    codes = [s[0] for s in d["stocks"]]
+    assert codes == ["1111", "2222"]          # 成交太少的 2222 是自選股才留下；ETF 不列入
+    assert len(d["dates"]) == ib.MOMENTUM_DAYS and len(d["stocks"][0][4]) == ib.MOMENTUM_DAYS
+    assert d["stocks"][0][4][-1] == 149.0 and d["bench"][-1] == 20049.0
+    assert d["industries"][d["stocks"][0][2]] == "半導體業"
+    d2 = ib._momentum(panel, master, list(days), xm, watch_codes=set())
+    assert [s[0] for s in d2["stocks"]] == ["1111"]

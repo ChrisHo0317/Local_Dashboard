@@ -20,6 +20,7 @@ SUBTABS = [
     ("today", "今日重點", "今日重點", "市場數字、自選股、近期事件、重點新聞"),
     ("market", "大盤", "大盤", "加權指數與法人買賣超（估算）"),
     ("sectors", "類股", "類股", "面積＝成交值，顏色＝所選區間的漲跌（紅漲綠跌）"),
+    ("momentum", "強勢股", "強勢股", "哪些股票漲得越來越快：強度 × 加速度"),
     ("flows", "法人籌碼", "法人籌碼", "外資、投信買賣超排行　·　期貨未平倉"),
 ]
 
@@ -99,6 +100,30 @@ def panel_html(data) -> str:
         '    </div>\n'
         '    <p class="sec-sum"></p>\n'
         '    <div class="sec-table"></div>\n'
+        '  </div>',
+        '  <div class="subpanel ov" data-sub="momentum" hidden>\n'
+        '    <p class="ov-asof"></p>\n'
+        '    <p class="mo-explain"><b>強度</b>＝近 20 日漲幅；<b>加速度</b>＝近 5 日漲幅 − 前 5 日漲幅'
+        '（百分點）。右上角是已經在漲、而且最近漲得比之前更快的股票，也就是「越來越強」。'
+        '前 10 名畫出最近 5 天的移動軌跡（箭頭是今天），往右上走代表還在變強。</p>\n'
+        '    <div class="sec-bar">\n'
+        '      <select class="mo-ind sec-pick" aria-label="產業"></select>\n'
+        '      <div class="mo-liq sec-sort" role="group" aria-label="成交值門檻">\n'
+        '        <button type="button" class="chip" data-min="0.3" aria-pressed="false">均量 0.3 億↑</button>\n'
+        '        <button type="button" class="chip" data-min="1" aria-pressed="true">1 億↑</button>\n'
+        '        <button type="button" class="chip" data-min="5" aria-pressed="false">5 億↑</button>\n'
+        '      </div>\n'
+        '    </div>\n'
+        '    <p class="sd-note zoom-hint"></p>\n'
+        '    <div class="ichart ichart-lg" id="ov-momentum"></div>\n'
+        '    <div class="mo-pick" hidden></div>\n'
+        '    <h3 class="sd-h">越來越強排行</h3>\n'
+        '    <p class="sd-note">條件：近 20 日上漲，而且近 5 日漲得比前 5 日多。點表頭可以排序。</p>\n'
+        '    <p class="mo-count sec-sum"></p>\n'
+        '    <div class="mo-table"></div>\n'
+        '    <h3 class="sd-h">前 10 名的近 20 日累積漲幅</h3>\n'
+        '    <p class="sd-note">以 20 個交易日前的收盤為 0%；灰色虛線是加權指數。曲線越往上翹，代表最近漲得越快。</p>\n'
+        '    <div class="ichart ichart-sm" id="ov-mo-lines"></div>\n'
         '  </div>',
         '  <div class="subpanel ov" data-sub="flows" hidden>\n'
         '    <div class="ov-flow-tabs" role="group" aria-label="法人">\n'
