@@ -587,5 +587,6 @@
   .mo-play { display:flex; align-items:center; gap:10px; margin:6px 0 2px; }
   .mo-btn { flex:none; min-width:84px; }
   .mo-slider { flex:1; min-width:0; accent-color:var(--accent); height:28px; }
+  .ichart.mo-busy { pointer-events:none; }   /* 播放中滑過去的數字對不上，先不給互動 */
   .mo-date { flex:none; min-width:76px; text-align:right; font-size:13px;
              font-variant-numeric:tabular-nums; color:var(--fg); }

@@ -117,7 +117,7 @@ def panel_html(data) -> str:
         '    </div>\n'
         '    <div class="mo-play">\n'
         '      <button type="button" class="chip mo-btn" aria-label="播放近 20 個交易日的變化">▶ 播放</button>\n'
-        '      <input type="range" class="mo-slider" min="0" max="0" step="1" value="0"'
+        '      <input type="range" class="mo-slider" min="0" max="0" step="any" value="0"'
         ' aria-label="日期">\n'
         '      <span class="mo-date"></span>\n'
         '    </div>\n'

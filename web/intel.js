@@ -630,7 +630,8 @@
     var MO_PAGE = 30;
     var MO_COLORS = ['#e03131', '#1c7ed6', '#f08c00', '#7048e8', '#2f9e44',
                      '#d6336c', '#0c8599', '#5c940d', '#ae3ec9', '#495057'];
-    var mo = {data: null, ind: -1, min: 1, sort: 'a', desc: true, shown: MO_PAGE};
+    var mo = {data: null, ind: -1, min: 1, sort: 'a', desc: true, shown: MO_PAGE,
+              t: null, k: null, playing: false, render: null};
 
     // 第 i 天的強度與加速度
     function moAt(c, i) {
@@ -677,7 +678,10 @@
     }
 
     var MO_FIRST = 20;        // 第一個算得出 20 日強度的位置（momentum.json 有 41 天）
-    var MO_STEP = 650;        // 播放時每一天停留的毫秒數
+    var MO_DAY = 600;         // 播放時每一天花的毫秒數
+    var MO_SUB = 4;           // 軌跡折線每一天取幾個點
+    var MO_MARKS = [-4, -3, -2, -1, -0.25, 0];   // 軌跡上的點（往回幾天）；-0.25 不畫，只決定箭頭方向
+    var MO_END = MO_MARKS.length - 1;
     var REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     function moColor(c, s, a) {
@@ -689,42 +693,78 @@
 
     function moSize(r) { return 5 + Math.min(16, Math.sqrt(r.tv || 0) * 1.2); }
 
-    // 第 k 天的畫面：所有點的位置與顏色，加上前幾名往回 5 天的軌跡。
-    // 每條軌跡的陣列長度固定（不足的補 null），動畫才能一格一格接起來。
-    function moFrame(rows, top, k) {
-      var c = palette();
-      var narrow = window.innerWidth < 600;
-      var pts = rows.map(function (r) { return moAt(r.c, k); });
-      var ok = function (v) { return isFinite(v) ? v : null; };   // 那天還沒上市或停牌缺值
-      var frame = [{
-        x: pts.map(function (p) { return ok(p.s); }),
-        y: pts.map(function (p) { return ok(p.a); }),
-        marker: {color: pts.map(function (p) { return moColor(c, p.s, p.a); }),
-                 size: rows.map(moSize)},
-        customdata: rows.map(function (r, i) { return [r.code, r.name, pts[i].r5, pts[i].p5, r.tv]; })
-      }];
-      top.forEach(function (r, t) {
-        var tx = [], ty = [], end = -1;
-        for (var i = k - MO_TAIL + 1; i <= k; i++) {
-          if (i < MO_FIRST) { tx.push(null); ty.push(null); continue; }
-          var m = moAt(r.c, i);
-          if (!isFinite(m.s) || !isFinite(m.a)) { tx.push(null); ty.push(null); continue; }
-          tx.push(m.s); ty.push(m.a);
-          end = tx.length - 1;
-        }
-        // 手機只標前 5 名，名字才不會疊在一起
-        var name = (!narrow || t < 5) ? r.name : '';
-        frame.push({x: tx, y: ty});
-        frame.push({
-          x: tx, y: ty,
-          marker: {color: c.up, angleref: 'previous',
-                   symbol: tx.map(function (_, j) { return j === end ? 'arrow' : 'circle'; }),
-                   size: tx.map(function (_, j) { return j === end ? 13 : 3; })},
-          text: tx.map(function (_, j) { return j === end ? name : ''; }),
-          customdata: tx.map(function () { return [r.code, r.name]; })
-        });
+    function moDays() { return mo.data.dates.length - 1 - MO_FIRST; }
+
+    // 一檔股票從 MO_FIRST 到今天每一天的（強度, 加速度）；缺值的那天是 null
+    function moPath(r, last) {
+      var xs = [], ys = [];
+      for (var k = MO_FIRST; k <= last; k++) {
+        var m = moAt(r.c, k), ok = isFinite(m.s) && isFinite(m.a);
+        xs.push(ok ? m.s : null);
+        ys.push(ok ? m.a : null);
+      }
+      return {x: xs, y: ys};
+    }
+
+    // 第 t 天（從 MO_FIRST 起算，可以有小數）的位置。
+    // 整數天就是當天的真實數字；兩天之間用 Catmull-Rom 曲線補，會經過每一天的點，轉彎也是圓的
+    function moPos(p, t) {
+      var n = p.x.length - 1;
+      t = Math.max(0, Math.min(n, t));
+      var i = Math.floor(t), f = t - i;
+      if (f < 1e-9 || i >= n) return p.x[i] == null ? null : [p.x[i], p.y[i]];
+      if (p.x[i] == null || p.x[i + 1] == null) {          // 缺值那段不補，停在有值的那天
+        var j = p.x[i] == null ? i + 1 : i;
+        return p.x[j] == null ? null : [p.x[j], p.y[j]];
+      }
+      var i0 = i > 0 && p.x[i - 1] != null ? i - 1 : i;
+      var i3 = i + 2 <= n && p.x[i + 2] != null ? i + 2 : i + 1;
+      var cr = function (a) {
+        var p0 = a[i0], p1 = a[i], p2 = a[i + 1], p3 = a[i3];
+        return 0.5 * (2 * p1 + (p2 - p0) * f + (2 * p0 - 5 * p1 + 4 * p2 - p3) * f * f +
+                      (3 * p1 - p0 - 3 * p2 + p3) * f * f * f);
+      };
+      return [cr(p.x), cr(p.y)];
+    }
+
+    // 軌跡在第 t 天的樣子：折線（每天 MO_SUB 個點）與 MO_MARKS 上的點。
+    // 還沒有那麼多天可以往回畫時就疊在第一天，陣列長度固定、中間沒有空洞
+    function moTrail(p, t, conv) {
+      var at = function (dt) {
+        var q = moPos(p, Math.max(0, t + dt));
+        return q ? conv(q) : null;
+      };
+      var line = [], marks = [];
+      for (var s = -(MO_TAIL - 1) * MO_SUB; s <= 0; s++) line.push(at(s / MO_SUB));
+      MO_MARKS.forEach(function (dt) { marks.push(at(dt)); });
+      return {line: line, marks: marks};
+    }
+
+    // Plotly 用的資料：第 t 天（靜止時一定是整數天）所有點與軌跡
+    function moData(t, c) {
+      var xs = [], ys = [], cs = [];
+      mo.paths.forEach(function (p) {
+        var q = moPos(p, t);
+        xs.push(q ? q[0] : null);
+        ys.push(q ? q[1] : null);
+        cs.push(q ? moColor(c, q[0], q[1]) : c.gray);
       });
-      return frame;
+      var k = MO_FIRST + Math.round(t);
+      var data = [{x: xs, y: ys, color: cs, customdata: mo.rows.map(function (r) {
+        var m = moAt(r.c, k);
+        return [r.code, r.name, m.r5, m.p5, r.tv];
+      })}];
+      var same = function (q) { return q; };
+      var xy = function (list) {
+        return {x: list.map(function (q) { return q ? q[0] : null; }),
+                y: list.map(function (q) { return q ? q[1] : null; })};
+      };
+      mo.tpaths.forEach(function (p) {
+        var tr = moTrail(p, t, same);
+        data.push(xy(tr.line));
+        data.push(xy(tr.marks));
+      });
+      return data;
     }
 
     // 座標範圍對整段期間固定（播放時軸不會跳），取所有天的 2%～98%，
@@ -751,25 +791,42 @@
               y: [Math.min(yr[0] - py, -py), Math.max(yr[1] + py * 1.5, py)]};
     }
 
+    var moRev = 0;
+
     function moScatter(pane, rows, top) {
-      var c = palette(), d = mo.data, last = d.dates.length - 1, k = mo.k;
-      var frame = moFrame(rows, top, k);
-      var traces = [Object.assign({
+      var c = palette(), d = mo.data, last = d.dates.length - 1;
+      var narrow = window.innerWidth < 600;
+      mo.paths = rows.map(function (r) { return moPath(r, last); });
+      mo.tpaths = top.map(function (r) { return moPath(r, last); });
+      var now = moData(mo.t, c);
+      var traces = [{
         type: 'scatter', mode: 'markers', ids: rows.map(function (r) { return r.code; }),
+        x: now[0].x, y: now[0].y, customdata: now[0].customdata,
+        marker: {color: now[0].color, size: rows.map(moSize), opacity: 0.75, line: {width: 0}},
         hovertemplate: '%{customdata[1]} %{customdata[0]}<br>強度（20 日）%{x:+.1f}%' +
                        '<br>近 5 日 %{customdata[2]:+.1f}%　前 5 日 %{customdata[3]:+.1f}%' +
                        '<br>加速 %{y:+.1f} 點　均量 %{customdata[4]:,.1f} 億<extra></extra>',
         showlegend: false
-      }, frame[0], {marker: Object.assign({opacity: 0.75, line: {width: 0}}, frame[0].marker)})];
-      for (var t = 1; t < frame.length; t += 2) {
-        traces.push(Object.assign({type: 'scatter', mode: 'lines', showlegend: false,
-                                   line: {color: c.up, width: 1}, opacity: 0.45,
-                                   hoverinfo: 'skip'}, frame[t]));
-        traces.push(Object.assign({type: 'scatter', mode: 'markers+text', showlegend: false,
-                                   textposition: 'top center', textfont: {size: 11, color: c.text},
-                                   hovertemplate: '%{customdata[1]} %{customdata[0]}<br>強度 %{x:+.1f}%' +
-                                                  '　加速 %{y:+.1f} 點<extra></extra>'}, frame[t + 1]));
-      }
+      }];
+      top.forEach(function (r, n) {
+        // 手機只標前 5 名，名字才不會疊在一起
+        var name = (!narrow || n < 5) ? r.name : '';
+        traces.push({type: 'scatter', mode: 'lines', x: now[1 + n * 2].x, y: now[1 + n * 2].y,
+                     showlegend: false, line: {color: c.up, width: 1}, opacity: 0.45,
+                     hoverinfo: 'skip'});
+        traces.push({type: 'scatter', mode: 'markers+text', x: now[2 + n * 2].x, y: now[2 + n * 2].y,
+                     showlegend: false,
+                     marker: {color: c.up, angleref: 'previous',
+                              symbol: MO_MARKS.map(function (_, i) { return i === MO_END ? 'arrow' : 'circle'; }),
+                              size: MO_MARKS.map(function (dt, i) {
+                                return i === MO_END ? 13 : (dt % 1 ? 0 : 3);
+                              })},
+                     text: MO_MARKS.map(function (_, i) { return i === MO_END ? name : ''; }),
+                     textposition: 'top center', textfont: {size: 11, color: c.text},
+                     customdata: MO_MARKS.map(function () { return [r.code, r.name]; }),
+                     hovertemplate: '%{customdata[1]} %{customdata[0]}<br>強度 %{x:+.1f}%' +
+                                    '　加速 %{y:+.1f} 點<extra></extra>'});
+      });
       var range = moRange(rows, top, last);
       var corner = function (text, x, y, xa, ya) {
         return {text: text, xref: 'paper', yref: 'paper', x: x, y: y, xanchor: xa, yanchor: ya,
@@ -778,6 +835,9 @@
       var L = layout({
         hovermode: 'closest',
         dragmode: COARSE ? false : 'zoom',
+        // 播放時直接移動畫面上的點，停下來後一定要整張重畫，把位置與滑過去的數字對回來
+        datarevision: ++moRev,
+        uirevision: mo.ind + '|' + mo.min,                     // 暫停後重畫不要把放大的範圍還原；換篩選才還原
         xaxis: {title: {text: '強度：近 20 日漲幅（%）', font: {size: 11}}, gridcolor: c.grid,
                 zeroline: true, zerolinecolor: c.gray, zerolinewidth: 1.5, range: range.x,
                 ticksuffix: '%', automargin: true},
@@ -807,64 +867,225 @@
             openStock(row.code);
           }
         });
+        // 播放中圖被重畫（例如視窗大小改變）就重新抓畫面上的點
+        gd.on('plotly_afterplot', function () { if (mo.render) mo.render = moPrep(); });
       }
       moLabel(pane);
     }
 
     function moLabel(pane) {
-      var d = mo.data, last = d.dates.length - 1;
+      var last = mo.data.dates.length - 1;
+      var k = MO_FIRST + Math.round(mo.t);                    // 最接近的那一天
       var slider = pane.querySelector('.mo-slider');
-      slider.max = String(last - MO_FIRST);
-      slider.value = String(mo.k - MO_FIRST);
-      pane.querySelector('.mo-date').textContent = md(d.dates[mo.k]) + (mo.k === last ? '　今天' : '');
+      slider.max = String(moDays());
+      slider.value = String(mo.t);
+      if (k !== mo.k || !pane.querySelector('.mo-date').textContent) {
+        mo.k = k;
+        pane.querySelector('.mo-date').textContent = md(mo.data.dates[k]) + (k === last ? '　今天' : '');
+      }
     }
 
-    // 換到第 k 天：點與軌跡用動畫移過去
-    function moGo(pane, k, smooth) {
-      mo.k = k;
-      moLabel(pane);
+    // ── 播放：每一個畫面直接移動 SVG 上的點（不經過 Plotly 重算），所以很順；
+    //    停下來後再用 Plotly 重畫一次，滑過去的數字才對得上 ──
+    function moAngle(a, b) { return Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI + 90; }
+
+    // 記下畫面上每個點的 SVG 節點；結構對不上就回傳 null（改成一天一天重畫）
+    function moPrep() {
       var gd = document.getElementById('ov-momentum');
-      if (!gd || !gd._fullLayout) return;
-      var frame = moFrame(mo.rows, mo.top, k);
-      var ms = smooth && !REDUCED ? MO_STEP * 0.6 : 0;
-      Plotly.animate(gd, {data: frame, traces: frame.map(function (_, i) { return i; })},
-                     {transition: {duration: ms, easing: 'cubic-in-out'},
-                      frame: {duration: ms, redraw: true}, mode: 'immediate'});
+      var fl = gd && gd._fullLayout;
+      var tr = gd ? gd.querySelectorAll('.scatterlayer .trace') : [];
+      if (!fl || tr.length !== 1 + mo.tpaths.length * 2) return null;
+      var xa = fl.xaxis, ya = fl.yaxis;
+      var cloud = [];
+      for (var i = 0; i < mo.paths.length; i++) cloud.push(null);
+      Array.prototype.forEach.call(tr[0].querySelectorAll('.point'), function (n) {
+        var d = n.__data__;
+        if (d && d.i != null) cloud[d.i] = n;
+      });
+      var trails = mo.tpaths.map(function (_, n) {
+        var pts = [];
+        Array.prototype.forEach.call(tr[2 + n * 2].querySelectorAll('.point'), function (node) {
+          var d = node.__data__;
+          if (d && d.i != null) pts[d.i] = node;
+        });
+        var texts = tr[2 + n * 2].querySelectorAll('.textpoint text');
+        // Plotly 畫箭頭時已經把方向轉進圖形裡；播放時再轉「現在方向 − 當時方向」
+        var src = gd.data[2 + n * 2], base = 0;
+        if (src.x[MO_END - 1] != null && src.x[MO_END] != null) {
+          base = moAngle([xa.l2p(src.x[MO_END - 1]), ya.l2p(src.y[MO_END - 1])],
+                         [xa.l2p(src.x[MO_END]), ya.l2p(src.y[MO_END])]);
+        }
+        return {line: tr[1 + n * 2].querySelector('.js-line'), pts: pts,
+                text: texts.length ? texts[texts.length - 1] : null, base: base};
+      });
+      return {gd: gd, root: tr[0], cloud: cloud, fill: [], trails: trails, c: palette()};
     }
 
-    var moTimer = null;
+    function moRender(t) {
+      var R = mo.render;
+      if (R && !R.root.isConnected) R = mo.render = moPrep();
+      if (!R) return;
+      var xa = R.gd._fullLayout.xaxis, ya = R.gd._fullLayout.yaxis, c = R.c;
+      var px = function (q) { return [xa.l2p(q[0]), ya.l2p(q[1])]; };
+      var f2 = function (v) { return Math.round(v * 100) / 100; };
+      R.cloud.forEach(function (node, i) {
+        if (!node) return;
+        var q = moPos(mo.paths[i], t);
+        if (!q) { node.style.visibility = 'hidden'; return; }
+        node.style.visibility = '';
+        node.setAttribute('transform', 'translate(' + f2(xa.l2p(q[0])) + ',' + f2(ya.l2p(q[1])) + ')');
+        var col = moColor(c, q[0], q[1]);
+        if (R.fill[i] !== col) { node.style.fill = col; R.fill[i] = col; }
+      });
+      R.trails.forEach(function (T, n) {
+        var tr = moTrail(mo.tpaths[n], t, px);
+        if (T.line) {
+          var d = tr.line.filter(Boolean).map(function (q) { return f2(q[0]) + ',' + f2(q[1]); });
+          T.line.setAttribute('d', d.length ? 'M' + d.join('L') : '');
+        }
+        tr.marks.forEach(function (q, i) {
+          var node = T.pts[i];
+          if (!node || !q) return;
+          var tf = 'translate(' + f2(q[0]) + ',' + f2(q[1]) + ')';
+          if (i === MO_END && tr.marks[i - 1]) tf += ' rotate(' + f2(moAngle(tr.marks[i - 1], q) - T.base) + ')';
+          node.setAttribute('transform', tf);
+        });
+        var head = tr.marks[MO_END];
+        if (T.text && head) {
+          T.text.setAttribute('x', f2(head[0]));
+          T.text.setAttribute('y', f2(head[1]));
+        }
+      });
+    }
 
-    function moStop(pane) {
-      if (moTimer) { clearInterval(moTimer); moTimer = null; }
+    var moRaf = 0;
+
+    function moCancel() {
+      if (moRaf) cancelAnimationFrame(moRaf);
+      moRaf = 0;
+    }
+
+    // 開始直接操作畫面：抓節點、播放中不給滑鼠互動（滑過去的數字此時對不上）
+    function moBegin() {
+      if (!mo.render) mo.render = moPrep();
+      var gd = document.getElementById('ov-momentum');
+      if (gd) gd.classList.add('mo-busy');
+      return !!mo.render;
+    }
+
+    // 停在整數天，交回 Plotly 重畫
+    function moSettle(pane) {
+      moCancel();
+      mo.t = Math.round(mo.t);
+      mo.render = null;
+      var gd = document.getElementById('ov-momentum');
+      if (gd) gd.classList.remove('mo-busy');
+      moScatter(pane, mo.rows, mo.top);
+    }
+
+    // 從目前位置滑到第 to 天（暫停、放開滑桿、按方向鍵）
+    function moEase(pane, to, ms) {
+      moCancel();
+      var from = mo.t;
+      if (REDUCED || Math.abs(to - from) < 1e-6 || !moBegin()) {
+        mo.t = to;
+        moSettle(pane);
+        return;
+      }
+      var start = performance.now();
+      var tick = function (now) {
+        var f = Math.min(1, (now - start) / ms);
+        mo.t = from + (to - from) * (1 - Math.pow(1 - f, 3));
+        moRender(mo.t);
+        moLabel(pane);
+        if (f < 1) moRaf = requestAnimationFrame(tick);
+        else moSettle(pane);
+      };
+      moRaf = requestAnimationFrame(tick);
+    }
+
+    function moButton(pane, playing) {
+      mo.playing = playing;
       var btn = pane.querySelector('.mo-btn');
-      btn.textContent = '▶ 播放';
-      btn.setAttribute('aria-pressed', 'false');
+      btn.textContent = playing ? '❚❚ 暫停' : '▶ 播放';
+      btn.setAttribute('aria-pressed', playing ? 'true' : 'false');
+    }
+
+    // 暫停：滑回最近的一天，滑過去看到的才是那一天真正的數字
+    function moPause(pane) {
+      if (!mo.playing) return;
+      moButton(pane, false);
+      moEase(pane, Math.round(mo.t), 250);
     }
 
     function moPlay(pane) {
-      var last = mo.data.dates.length - 1;
-      if (mo.k >= last) moGo(pane, MO_FIRST, false);       // 已經在今天就從頭播
-      var btn = pane.querySelector('.mo-btn');
-      btn.textContent = '❚❚ 暫停';
-      btn.setAttribute('aria-pressed', 'true');
-      moTimer = setInterval(function () {
-        // 切到別的分頁就停，不要在背景一直重畫
-        if (!shown(document.getElementById('ov-momentum')) || mo.k >= last) { moStop(pane); return; }
-        moGo(pane, mo.k + 1, true);
-      }, MO_STEP);
+      moCancel();
+      var end = moDays();
+      if (mo.t >= end - 1e-6) mo.t = 0;                      // 已經在今天就從頭播
+      moButton(pane, true);
+      var smooth = !REDUCED && moBegin();
+      var gd = document.getElementById('ov-momentum');
+      var prev = null, shownDay = Math.round(mo.t);
+      if (smooth) moRender(mo.t);
+      var tick = function (now) {
+        // 切到別的分頁就停，不要在看不到的地方一直重畫
+        if (!shown(gd) || document.hidden) { moPause(pane); return; }
+        // 每格最多走 0.1 秒：電腦卡一下時不會整段跳過
+        var dt = prev == null ? 0 : Math.min(100, now - prev);
+        prev = now;
+        mo.t = Math.min(end, mo.t + dt / MO_DAY);
+        if (smooth) {
+          moRender(mo.t);
+        } else if (Math.floor(mo.t) !== shownDay) {
+          // 不做動畫（系統設定減少動態效果）時一天換一次
+          shownDay = Math.floor(mo.t);
+          var keep = mo.t;
+          mo.t = shownDay;
+          moScatter(pane, mo.rows, mo.top);
+          mo.t = keep;
+        }
+        moLabel(pane);
+        if (mo.t >= end) {
+          moButton(pane, false);
+          moSettle(pane);
+          return;
+        }
+        moRaf = requestAnimationFrame(tick);
+      };
+      moRaf = requestAnimationFrame(tick);
     }
 
     function moPlayControls(pane) {
       var btn = pane.querySelector('.mo-btn');
       if (btn._bound) return;
       btn._bound = true;
-      btn.addEventListener('click', function () { if (moTimer) moStop(pane); else moPlay(pane); });
-      pane.querySelector('.mo-slider').addEventListener('input', function (e) {
-        moStop(pane);
-        moGo(pane, MO_FIRST + Number(e.target.value), false);
+      btn.addEventListener('click', function () { if (mo.playing) moPause(pane); else moPlay(pane); });
+      var slider = pane.querySelector('.mo-slider');
+      // 拖動時點跟著手連續移動；放開後滑到最近的那一天
+      slider.addEventListener('input', function () {
+        moCancel();
+        moButton(pane, false);
+        mo.t = Number(slider.value);
+        if (!REDUCED && moBegin()) {
+          moRender(mo.t);
+          moLabel(pane);
+        } else {
+          moSettle(pane);
+        }
       });
-      // 瀏覽器切到背景時動畫會暫停，計時器卻還在跑，乾脆停掉
-      document.addEventListener('visibilitychange', function () { if (document.hidden) moStop(pane); });
+      slider.addEventListener('change', function () { moEase(pane, Math.round(Number(slider.value)), 200); });
+      // 滑桿可以停在兩天中間，方向鍵自己處理成一次一天
+      slider.addEventListener('keydown', function (e) {
+        var to = {ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1}[e.key];
+        if (e.key === 'Home') to = -Infinity;
+        if (e.key === 'End') to = Infinity;
+        if (to === undefined) return;
+        e.preventDefault();
+        moButton(pane, false);
+        moEase(pane, Math.max(0, Math.min(moDays(), Math.round(mo.t) + to)), 200);
+      });
+      // 瀏覽器切到背景就停
+      document.addEventListener('visibilitychange', function () { if (document.hidden) moPause(pane); });
     }
 
     function moTable(pane, strong) {
@@ -951,10 +1172,15 @@
       var rows = moRows();
       var strong = moStrong(rows);
       var top = strong.slice(0, MO_TOP);
-      moStop(pane);
+      // 換篩選時先停掉播放，停在最近的整數天
+      moCancel();
+      mo.render = null;
+      var gd = document.getElementById('ov-momentum');
+      if (gd) gd.classList.remove('mo-busy');
+      moButton(pane, false);
+      mo.t = mo.t == null ? moDays() : Math.round(mo.t);
       mo.rows = rows;
       mo.top = top;
-      if (mo.k == null) mo.k = mo.data.dates.length - 1;
       pane.querySelector('.mo-count').textContent =
         '符合 ' + strong.length + ' 檔（目前篩選共 ' + rows.length + ' 檔）';
       pane.querySelector('.mo-pick').hidden = true;
