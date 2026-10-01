@@ -284,36 +284,60 @@ def _market_series(panel: pd.DataFrame, xm: pd.DataFrame) -> dict:
             "turnover": [_yi(v, 0) for v in daily["turnover"]]}
 
 
+PERIODS = [1, 5, 10, 20, 60]       # 漲跌幅排行可選的區間（交易日）
+
+
 def _sectors(panel: pd.DataFrame, master: pd.DataFrame, days: list) -> dict:
     """
     類股：每個產業的加權漲跌、家數、成交值，以及「每一檔」的漲跌與成交值
     （熱力圖點進產業、清單依成交值或漲跌排序都要用到全部股票）。
-    stocks：[[代號, 名稱, 產業序號, 收盤, 漲跌%, 成交值億]]
+
+    漲跌分 1／5／10／20／60 日，都是用收盤價算（沒有還原除權息）；
+    中間停牌的日子沿用停牌前的收盤。產業漲跌以最新一天的成交值加權。
+
+    stocks：[[代號, 名稱, 產業序號, 收盤, 成交值億, 1日%, 5日%, 10日%, 20日%, 60日%]]
+    industries：每個產業 {industry, turnover, n, chg:[各區間], up:[…], down:[…]}
     """
+    empty = {"asof": "", "periods": PERIODS, "industries": [], "stocks": []}
     if len(days) < 2:
-        return {"asof": "", "industries": [], "stocks": []}
+        return empty
+    closes = (panel[panel["date"].isin(days[-(max(PERIODS) + 1):])]
+              .pivot_table(index="date", columns="code", values="close").sort_index().ffill())
     last = panel[panel["date"] == days[-1]].set_index("code")
-    prev = panel[panel["date"] == days[-2]].set_index("code")["close"]
-    last = last[~last.index.str.startswith("00")]
-    last = last.assign(chg=(last["close"] / prev.reindex(last.index) - 1) * 100)
-    last = last.dropna(subset=["chg", "turnover"])
+    last = last[~last.index.str.startswith("00")].dropna(subset=["close", "turnover"])
     last = last[last["turnover"] > 0]
+    now = closes.iloc[-1]
+    cols = []
+    for k in PERIODS:
+        col = f"r{k}"
+        cols.append(col)
+        if len(closes) > k:
+            base = closes.iloc[-1 - k]
+            last[col] = ((now / base - 1) * 100).reindex(last.index)
+        else:
+            last[col] = float("nan")
+    last = last.dropna(subset=["r1"])
     ind = master.set_index("code")["industry"]
     last = last.assign(industry=ind.reindex(last.index).fillna("其他").replace("", "其他"),
                        name=master.set_index("code")["name"].reindex(last.index).fillna(""))
+
     industries = []
     for industry, g in last.groupby("industry"):
-        total = g["turnover"].sum()
-        industries.append({"industry": industry, "turnover": _yi(total, 1),
-                           "chg": _r((g["chg"] * g["turnover"]).sum() / total),
-                           "n": int(len(g)), "up": int((g["chg"] > 0).sum()),
-                           "down": int((g["chg"] < 0).sum())})
+        info = {"industry": industry, "turnover": _yi(g["turnover"].sum(), 1), "n": int(len(g)),
+                "chg": [], "up": [], "down": []}
+        for col in cols:
+            v = g.dropna(subset=[col])
+            w = v["turnover"].sum()
+            info["chg"].append(_r((v[col] * v["turnover"]).sum() / w) if w else None)
+            info["up"].append(int((v[col] > 0).sum()))
+            info["down"].append(int((v[col] < 0).sum()))
+        industries.append(info)
     industries.sort(key=lambda s: s["turnover"] or 0, reverse=True)
     index = {s["industry"]: i for i, s in enumerate(industries)}
-    stocks = [[code, r["name"], index[r["industry"]], _r(r["close"]), _r(r["chg"]),
-               _yi(r["turnover"], 2)]
+    stocks = [[code, r["name"], index[r["industry"]], _r(r["close"]), _yi(r["turnover"], 2)]
+              + [_r(r[c]) for c in cols]
               for code, r in last.sort_values("turnover", ascending=False).iterrows()]
-    return {"asof": pd.Timestamp(days[-1]).strftime("%Y-%m-%d"),
+    return {"asof": pd.Timestamp(days[-1]).strftime("%Y-%m-%d"), "periods": PERIODS,
             "industries": industries, "stocks": stocks}
 
 

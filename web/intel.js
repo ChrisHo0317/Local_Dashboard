@@ -390,41 +390,48 @@
     });
 
     // ── 類股：熱力圖可以點進產業，下方清單列出產業裡每一檔，可依成交值或漲跌排序 ──
+    // sectors.json 的 stocks：[代號, 名稱, 產業序號, 收盤, 成交值億, 1日%, 5日%, 10日%, 20日%, 60日%]
     var LEAF = 30;            // 熱力圖每個產業最多畫幾檔（清單裡是全部）
     var SEC_PAGE = 30;        // 清單一次列幾檔
-    var sec = {data: null, pick: -1, sort: 'turnover', shown: SEC_PAGE};
+    var PERIOD_LABEL = ['1 日', '5 日', '10 日', '20 日', '60 日'];
+    var PERIOD_SCALE = [5, 10, 15, 20, 30];     // 熱力圖顏色到底的漲跌幅（%）
+    var sec = {data: null, pick: -1, sort: 'turnover', shown: SEC_PAGE, period: 0};
+
+    function ret(x) { return x[5 + sec.period]; }
 
     function secTreemap(pane) {
-      var d = sec.data, c = palette();
+      var d = sec.data, c = palette(), p = sec.period;
       var ids = ['all'], labels = ['全市場'], parents = [''], values = [0], colors = [0],
-          custom = [[0, '', 0, 0]];
+          custom = [[0, '']];
       var total = 0, wsum = 0;
       d.industries.forEach(function (s, i) {
         var leaves = d.stocks.filter(function (x) { return x[2] === i; }).slice(0, LEAF);
-        var v = leaves.reduce(function (a, x) { return a + (x[5] || 0); }, 0);
+        var v = leaves.reduce(function (a, x) { return a + (x[4] || 0); }, 0);
         if (!v) return;
+        var chg = s.chg[p];
         ids.push('I' + i); labels.push(s.industry); parents.push('all'); values.push(v);
-        colors.push(s.chg); custom.push([s.chg, '', s.up, s.down]);
+        colors.push(chg); custom.push([chg, '']);
         leaves.forEach(function (x) {
           ids.push('S' + x[0]); labels.push(x[1] || x[0]); parents.push('I' + i);
-          values.push(x[5] || 0); colors.push(x[4]); custom.push([x[4], x[0], 0, 0]);
+          values.push(x[4] || 0); colors.push(ret(x)); custom.push([ret(x), x[0]]);
         });
         total += v;
-        wsum += (s.chg || 0) * v;
+        if (chg != null) wsum += chg * v;
       });
       values[0] = total;
       colors[0] = total ? wsum / total : 0;
       custom[0][0] = colors[0];
+      var lim = PERIOD_SCALE[p];
       var gd = plot('ov-sectors', [{
         type: 'treemap', ids: ids, labels: labels, parents: parents, values: values,
         branchvalues: 'total', maxdepth: 3, customdata: custom,
         level: sec.pick >= 0 ? 'I' + sec.pick : 'all',
         texttemplate: '<b>%{label}</b><br>%{customdata[0]:+.2f}%',
         hovertemplate: '%{label}　%{customdata[1]}<br>成交值 %{value:,.2f} 億' +
-                       '<br>漲跌 %{customdata[0]:+.2f}%<extra></extra>',
+                       '<br>' + PERIOD_LABEL[p] + '漲跌 %{customdata[0]:+.2f}%<extra></extra>',
         marker: {colors: colors,
                  colorscale: [[0, c.down], [0.5, dark ? '#3a3f55' : '#e9ecef'], [1, c.up]],
-                 cmin: -5, cmax: 5, cmid: 0,
+                 cmin: -lim, cmax: lim, cmid: 0,
                  line: {width: 1, color: dark ? '#1e2130' : '#ffffff'}},
         tiling: {pad: 2},
         pathbar: {visible: true, thickness: 22, textfont: {size: 12, color: c.text}},
@@ -435,10 +442,10 @@
         gd._secBound = true;
         // 點個股＝打開深度頁（不放大）；點產業＝放大並讓下方清單換成那個產業
         gd.on('plotly_treemapclick', function (ev) {
-          var p = ev && ev.points && ev.points[0];
-          if (!p) return;
-          if (String(p.id).charAt(0) === 'S') {
-            openStock(String(p.id).slice(1));
+          var pt = ev && ev.points && ev.points[0];
+          if (!pt) return;
+          if (String(pt.id).charAt(0) === 'S') {
+            openStock(String(pt.id).slice(1));
             return false;
           }
           var next = String(ev.nextLevel || 'all');
@@ -473,29 +480,48 @@
         sec.shown = SEC_PAGE;
         secList(pane);
       });
+      bindChips(pane.querySelector('.sec-period'), function (chip) {
+        sec.period = Number(chip.dataset.period);
+        sec.shown = SEC_PAGE;
+        secTreemap(pane);
+        secList(pane);
+      });
     }
 
     function secList(pane) {
-      var d = sec.data;
+      var d = sec.data, p = sec.period, label = PERIOD_LABEL[p];
       var rows = d.stocks.filter(function (x) { return sec.pick < 0 || x[2] === sec.pick; });
-      if (sec.sort === 'up') rows = rows.slice().sort(function (a, b) { return (b[4] || 0) - (a[4] || 0); });
-      else if (sec.sort === 'down') rows = rows.slice().sort(function (a, b) { return (a[4] || 0) - (b[4] || 0); });
+      // 上市不到 N 天、算不出 N 日漲跌的排到最後
+      function cmp(sign) {
+        return function (a, b) {
+          var x = ret(a), y = ret(b);
+          if (x == null) return y == null ? 0 : 1;
+          if (y == null) return -1;
+          return sign * (y - x);
+        };
+      }
+      if (sec.sort === 'up') rows = rows.slice().sort(cmp(1));
+      else if (sec.sort === 'down') rows = rows.slice().sort(cmp(-1));
       var sum = pane.querySelector('.sec-sum');
       sum.textContent = '';
       if (sec.pick >= 0) {
         var s = d.industries[sec.pick];
-        sum.appendChild(document.createTextNode(s.industry + '　加權漲跌 '));
-        sum.appendChild(el('b', dir(s.chg), signed(s.chg, 2, '%')));
-        sum.appendChild(document.createTextNode('　上漲 ' + s.up + ' 家、下跌 ' + s.down +
-                                                ' 家　成交值 ' + fmt(s.turnover, 1) + ' 億'));
+        sum.appendChild(document.createTextNode(s.industry + '　' + label + '加權漲跌 '));
+        sum.appendChild(el('b', dir(s.chg[p]), signed(s.chg[p], 2, '%')));
+        sum.appendChild(document.createTextNode('　上漲 ' + s.up[p] + ' 家、下跌 ' + s.down[p] +
+                                                ' 家　今日成交值 ' + fmt(s.turnover, 1) + ' 億'));
       } else {
         sum.textContent = '全市場 ' + rows.length + ' 檔（不含 ETF）';
+      }
+      if (p > 0) {
+        sum.appendChild(el('span', 'sec-note',
+          '　·　' + label + '漲跌以收盤價計算，沒有還原除權息'));
       }
       var box = pane.querySelector('.sec-table');
       box.textContent = '';
       var t = el('table', 'ov-table');
       var h = el('tr');
-      ['股票', '收盤', '漲跌', '成交值（億）'].forEach(function (x) { h.appendChild(el('th', null, x)); });
+      ['股票', '收盤', label + '漲跌', '今日成交值（億）'].forEach(function (x) { h.appendChild(el('th', null, x)); });
       var thead = el('thead'); thead.appendChild(h); t.appendChild(thead);
       var tb = el('tbody');
       rows.slice(0, sec.shown).forEach(function (x, i) {
@@ -507,8 +533,8 @@
         if (sec.pick < 0) c0.appendChild(el('span', 'scr-reason', d.industries[x[2]].industry));
         tr.appendChild(c0);
         tr.appendChild(el('td', null, fmt(x[3], 2)));
-        tr.appendChild(el('td', dir(x[4]), signed(x[4], 2, '%')));
-        tr.appendChild(el('td', null, fmt(x[5], 2)));
+        tr.appendChild(el('td', dir(ret(x)), signed(ret(x), 2, '%')));
+        tr.appendChild(el('td', null, fmt(x[4], 2)));
         tr.addEventListener('click', function () { openStock(x[0]); });
         tb.appendChild(tr);
       });

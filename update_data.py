@@ -319,6 +319,53 @@ def update_market(since: date | None = None) -> int:
     return changed
 
 
+def repair_history() -> int:
+    """
+    一次性修補：market_db 匯出的歷史裡，有幾天只有一個市場有資料（例如上市那天漏抓），
+    會讓 K 線缺一根、法人合計少一半、N 日漲跌算錯天數。找出這些日子，
+    向官方依日期補回缺的那個市場，併進 history_base.parquet。
+
+        python update_data.py repair
+    """
+    path = md.MARKET_DIR / "history_base.parquet"
+    if not path.exists():
+        return 0
+    base = pd.read_parquet(path)
+    universe = set(base["code"])
+    counts = base.groupby(["date", "market"]).size().unstack(fill_value=0)
+    typical = counts.median()
+    scraper = MarketScraper(logger=log)
+    added = []
+    for day, row in counts.iterrows():
+        need = {m: {"quotes", "insti", "margin"}
+                for m in ("twse", "tpex") if row.get(m, 0) < typical.get(m, 0) * 0.9}
+        if not need:
+            continue
+        out = scraper.fetch(day.date(), need)
+        if out["closed"] or not out["frames"]:
+            log.warning(f"修補：{day.date()} 官方也沒有資料，略過")
+            continue
+        merged = None
+        for f in out["frames"]:
+            f = f[f["code"].isin(universe)]
+            merged = f if merged is None else merged.merge(f, on=["code", "market"], how="outer")
+        merged = merged.assign(date=day).reindex(columns=base.columns)
+        added.append(merged)
+        log.info(f"修補：{day.date()} 補 {', '.join(need)} 共 {len(merged)} 檔")
+    if not added:
+        log.info("修補：歷史沒有缺漏")
+        return 0
+    fixed = pd.concat([base] + added, ignore_index=True)
+    fixed = fixed.drop_duplicates(["date", "code"], keep="first").sort_values(["code", "date"])
+    for col in ("open", "high", "low", "close"):
+        fixed[col] = fixed[col].astype("float32")
+    for col in ("volume", "turnover", "foreign", "trust", "dealer", "margin_bal", "short_bal"):
+        fixed[col] = pd.to_numeric(fixed[col], errors="coerce").round().astype("Int64")
+    fixed.reset_index(drop=True).to_parquet(path, index=False, compression="zstd",
+                                            compression_level=19)
+    return sum(len(a) for a in added)
+
+
 def update_chips() -> int:
     """集保股權分散（每週）、期貨三大法人未平倉（每日）。"""
     scraper = ChipScraper(logger=log)
@@ -363,6 +410,9 @@ JOBS = {
     "xmarket": update_xmarket,
 }
 
+# 不在預設清單裡的一次性工作（要明確指定才會跑）
+MANUAL_JOBS = {"repair": repair_history}
+
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
@@ -371,11 +421,12 @@ def main(argv: list[str] | None = None) -> int:
         i = argv.index("--since")
         since = date.fromisoformat(argv[i + 1])
         del argv[i:i + 2]
+    jobs = {**JOBS, **MANUAL_JOBS}
     if argv:
-        unknown = [a for a in argv if a not in JOBS]
+        unknown = [a for a in argv if a not in jobs]
         if unknown:
             log.error(f"不認得的項目：{' '.join(unknown)}；"
-                      f"可用的有 {' '.join(JOBS)}")
+                      f"可用的有 {' '.join(jobs)}")
             return 2
         names = argv
     else:
@@ -383,7 +434,7 @@ def main(argv: list[str] | None = None) -> int:
 
     added = 0
     for name in names:
-        added += update_market(since) if name == "market" else JOBS[name]()
+        added += update_market(since) if name == "market" else jobs[name]()
     log.info("有新資料" if added else "無新資料")
     return 0
 

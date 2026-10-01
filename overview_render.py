@@ -19,7 +19,7 @@ META = "資料來源：證交所、櫃買、期交所、集保　·　盤後更�
 SUBTABS = [
     ("today", "今日重點", "今日重點", "市場數字、自選股、近期事件、重點新聞"),
     ("market", "大盤", "大盤", "加權指數與法人買賣超（估算）"),
-    ("sectors", "類股", "類股", "面積＝成交值，顏色＝漲跌（紅漲綠跌）　·　點產業放大，點個股看深度頁"),
+    ("sectors", "類股", "類股", "面積＝成交值，顏色＝所選區間的漲跌（紅漲綠跌）"),
     ("flows", "法人籌碼", "法人籌碼", "外資、投信買賣超排行　·　期貨未平倉"),
 ]
 
@@ -80,6 +80,15 @@ def panel_html(data) -> str:
         '  <div class="subpanel ov" data-sub="sectors" hidden>\n'
         '    <p class="ov-asof"></p>\n'
         '    <div class="ichart ichart-lg" id="ov-sectors"></div>\n'
+        '    <div class="sec-bar">\n'
+        '      <div class="sec-period" role="group" aria-label="漲跌區間">\n'
+        '        <button type="button" class="chip" data-period="0" aria-pressed="true">1 日</button>\n'
+        '        <button type="button" class="chip" data-period="1" aria-pressed="false">5 日</button>\n'
+        '        <button type="button" class="chip" data-period="2" aria-pressed="false">10 日</button>\n'
+        '        <button type="button" class="chip" data-period="3" aria-pressed="false">20 日</button>\n'
+        '        <button type="button" class="chip" data-period="4" aria-pressed="false">60 日</button>\n'
+        '      </div>\n'
+        '    </div>\n'
         '    <div class="sec-bar">\n'
         '      <select class="sec-pick" aria-label="產業"></select>\n'
         '      <div class="sec-sort" role="group" aria-label="排序">\n'
