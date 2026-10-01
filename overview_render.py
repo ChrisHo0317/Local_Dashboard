@@ -19,7 +19,7 @@ META = "資料來源：證交所、櫃買、期交所、集保　·　盤後更�
 SUBTABS = [
     ("today", "今日重點", "今日重點", "市場數字、自選股、近期事件、重點新聞"),
     ("market", "大盤", "大盤", "加權指數與法人買賣超（估算）"),
-    ("sectors", "類股", "類股", "面積＝成交值，顏色＝漲跌（紅漲綠跌）"),
+    ("sectors", "類股", "類股", "面積＝成交值，顏色＝漲跌（紅漲綠跌）　·　點產業放大，點個股看深度頁"),
     ("flows", "法人籌碼", "法人籌碼", "外資、投信買賣超排行　·　期貨未平倉"),
 ]
 
@@ -35,6 +35,17 @@ def stats(data) -> dict:
             ("自選股", f"{info.get('watch', 0)} 檔"),
         ],
     }
+
+
+def _range_chips(cls: str, default: int) -> str:
+    """顯示區間鈕（交易日數；0＝全部）。"""
+    opts = [(22, "1 個月"), (66, "3 個月"), (130, "6 個月"), (0, "1 年")]
+    btns = "".join(
+        f'      <button type="button" class="chip" data-days="{d}"'
+        f' aria-pressed="{"true" if d == default else "false"}">{label}</button>\n'
+        for d, label in opts)
+    return (f'    <div class="sq-range {cls}" role="group" aria-label="顯示區間">\n'
+            f'{btns}    </div>\n')
 
 
 def panel_html(data) -> str:
@@ -60,13 +71,25 @@ def panel_html(data) -> str:
         '    </div>\n'
         '  </div>',
         '  <div class="subpanel ov" data-sub="market" hidden>\n'
+        f'{_range_chips("ov-range", 130)}'
+        '    <p class="sd-note zoom-hint"></p>\n'
         '    <div class="ichart ichart-lg" id="ov-market"></div>\n'
         '    <p class="sd-note">法人買賣超是用每一檔的買賣超股數乘以收盤價加總估算，'
         '與交易所公布的金額會有些微差距；總覽第一頁的數字是交易所公布的金額。</p>\n'
         '  </div>',
         '  <div class="subpanel ov" data-sub="sectors" hidden>\n'
+        '    <p class="ov-asof"></p>\n'
         '    <div class="ichart ichart-lg" id="ov-sectors"></div>\n'
-        '    <div class="ov-sector-list"></div>\n'
+        '    <div class="sec-bar">\n'
+        '      <select class="sec-pick" aria-label="產業"></select>\n'
+        '      <div class="sec-sort" role="group" aria-label="排序">\n'
+        '        <button type="button" class="chip" data-sort="turnover" aria-pressed="true">成交值</button>\n'
+        '        <button type="button" class="chip" data-sort="up" aria-pressed="false">漲幅</button>\n'
+        '        <button type="button" class="chip" data-sort="down" aria-pressed="false">跌幅</button>\n'
+        '      </div>\n'
+        '    </div>\n'
+        '    <p class="sec-sum"></p>\n'
+        '    <div class="sec-table"></div>\n'
         '  </div>',
         '  <div class="subpanel ov" data-sub="flows" hidden>\n'
         '    <div class="ov-flow-tabs" role="group" aria-label="法人">\n'

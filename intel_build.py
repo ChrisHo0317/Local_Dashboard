@@ -34,7 +34,6 @@ QUARTERS = 12
 PE_MONTHS = 60
 ANN_KEEP = 30
 TOP_FLOW = 20
-SECTOR_TOP = 8
 
 
 def _r(x, n=2):
@@ -285,30 +284,37 @@ def _market_series(panel: pd.DataFrame, xm: pd.DataFrame) -> dict:
             "turnover": [_yi(v, 0) for v in daily["turnover"]]}
 
 
-def _sectors(panel: pd.DataFrame, master: pd.DataFrame, days: list) -> list[dict]:
+def _sectors(panel: pd.DataFrame, master: pd.DataFrame, days: list) -> dict:
+    """
+    類股：每個產業的加權漲跌、家數、成交值，以及「每一檔」的漲跌與成交值
+    （熱力圖點進產業、清單依成交值或漲跌排序都要用到全部股票）。
+    stocks：[[代號, 名稱, 產業序號, 收盤, 漲跌%, 成交值億]]
+    """
     if len(days) < 2:
-        return []
+        return {"asof": "", "industries": [], "stocks": []}
     last = panel[panel["date"] == days[-1]].set_index("code")
     prev = panel[panel["date"] == days[-2]].set_index("code")["close"]
     last = last[~last.index.str.startswith("00")]
     last = last.assign(chg=(last["close"] / prev.reindex(last.index) - 1) * 100)
     last = last.dropna(subset=["chg", "turnover"])
+    last = last[last["turnover"] > 0]
     ind = master.set_index("code")["industry"]
     last = last.assign(industry=ind.reindex(last.index).fillna("其他").replace("", "其他"),
                        name=master.set_index("code")["name"].reindex(last.index).fillna(""))
-    out = []
+    industries = []
     for industry, g in last.groupby("industry"):
         total = g["turnover"].sum()
-        if total <= 0:
-            continue
-        top = g.sort_values("turnover", ascending=False).head(SECTOR_TOP)
-        out.append({"industry": industry, "turnover": _yi(total, 1),
-                    "chg": _r((g["chg"] * g["turnover"]).sum() / total),
-                    "n": int(len(g)), "up": int((g["chg"] > 0).sum()),
-                    "down": int((g["chg"] < 0).sum()),
-                    "top": [[c, r["name"], _r(r["chg"]), _yi(r["turnover"], 1)]
-                            for c, r in top.iterrows()]})
-    return sorted(out, key=lambda s: s["turnover"] or 0, reverse=True)
+        industries.append({"industry": industry, "turnover": _yi(total, 1),
+                           "chg": _r((g["chg"] * g["turnover"]).sum() / total),
+                           "n": int(len(g)), "up": int((g["chg"] > 0).sum()),
+                           "down": int((g["chg"] < 0).sum())})
+    industries.sort(key=lambda s: s["turnover"] or 0, reverse=True)
+    index = {s["industry"]: i for i, s in enumerate(industries)}
+    stocks = [[code, r["name"], index[r["industry"]], _r(r["close"]), _r(r["chg"]),
+               _yi(r["turnover"], 2)]
+              for code, r in last.sort_values("turnover", ascending=False).iterrows()]
+    return {"asof": pd.Timestamp(days[-1]).strftime("%Y-%m-%d"),
+            "industries": industries, "stocks": stocks}
 
 
 def _flows(panel: pd.DataFrame, names: dict, latest) -> dict:
@@ -409,9 +415,10 @@ def build(out_dir: Path) -> dict:
                      "note": results[c["id"]]["note"]} for c in signals.CONDITIONS],
         "news": _news(watch_terms),
         "market": _market_series(panel, xm),
-        "sectors": _sectors(panel, master, days),
         "flows": _flows(panel, names, latest),
         "futures": _futures(),
     }
     _dump(overview, data_dir / "overview.json")
+    # 類股有全部股票的漲跌，比較大，點進類股子分頁才下載
+    _dump(_sectors(panel, master, days), data_dir / "sectors.json")
     return {"latest": latest.strftime("%Y-%m-%d"), "stocks": shards, "watch": len(watch)}

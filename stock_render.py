@@ -41,9 +41,11 @@ def _roc_month(value: str) -> str:
 
 
 def _roc_date(value: str) -> str:
-    """民國日期 1150903 → 115/09/03。"""
+    """民國日期 1150903 → 2026-09-03（與其他分頁的「最後更新日」同一種寫法）。"""
     value = str(value)
-    return f"{value[:3]}/{value[3:5]}/{value[5:]}" if len(value) == 7 else value
+    if len(value) == 7 and value.isdigit():
+        return f"{int(value[:3]) + 1911}-{value[3:5]}-{value[5:]}"
+    return value
 
 
 def stats(data: dict) -> dict:
@@ -128,10 +130,12 @@ def _query_html() -> str:
         '      </div>\n'
         '      <div class="sq-stats"></div>\n'
         '      <div class="sq-range" role="group" aria-label="顯示區間">\n'
+        '        <button type="button" class="chip" data-days="22" aria-pressed="false">1 個月</button>\n'
         '        <button type="button" class="chip" data-days="66" aria-pressed="true">3 個月</button>\n'
         '        <button type="button" class="chip" data-days="130" aria-pressed="false">6 個月</button>\n'
         '        <button type="button" class="chip" data-days="0" aria-pressed="false">1 年</button>\n'
         '      </div>\n'
+        '      <p class="sd-note zoom-hint"></p>\n'
         f'{blocks}'
         '      <section class="sd-sec" data-sec="sd-ann">\n'
         '        <h3 class="sd-h">重大訊息</h3>\n'

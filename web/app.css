@@ -558,3 +558,19 @@
   .spark.down path { stroke:var(--down); }
   .scr-more { width:100%; margin-top:8px; padding:8px; font-size:12px; color:var(--muted);
               border-radius:8px; }
+
+  /* 類股清單的產業選單與排序 */
+  .sec-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin:14px 0 8px; }
+  .sec-pick { font-size:16px; padding:7px 10px; border-radius:10px; max-width:100%;
+              background:var(--bg); color:var(--fg); border:1px solid var(--border);
+              font-family:inherit; }
+  .sec-sort { display:flex; gap:6px; }
+  .sec-sum { font-size:13px; color:var(--muted); margin:4px 0 6px; line-height:1.6; }
+  .sec-sum b { font-variant-numeric:tabular-nums; }
+  .ov-range, .sd .sq-range { flex-wrap:wrap; }
+  .zoom-hint { margin:2px 0 6px; }
+  /* 可以點的表頭（選股） */
+  .th-sort { border:0; background:none; padding:0; font:inherit; color:inherit;
+             cursor:pointer; white-space:nowrap; }
+  .th-sort:hover { color:var(--fg); }
+  .th-sort:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }

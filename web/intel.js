@@ -74,15 +74,101 @@
   }
 
   var CONFIG = {displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false};
+  var COARSE = window.matchMedia('(pointer: coarse)').matches;
 
   function plot(id, traces, L, touchOpts) {
     var gd = document.getElementById(id);
-    if (!gd) return;
+    if (!gd) return null;
     Plotly.react(gd, traces, L, CONFIG);
     if (!gd._touchBound && typeof initTouch === 'function') {
       initTouch(gd, touchOpts);
       gd._touchBound = true;
     }
+    return gd;
+  }
+
+  // ── 可縮放的時間序列圖（大盤、個股價量）─────────────────────
+  // 電腦：拖曳框選放大（只放大時間軸）、滾輪縮放、雙擊還原。
+  // 手機：雙指縮放、單指拖曳平移（initTouch）。
+  // 縱軸一律鎖住，改由程式依「看得到的那一段」重算，線才不會被一年內的高低點壓扁。
+  function zoomHint(box) {
+    if (box) {
+      box.textContent = COARSE ? '雙指可以放大縮小，單指左右拖曳看更早的資料。'
+                               : '在圖上拖曳框選可以放大，滾輪可以縮放，雙擊還原。';
+    }
+  }
+
+  function plotZoom(id, traces, L, n, rescale) {
+    var gd = document.getElementById(id);
+    if (!gd) return null;
+    L.dragmode = COARSE ? false : 'zoom';
+    Object.keys(L).forEach(function (k) {
+      if (k.indexOf('yaxis') === 0) L[k].fixedrange = true;
+    });
+    Plotly.react(gd, traces, L, {displayModeBar: false, responsive: true,
+                                 scrollZoom: !COARSE, doubleClick: COARSE ? false : 'reset'});
+    gd._n = n;
+    gd._rescale = rescale;
+    if (!gd._touchBound && typeof initTouch === 'function') {
+      initTouch(gd, {pan: true});
+      gd._touchBound = true;
+    }
+    if (!gd._windowBound) {
+      gd._windowBound = true;
+      gd.on('plotly_relayout', function (ev) {
+        if (gd._busy) return;
+        if (!Object.keys(ev || {}).some(function (k) { return k.indexOf('xaxis') === 0; })) return;
+        var r = gd._fullLayout.xaxis.range;
+        var from = Math.max(0, Math.ceil(r[0])), to = Math.min(gd._n - 1, Math.floor(r[1]));
+        if (to < from) return;
+        gd._busy = true;
+        var done = function () { gd._busy = false; };
+        Plotly.relayout(gd, gd._rescale(from, to)).then(done, done);
+      });
+    }
+    return gd;
+  }
+
+  // 一組序列在 [from, to] 之間的最小、最大值，上下各留一點空間
+  function span(arrays, from, to, withZero) {
+    var lo = withZero ? 0 : Infinity, hi = withZero ? 0 : -Infinity;
+    arrays.forEach(function (a) {
+      for (var i = from; i <= to && i < a.length; i++) {
+        var v = a[i];
+        if (v == null) continue;
+        if (v < lo) lo = v;
+        if (v > hi) hi = v;
+      }
+    });
+    if (lo === Infinity) return null;
+    var pad = (hi - lo) * 0.06 || Math.abs(hi) * 0.02 || 1;
+    return [lo - pad, hi + pad];
+  }
+
+  // 區間鈕：days＝最近幾個交易日，0＝全部
+  function windowFor(n, days) {
+    var from = days && n > days ? n - days : 0;
+    return {from: from, to: n - 1};
+  }
+
+  function setWindow(gd, days) {
+    if (!gd || !gd._fullLayout || !gd._n) return;
+    var w = windowFor(gd._n, days);
+    var up = gd._rescale(w.from, w.to);
+    up['xaxis.range'] = [w.from - 0.5, w.to + 0.5];
+    gd._busy = true;
+    var done = function () { gd._busy = false; };
+    Plotly.relayout(gd, up).then(done, done);
+  }
+
+  function bindChips(group, onPick) {
+    var chips = Array.prototype.slice.call(group.querySelectorAll('.chip'));
+    chips.forEach(function (c) {
+      c.addEventListener('click', function () {
+        chips.forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); });
+        onPick(c);
+      });
+    });
   }
 
   function failMsg(box, text) {
@@ -252,17 +338,33 @@
       news(pane.querySelector('.ov-news .ov-body'), d.news);
     }
 
+    var marketDays = 130;
+
     function market(pane, d) {
       var m = d.market || {};
       var c = palette();
+      var n = (m.t || []).length;
+      if (!n) { failMsg(document.getElementById('ov-market'), '沒有大盤資料。'); return; }
+      zoomHint(pane.querySelector('.zoom-hint'));
+      function rescale(from, to) {
+        var up = {};
+        var a = span([m.taiex], from, to);
+        if (a) up['yaxis.range'] = a;
+        var b = span([m.fi, m.tr], from, to, true);
+        if (b) up['yaxis2.range'] = b;
+        return up;
+      }
+      var w = windowFor(n, marketDays);
+      var init = rescale(w.from, w.to);
       var L = layout({
         xaxis: {type: 'category', gridcolor: c.grid, linecolor: c.grid, nticks: 7,
                 tickangle: 0, automargin: true, showspikes: true, spikemode: 'across',
-                spikethickness: 1, spikedash: 'dot', spikecolor: c.gray},
+                spikethickness: 1, spikedash: 'dot', spikecolor: c.gray,
+                range: [w.from - 0.5, w.to + 0.5]},
         yaxis: {domain: [0.42, 1], gridcolor: c.grid, tickformat: ',.0f', automargin: true,
-                title: {text: ''}},
+                title: {text: ''}, range: init['yaxis.range']},
         yaxis2: {domain: [0, 0.34], gridcolor: c.grid, zeroline: true, zerolinecolor: c.grid,
-                 automargin: true, tickformat: ',.0f'},
+                 automargin: true, tickformat: ',.0f', range: init['yaxis2.range']},
         barmode: 'group',
         annotations: [
           {text: '加權指數', xref: 'paper', yref: 'paper', x: 0, y: 1, xanchor: 'left',
@@ -272,61 +374,165 @@
         ],
         margin: {l: 56, r: 14, t: 20, b: 34}
       });
-      plot('ov-market', [
+      plotZoom('ov-market', [
         {type: 'scatter', mode: 'lines', x: m.t, y: m.taiex, name: '加權指數',
          line: {color: c.blue, width: 2}, hovertemplate: '%{y:,.2f}<extra>加權指數</extra>'},
         {type: 'bar', x: m.t, y: m.fi, name: '外資', yaxis: 'y2', marker: {color: c.orange},
          hovertemplate: '%{y:+,.1f} 億<extra>外資</extra>'},
         {type: 'bar', x: m.t, y: m.tr, name: '投信', yaxis: 'y2', marker: {color: c.purple},
          hovertemplate: '%{y:+,.1f} 億<extra>投信</extra>'}
-      ], L, {pan: true});
+      ], L, n, rescale);
     }
 
-    function sectors(pane, d) {
-      var list = d.sectors || [];
-      var c = palette();
-      plot('ov-sectors', [{
-        type: 'treemap',
-        labels: list.map(function (s) { return s.industry; }),
-        parents: list.map(function () { return ''; }),
-        values: list.map(function (s) { return s.turnover || 0; }),
-        customdata: list.map(function (s) { return [s.chg, s.up, s.down]; }),
+    bindChips(panel.querySelector('.ov-range'), function (chip) {
+      marketDays = Number(chip.dataset.days);
+      setWindow(document.getElementById('ov-market'), marketDays);
+    });
+
+    // ── 類股：熱力圖可以點進產業，下方清單列出產業裡每一檔，可依成交值或漲跌排序 ──
+    var LEAF = 30;            // 熱力圖每個產業最多畫幾檔（清單裡是全部）
+    var SEC_PAGE = 30;        // 清單一次列幾檔
+    var sec = {data: null, pick: -1, sort: 'turnover', shown: SEC_PAGE};
+
+    function secTreemap(pane) {
+      var d = sec.data, c = palette();
+      var ids = ['all'], labels = ['全市場'], parents = [''], values = [0], colors = [0],
+          custom = [[0, '', 0, 0]];
+      var total = 0, wsum = 0;
+      d.industries.forEach(function (s, i) {
+        var leaves = d.stocks.filter(function (x) { return x[2] === i; }).slice(0, LEAF);
+        var v = leaves.reduce(function (a, x) { return a + (x[5] || 0); }, 0);
+        if (!v) return;
+        ids.push('I' + i); labels.push(s.industry); parents.push('all'); values.push(v);
+        colors.push(s.chg); custom.push([s.chg, '', s.up, s.down]);
+        leaves.forEach(function (x) {
+          ids.push('S' + x[0]); labels.push(x[1] || x[0]); parents.push('I' + i);
+          values.push(x[5] || 0); colors.push(x[4]); custom.push([x[4], x[0], 0, 0]);
+        });
+        total += v;
+        wsum += (s.chg || 0) * v;
+      });
+      values[0] = total;
+      colors[0] = total ? wsum / total : 0;
+      custom[0][0] = colors[0];
+      var gd = plot('ov-sectors', [{
+        type: 'treemap', ids: ids, labels: labels, parents: parents, values: values,
+        branchvalues: 'total', maxdepth: 3, customdata: custom,
+        level: sec.pick >= 0 ? 'I' + sec.pick : 'all',
         texttemplate: '<b>%{label}</b><br>%{customdata[0]:+.2f}%',
-        hovertemplate: '%{label}<br>成交值 %{value:,.1f} 億<br>漲跌 %{customdata[0]:+.2f}%' +
-                       '<br>上漲 %{customdata[1]} 家　下跌 %{customdata[2]} 家<extra></extra>',
-        marker: {colors: list.map(function (s) { return s.chg; }),
-                 colorscale: [[0, c.down], [0.5, dark ? '#3a3f55' : '#f1f3f5'], [1, c.up]],
-                 cmin: -3, cmax: 3, cmid: 0, line: {width: 1, color: dark ? '#1e2130' : '#ffffff'}},
-        tiling: {pad: 1},
-        pathbar: {visible: false},
-        textfont: {color: c.text},
+        hovertemplate: '%{label}　%{customdata[1]}<br>成交值 %{value:,.2f} 億' +
+                       '<br>漲跌 %{customdata[0]:+.2f}%<extra></extra>',
+        marker: {colors: colors,
+                 colorscale: [[0, c.down], [0.5, dark ? '#3a3f55' : '#e9ecef'], [1, c.up]],
+                 cmin: -5, cmax: 5, cmid: 0,
+                 line: {width: 1, color: dark ? '#1e2130' : '#ffffff'}},
+        tiling: {pad: 2},
+        pathbar: {visible: true, thickness: 22, textfont: {size: 12, color: c.text}},
+        textfont: {color: dark ? '#ffffff' : '#212529'},
         sort: true
       }], layout({margin: {l: 0, r: 0, t: 0, b: 0}, hovermode: 'closest'}));
-
-      var box = pane.querySelector('.ov-sector-list');
-      box.textContent = '';
-      list.forEach(function (s) {
-        var det = el('details', 'ov-sector');
-        var sum = el('summary');
-        var left = el('span', null, s.industry + '　');
-        left.appendChild(el('span', dir(s.chg), signed(s.chg, 2, '%')));
-        sum.appendChild(left);
-        sum.appendChild(el('span', 'ov-sector-meta', fmt(s.turnover, 1) + ' 億　' + s.up + '↑ ' + s.down + '↓'));
-        det.appendChild(sum);
-        var t = el('table', 'ov-table');
-        s.top.forEach(function (r) {
-          var tr = el('tr', 'go');
-          var c0 = el('td');
-          c0.appendChild(el('span', 'ov-code', r[0]));
-          c0.appendChild(el('span', 'ov-name', r[1]));
-          tr.appendChild(c0);
-          tr.appendChild(el('td', dir(r[2]), signed(r[2], 2, '%')));
-          tr.appendChild(el('td', null, fmt(r[3], 1) + ' 億'));
-          tr.addEventListener('click', function () { openStock(r[0]); });
-          t.appendChild(tr);
+      if (gd && !gd._secBound) {
+        gd._secBound = true;
+        // 點個股＝打開深度頁（不放大）；點產業＝放大並讓下方清單換成那個產業
+        gd.on('plotly_treemapclick', function (ev) {
+          var p = ev && ev.points && ev.points[0];
+          if (!p) return;
+          if (String(p.id).charAt(0) === 'S') {
+            openStock(String(p.id).slice(1));
+            return false;
+          }
+          var next = String(ev.nextLevel || 'all');
+          sec.pick = next.charAt(0) === 'I' ? Number(next.slice(1)) : -1;
+          pane.querySelector('.sec-pick').value = String(sec.pick);
+          sec.shown = SEC_PAGE;
+          secList(pane);
         });
-        det.appendChild(t);
-        box.appendChild(det);
+      }
+    }
+
+    function secPicker(pane) {
+      var sel = pane.querySelector('.sec-pick');
+      if (sel.options.length) return;
+      var all = el('option', null, '全部產業（全市場排行）');
+      all.value = '-1';
+      sel.appendChild(all);
+      sec.data.industries.forEach(function (s, i) {
+        var o = el('option', null, s.industry + '（' + s.n + ' 檔）');
+        o.value = String(i);
+        sel.appendChild(o);
+      });
+      sel.addEventListener('change', function () {
+        sec.pick = Number(sel.value);
+        sec.shown = SEC_PAGE;
+        var gd = document.getElementById('ov-sectors');
+        if (gd && gd.data) Plotly.restyle(gd, {level: sec.pick >= 0 ? 'I' + sec.pick : 'all'});
+        secList(pane);
+      });
+      bindChips(pane.querySelector('.sec-sort'), function (chip) {
+        sec.sort = chip.dataset.sort;
+        sec.shown = SEC_PAGE;
+        secList(pane);
+      });
+    }
+
+    function secList(pane) {
+      var d = sec.data;
+      var rows = d.stocks.filter(function (x) { return sec.pick < 0 || x[2] === sec.pick; });
+      if (sec.sort === 'up') rows = rows.slice().sort(function (a, b) { return (b[4] || 0) - (a[4] || 0); });
+      else if (sec.sort === 'down') rows = rows.slice().sort(function (a, b) { return (a[4] || 0) - (b[4] || 0); });
+      var sum = pane.querySelector('.sec-sum');
+      sum.textContent = '';
+      if (sec.pick >= 0) {
+        var s = d.industries[sec.pick];
+        sum.appendChild(document.createTextNode(s.industry + '　加權漲跌 '));
+        sum.appendChild(el('b', dir(s.chg), signed(s.chg, 2, '%')));
+        sum.appendChild(document.createTextNode('　上漲 ' + s.up + ' 家、下跌 ' + s.down +
+                                                ' 家　成交值 ' + fmt(s.turnover, 1) + ' 億'));
+      } else {
+        sum.textContent = '全市場 ' + rows.length + ' 檔（不含 ETF）';
+      }
+      var box = pane.querySelector('.sec-table');
+      box.textContent = '';
+      var t = el('table', 'ov-table');
+      var h = el('tr');
+      ['股票', '收盤', '漲跌', '成交值（億）'].forEach(function (x) { h.appendChild(el('th', null, x)); });
+      var thead = el('thead'); thead.appendChild(h); t.appendChild(thead);
+      var tb = el('tbody');
+      rows.slice(0, sec.shown).forEach(function (x, i) {
+        var tr = el('tr', 'go');
+        var c0 = el('td');
+        c0.appendChild(el('span', 'ov-name', (i + 1) + '.'));
+        c0.appendChild(el('span', 'ov-code', ' ' + x[0]));
+        c0.appendChild(el('span', 'ov-name', x[1]));
+        if (sec.pick < 0) c0.appendChild(el('span', 'scr-reason', d.industries[x[2]].industry));
+        tr.appendChild(c0);
+        tr.appendChild(el('td', null, fmt(x[3], 2)));
+        tr.appendChild(el('td', dir(x[4]), signed(x[4], 2, '%')));
+        tr.appendChild(el('td', null, fmt(x[5], 2)));
+        tr.addEventListener('click', function () { openStock(x[0]); });
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb);
+      var wrap = el('div', 'ov-table-wrap');
+      wrap.appendChild(t);
+      box.appendChild(wrap);
+      if (rows.length > sec.shown) {
+        var more = el('button', 'scr-more', '再顯示 ' + Math.min(SEC_PAGE * 2, rows.length - sec.shown) +
+                      ' 檔（共 ' + rows.length + ' 檔）');
+        more.type = 'button';
+        more.addEventListener('click', function () { sec.shown += SEC_PAGE * 2; secList(pane); });
+        box.appendChild(more);
+      }
+    }
+
+    function sectors(pane) {
+      return getJSON('data/sectors.json').then(function (d) {
+        sec.data = d;
+        pane.querySelector('.ov-asof').textContent = '資料日期 ' + d.asof + '（盤後）　·　' +
+          '點產業放大，點最上方的標題回到上一層，點個股看深度頁';
+        secPicker(pane);
+        secTreemap(pane);
+        secList(pane);
       });
     }
 
@@ -395,8 +601,12 @@
       if (!sub || !RENDER[sub]) return;
       var pane = panel.querySelector('.subpanel[data-sub="' + sub + '"]');
       if (!shown(pane)) return;
-      load().then(function (d) { RENDER[sub](pane, d); syncSticky(); })
-        .catch(function () { failMsg(pane.querySelector('.ov-body') || pane); });
+      load().then(function (d) { return RENDER[sub](pane, d); })
+        .then(function () { syncSticky(); })
+        .catch(function () {
+          failMsg(pane.querySelector('.ov-body') || pane.querySelector('.sec-table') ||
+                  pane.querySelector('.ichart') || pane);
+        });
     }
 
     onShow(panel, show);
@@ -469,47 +679,22 @@
     });
     document.addEventListener('click', function (e) { if (!pane.contains(e.target)) sug.hidden = true; });
 
-    Array.prototype.slice.call(pane.querySelectorAll('.sq-range .chip')).forEach(function (c) {
-      c.addEventListener('click', function () {
-        Array.prototype.slice.call(pane.querySelectorAll('.sq-range .chip')).forEach(function (x) {
-          x.setAttribute('aria-pressed', String(x === c));
-        });
-        days = Number(c.dataset.days);
-        applyRange();
-      });
+    bindChips(pane.querySelector('.sq-range'), function (c) {
+      days = Number(c.dataset.days);
+      setWindow(document.getElementById('sd-price'), days);
     });
 
-    // 切換區間時四個縱軸都依「看得到的那一段」重算，否則一年內的高低點會把線壓扁
-    function span(arrays, from) {
-      var lo = Infinity, hi = -Infinity;
-      arrays.forEach(function (a) {
-        for (var i = from; i < a.length; i++) {
-          var v = a[i];
-          if (v == null) continue;
-          if (v < lo) lo = v;
-          if (v > hi) hi = v;
-        }
-      });
-      if (lo === Infinity) return null;
-      var pad = (hi - lo) * 0.06 || Math.abs(hi) * 0.02 || 1;
-      return [lo - pad, hi + pad];
-    }
-
-    function applyRange() {
-      var gd = document.getElementById('sd-price');
-      if (!current || !gd || !gd._fullLayout) return;
-      var d = current.d, n = d.t.length;
-      var from = days && n > days ? n - days : 0;
-      var up = {'xaxis.range': [from - 0.5, n - 0.5]};
-      var price = span([d.l, d.h], from);
-      if (price) up['yaxis.range'] = price;
-      var vol = span([d.v], from);
-      if (vol) up['yaxis2.range'] = [0, vol[1]];
-      var net = span([d.fi, d.tr, d.de], from);
-      if (net) {
-        // 堆疊長條：用同一天正、負各自加總的最大值，才不會被切掉
+    // 四個縱軸都依「看得到的那一段」重算，否則一年內的高低點會把線壓扁
+    function priceRescale(d) {
+      return function (from, to) {
+        var up = {};
+        var price = span([d.l, d.h], from, to);
+        if (price) up['yaxis.range'] = price;
+        var vol = span([d.v], from, to, true);
+        if (vol) up['yaxis2.range'] = [0, vol[1]];
+        // 法人是堆疊長條：用同一天正、負各自加總的最大值，才不會被切掉
         var pos = 0, neg = 0;
-        for (var i = from; i < n; i++) {
+        for (var i = from; i <= to; i++) {
           var p = 0, q = 0;
           [d.fi[i], d.tr[i], d.de[i]].forEach(function (v) { if (v > 0) p += v; else if (v < 0) q += v; });
           if (p > pos) pos = p;
@@ -517,10 +702,10 @@
         }
         var pad = (pos - neg) * 0.06 || 1;
         up['yaxis3.range'] = [neg - pad, pos + pad];
-      }
-      var mb = span([d.mb], from);
-      if (mb) up['yaxis4.range'] = mb;
-      Plotly.relayout(gd, up);
+        var mb = span([d.mb], from, to);
+        if (mb) up['yaxis4.range'] = mb;
+        return up;
+      };
     }
 
     function stat(label, value, cls) {
@@ -592,8 +777,13 @@
         {type: 'scatter', mode: 'lines', x: d.t, y: d.mb, yaxis: 'y4', name: '融資',
          line: {color: c.blue, width: 1.5}, hovertemplate: '%{y:,.0f} 張<extra>融資</extra>'}
       ];
-      plot('sd-price', traces, L, {pan: true});
-      applyRange();
+      var n = d.t.length, rescale = priceRescale(d), w = windowFor(n, days);
+      var init = rescale(w.from, w.to);
+      L.xaxis.range = [w.from - 0.5, w.to + 0.5];
+      ['yaxis', 'yaxis2', 'yaxis3', 'yaxis4'].forEach(function (k) {
+        if (init[k + '.range']) L[k].range = init[k + '.range'];
+      });
+      plotZoom('sd-price', traces, L, n, rescale);
     }
 
     function drawRevenue(s) {
@@ -723,6 +913,7 @@
         (s.market === 'tpex' ? '上櫃' : '上市') + (s.industry ? '　·　' + s.industry : '') +
         '　·　資料日期 ' + s.asof;
       pane.querySelector('.sd-edit').href = EDIT_URL;
+      zoomHint(pane.querySelector('.zoom-hint'));
       var st = pane.querySelector('.sq-stats');
       st.textContent = '';
       st.appendChild(stat('收盤', fmt(last, 2)));
@@ -810,35 +1001,74 @@
       var wrap = el('div', 'ov-table-wrap');
       var t = el('table', 'ov-table scr-table');
       var h = el('tr');
-      ['股票', '收盤', '漲跌', '近 20 日'].forEach(function (x) { h.appendChild(el('th', null, x)); });
-      var thead = el('thead'); thead.appendChild(h); t.appendChild(thead);
       var tb = el('tbody');
-      c.hits.forEach(function (r, i) {
-        var tr = el('tr', 'go');
-        if (i >= SHOW) tr.hidden = true;
-        var c0 = el('td');
-        c0.appendChild(el('span', 'ov-code', r.code));
-        c0.appendChild(el('span', 'ov-name', r.name));
-        c0.appendChild(el('span', 'scr-reason', r.reason + (r.industry ? '　·　' + r.industry : '')));
-        tr.appendChild(c0);
-        tr.appendChild(el('td', null, fmt(r.close, 2)));
-        tr.appendChild(el('td', dir(r.chg), signed(r.chg, 2, '%')));
-        var c3 = el('td');
-        c3.appendChild(sparkSvg(r.spark));
-        tr.appendChild(c3);
-        tr.addEventListener('click', function () { openStock(r.code); });
-        tb.appendChild(tr);
+      var state = {key: null, desc: true, all: false};
+      // 表頭可以點：收盤、漲跌依數字排序（再點一次反過來）；點「股票」回到條件本身的排序
+      var cols = [['股票', null], ['收盤', 'close'], ['漲跌', 'chg'], ['近 20 日', undefined]];
+      var heads = cols.map(function (col) {
+        var th = el('th');
+        if (col[1] === undefined) { th.textContent = col[0]; h.appendChild(th); return th; }
+        var b = el('button', 'th-sort', col[0]);
+        b.type = 'button';
+        b.addEventListener('click', function () {
+          if (col[1] === null) { state.key = null; }
+          else if (state.key === col[1]) { state.desc = !state.desc; }
+          else { state.key = col[1]; state.desc = true; }
+          fill();
+        });
+        th.appendChild(b);
+        h.appendChild(th);
+        return th;
       });
+      var thead = el('thead'); thead.appendChild(h); t.appendChild(thead);
+      var more = null;
+
+      function fill() {
+        var rows = c.hits.slice();
+        if (state.key) {
+          rows.sort(function (a, b) {
+            var x = a[state.key], y = b[state.key];
+            if (x == null) return 1;
+            if (y == null) return -1;
+            return state.desc ? y - x : x - y;
+          });
+        }
+        heads.forEach(function (th, i) {
+          var key = cols[i][1];
+          if (key === undefined) return;
+          var on = key === null ? !state.key : state.key === key;
+          th.setAttribute('aria-sort', on && key ? (state.desc ? 'descending' : 'ascending') : 'none');
+          th.querySelector('button').textContent = cols[i][0] +
+            (on && key ? (state.desc ? ' ↓' : ' ↑') : (on ? ' ·' : ''));
+        });
+        tb.textContent = '';
+        rows.forEach(function (r, i) {
+          var tr = el('tr', 'go');
+          if (i >= SHOW && !state.all) tr.hidden = true;
+          var c0 = el('td');
+          c0.appendChild(el('span', 'ov-code', r.code));
+          c0.appendChild(el('span', 'ov-name', r.name));
+          c0.appendChild(el('span', 'scr-reason', r.reason + (r.industry ? '　·　' + r.industry : '')));
+          tr.appendChild(c0);
+          tr.appendChild(el('td', null, fmt(r.close, 2)));
+          tr.appendChild(el('td', dir(r.chg), signed(r.chg, 2, '%')));
+          var c3 = el('td');
+          c3.appendChild(sparkSvg(r.spark));
+          tr.appendChild(c3);
+          tr.addEventListener('click', function () { openStock(r.code); });
+          tb.appendChild(tr);
+        });
+        if (more) more.hidden = state.all || c.hits.length <= SHOW;
+      }
+
       t.appendChild(tb); wrap.appendChild(t); sec.appendChild(wrap);
       if (c.hits.length > SHOW) {
-        var more = el('button', 'scr-more', '顯示全部 ' + c.hits.length + ' 檔');
+        more = el('button', 'scr-more', '顯示全部 ' + c.hits.length + ' 檔');
         more.type = 'button';
-        more.addEventListener('click', function () {
-          Array.prototype.slice.call(tb.children).forEach(function (x) { x.hidden = false; });
-          more.remove();
-        });
+        more.addEventListener('click', function () { state.all = true; fill(); });
         sec.appendChild(more);
       }
+      fill();
       return sec;
     }
 
