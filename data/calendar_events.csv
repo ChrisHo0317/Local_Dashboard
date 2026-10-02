@@ -488,10 +488,12 @@ event_time,country,title,impact,forecast,previous
 2026-10-01T07:55:00Z,DE,HCOB Manufacturing PMI,Medium,53.8,53.8
 2026-10-01T08:20:00Z,EMU,ECB's Cipollone speech,Medium,,
 2026-10-01T09:00:00Z,EMU,Harmonized Index of Consumer Prices (MoM),High,,
+2026-10-01T09:00:00Z,EMU,Unemployment Rate,Medium,,6.4
 2026-10-01T09:30:00Z,US,Challenger Job Cuts,Medium,,52.881
 2026-10-01T10:35:00Z,EMU,ECB's Nagel speech,Medium,,
 2026-10-01T10:35:00Z,EMU,ECB's Villeroy speech,Medium,,
 2026-10-01T11:30:00Z,US,Challenger Job Cuts,Medium,,52.881
+2026-10-01T11:45:00Z,US,Fed's Kashkari speech,Medium,,
 2026-10-01T12:00:00Z,UK,BoE's Mann speech,Medium,,
 2026-10-01T12:30:00Z,US,Initial Jobless Claims,Medium,199,197
 2026-10-01T13:30:00Z,EMU,ECB's President Lagarde speech,High,,
@@ -504,10 +506,12 @@ event_time,country,title,impact,forecast,previous
 2026-10-01T14:00:00Z,US,ISM Manufacturing New Orders Index,Medium,,53.7
 2026-10-01T15:30:00Z,EMU,ECB's Schnabel speech,Medium,,
 2026-10-01T17:30:00Z,US,Fed's Jefferson speech,Medium,,
+2026-10-01T17:40:00Z,US,Fed's Kashkari speech,Medium,,
 2026-10-01T19:00:00Z,US,Fed's Bowman speech,Medium,,
 2026-10-01T19:30:00Z,US,Fed's Cook speech,Medium,,
 2026-10-01T19:30:00Z,US,Fed's Williams speech,Medium,,
 2026-10-01T21:00:00Z,NZ,ANZ – Roy Morgan Consumer Confidence,Medium,,98
+2026-10-01T23:00:00Z,US,Fed's Logan speech,Medium,,
 2026-10-01T23:30:00Z,JP,Tokyo Consumer Price Index (YoY),High,,1.9
 2026-10-01T23:30:00Z,JP,Unemployment Rate,Medium,2.4,2.4
 2026-10-01T23:30:00Z,JP,"Tokyo CPI ex Food, Energy (YoY)",High,,2
@@ -525,7 +529,7 @@ event_time,country,title,impact,forecast,previous
 2026-10-02T12:30:00Z,US,Unemployment Rate,Medium,4.2,4.1
 2026-10-02T12:30:00Z,US,Average Hourly Earnings (MoM),High,0.3,0.3
 2026-10-02T12:30:00Z,US,Nonfarm Payrolls,High,100,162
-2026-10-02T12:30:00Z,US,Average Hourly Earnings (YoY),High,,3.1
+2026-10-02T12:30:00Z,US,Average Hourly Earnings (YoY),High,3.2,3.1
 2026-10-02T12:30:00Z,US,Labor Force Participation Rate,Medium,,61.6
 2026-10-02T14:00:00Z,US,Factory Orders (MoM),Medium,-0.1,0.9
 2026-10-02T19:35:00Z,EMU,ECB's Nagel speech,Medium,,
@@ -575,7 +579,7 @@ event_time,country,title,impact,forecast,previous
 2026-10-08T08:00:00Z,EMU,Eurogroup Meeting,Medium,,
 2026-10-08T11:30:00Z,EMU,ECB Monetary Policy Meeting Accounts,High,,
 2026-10-08T12:00:00Z,MX,Headline Inflation,Medium,,0.2
-2026-10-08T12:30:00Z,US,Initial Jobless Claims,Medium,,
+2026-10-08T12:30:00Z,US,Initial Jobless Claims,Medium,,197
 2026-10-08T13:00:00Z,UK,BoE's Lombardelli speech,Medium,,
 2026-10-08T14:00:00Z,CA,Ivey Purchasing Managers Index s.a,Medium,,64.3
 2026-10-08T14:00:00Z,CA,Ivey Purchasing Managers Index,Medium,,62.7
@@ -723,18 +727,18 @@ event_time,country,title,impact,forecast,previous
 2026-10-23T06:00:00Z,UK,Retail Sales ex-Fuel (YoY),Medium,,2.7
 2026-10-23T07:15:00Z,FR,HCOB Composite PMI,Medium,,
 2026-10-23T07:15:00Z,FR,HCOB Services PMI,Medium,,
-2026-10-23T07:15:00Z,FR,HCOB Manufacturing PMI,Medium,,
-2026-10-23T07:30:00Z,DE,HCOB Manufacturing PMI,High,,
+2026-10-23T07:15:00Z,FR,HCOB Manufacturing PMI,Medium,,50.6
+2026-10-23T07:30:00Z,DE,HCOB Manufacturing PMI,High,,53.9
 2026-10-23T07:30:00Z,DE,HCOB Services PMI,High,,
 2026-10-23T07:30:00Z,DE,HCOB Composite PMI,High,,
 2026-10-23T08:00:00Z,EMU,HCOB Services PMI,High,,
-2026-10-23T08:00:00Z,EMU,HCOB Manufacturing PMI,High,,
+2026-10-23T08:00:00Z,EMU,HCOB Manufacturing PMI,High,,52.9
 2026-10-23T08:00:00Z,EMU,HCOB Composite PMI,High,,
 2026-10-23T08:30:00Z,UK,S&P Global Composite PMI,High,,
 2026-10-23T08:30:00Z,UK,S&P Global Services PMI,High,,
-2026-10-23T08:30:00Z,UK,S&P Global Manufacturing PMI,High,,
+2026-10-23T08:30:00Z,UK,S&P Global Manufacturing PMI,High,,51.9
 2026-10-23T10:30:00Z,RU,Interest Rate Decision,Medium,,14
-2026-10-23T13:45:00Z,US,S&P Global Manufacturing PMI,High,,
+2026-10-23T13:45:00Z,US,S&P Global Manufacturing PMI,High,,55.9
 2026-10-23T13:45:00Z,US,S&P Global Services PMI,High,,
 2026-10-23T13:45:00Z,US,S&P Global Composite PMI,Medium,,
 2026-10-23T14:00:00Z,US,Michigan Consumer Sentiment Index,Medium,,
@@ -787,11 +791,11 @@ event_time,country,title,impact,forecast,previous
 2026-10-29T13:15:00Z,EMU,ECB Rate On Deposit Facility,High,,2.5
 2026-10-29T13:45:00Z,EMU,ECB Press Conference,High,,
 2026-10-29T14:00:00Z,US,Pending Home Sales (MoM),Medium,,
-2026-10-29T21:00:00Z,NZ,ANZ – Roy Morgan Consumer Confidence,Medium,,
-2026-10-29T23:30:00Z,JP,Tokyo CPI ex Fresh Food (YoY),Medium,,
-2026-10-29T23:30:00Z,JP,Tokyo Consumer Price Index (YoY),High,,
-2026-10-29T23:30:00Z,JP,Unemployment Rate,Medium,,
-2026-10-29T23:30:00Z,JP,"Tokyo CPI ex Food, Energy (YoY)",High,,
+2026-10-29T21:00:00Z,NZ,ANZ – Roy Morgan Consumer Confidence,Medium,,97.6
+2026-10-29T23:30:00Z,JP,Tokyo CPI ex Fresh Food (YoY),Medium,,2.7
+2026-10-29T23:30:00Z,JP,Tokyo Consumer Price Index (YoY),High,,2.7
+2026-10-29T23:30:00Z,JP,Unemployment Rate,Medium,,2.5
+2026-10-29T23:30:00Z,JP,"Tokyo CPI ex Food, Energy (YoY)",High,,3
 2026-10-29T23:50:00Z,JP,Large Retailer Sales,Medium,,1
 2026-10-29T23:50:00Z,JP,Retail Trade s.a (MoM),Medium,,-1.2
 2026-10-29T23:50:00Z,JP,Retail Trade (YoY),Medium,,2.7
@@ -836,14 +840,14 @@ event_time,country,title,impact,forecast,previous
 2026-11-02T07:00:00Z,DE,Retail Sales (MoM),Medium,,1.3
 2026-11-02T07:00:00Z,DE,Retail Sales (YoY),High,,-0.4
 2026-11-02T07:30:00Z,CH,Real Retail Sales (YoY),Medium,,3.2
-2026-11-02T08:15:00Z,ES,HCOB Manufacturing PMI,Medium,,
-2026-11-02T08:45:00Z,IT,HCOB Manufacturing PMI,Medium,,
+2026-11-02T08:15:00Z,ES,HCOB Manufacturing PMI,Medium,,51
+2026-11-02T08:45:00Z,IT,HCOB Manufacturing PMI,Medium,,50.4
 2026-11-02T08:55:00Z,DE,HCOB Manufacturing PMI,Medium,,
-2026-11-02T14:00:00Z,US,ISM Manufacturing Employment Index,Medium,,
-2026-11-02T14:00:00Z,US,ISM Manufacturing New Orders Index,Medium,,
-2026-11-02T14:00:00Z,US,ISM Manufacturing PMI,High,,
-2026-11-02T14:00:00Z,US,ISM Manufacturing Prices Paid,Medium,,
-2026-11-02T14:30:00Z,CA,S&P Global Manufacturing PMI,Medium,,
+2026-11-02T14:00:00Z,US,ISM Manufacturing Employment Index,Medium,,52.7
+2026-11-02T14:00:00Z,US,ISM Manufacturing New Orders Index,Medium,,55.3
+2026-11-02T14:00:00Z,US,ISM Manufacturing PMI,High,,54.5
+2026-11-02T14:00:00Z,US,ISM Manufacturing Prices Paid,Medium,,77.9
+2026-11-02T14:30:00Z,CA,S&P Global Manufacturing PMI,Medium,,51.5
 2026-11-02T21:45:00Z,NZ,Building Permits s.a. (MoM),Medium,,5.6
 2026-11-03T00:30:00Z,AU,Building Permits (MoM),Medium,,-6.1
 2026-11-03T03:30:00Z,AU,RBA Interest Rate Decision,High,,4.6
@@ -875,7 +879,7 @@ event_time,country,title,impact,forecast,previous
 2026-11-04T10:00:00Z,EMU,Core Harmonized Index of Consumer Prices (MoM),High,,
 2026-11-04T10:00:00Z,EMU,Core Harmonized Index of Consumer Prices (YoY),High,,
 2026-11-04T10:00:00Z,EMU,Harmonized Index of Consumer Prices (YoY),High,,
-2026-11-04T10:00:00Z,EMU,Unemployment Rate,Medium,,
+2026-11-04T10:00:00Z,EMU,Unemployment Rate,Medium,,6.4
 2026-11-04T12:15:00Z,US,ADP Employment Change,High,,90
 2026-11-04T13:45:00Z,US,S&P Global Composite PMI,Medium,,
 2026-11-04T14:00:00Z,US,ISM Services Employment Index,Medium,,
@@ -889,7 +893,7 @@ event_time,country,title,impact,forecast,previous
 2026-11-05T07:00:00Z,DE,Factory Orders n.s.a. (YoY),Medium,,
 2026-11-05T07:00:00Z,DE,Factory Orders s.a. (MoM),Medium,,
 2026-11-05T09:00:00Z,NO,Norges Bank Interest Rate Decision,Medium,,4.5
-2026-11-05T09:30:00Z,US,Challenger Job Cuts,Medium,,
+2026-11-05T09:30:00Z,US,Challenger Job Cuts,Medium,,43.281
 2026-11-05T10:00:00Z,EMU,Producer Price Index (MoM),Medium,,
 2026-11-05T10:00:00Z,EMU,Producer Price Index (YoY),Medium,,
 2026-11-05T12:00:00Z,UK,BoE Interest Rate Decision,High,,3.75
