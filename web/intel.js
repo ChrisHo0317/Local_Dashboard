@@ -2022,8 +2022,444 @@
       });
     }
 
+    // ── 持股風控：持股只存在這個瀏覽器（localStorage），不會上傳 ─────────────
+    var HOLD_KEY = 'dash-holdings-v1', RISK_KEY = 'dash-risk-v1';
+    var hd = {list: [], risk: {capital: 0, riskPct: 1, groupMax: 30}, shards: {}, names: null,
+              groups: {}, editing: null, confirmClear: false};
+
+    function hdLoad() {
+      try { hd.list = JSON.parse(localStorage.getItem(HOLD_KEY) || '[]') || []; } catch (e) { hd.list = []; }
+      try {
+        var r = JSON.parse(localStorage.getItem(RISK_KEY) || 'null');
+        if (r) hd.risk = {capital: +r.capital || 0, riskPct: +r.riskPct || 1, groupMax: +r.groupMax || 30};
+      } catch (e) { /* 沒有設定就用預設 */ }
+    }
+    function hdSave() {
+      try {
+        localStorage.setItem(HOLD_KEY, JSON.stringify(hd.list));
+        localStorage.setItem(RISK_KEY, JSON.stringify(hd.risk));
+      } catch (e) { /* 私密瀏覽等情況存不了，畫面照常 */ }
+    }
+
+    function hdShard(code) {
+      if (!hd.shards[code]) {
+        hd.shards[code] = fetch('data/stock/' + encodeURIComponent(code) + '.json?v=' + VERSION)
+          .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+          .catch(function (e) { delete hd.shards[code]; throw e; });
+      }
+      return hd.shards[code];
+    }
+
+    // 近 14 日平均真實波幅（ATR）
+    function hdAtr(d, n) {
+      n = n || 14;
+      var c = d.c, h = d.h, l = d.l, tr = [];
+      for (var i = 1; i < c.length; i++) {
+        if (h[i] == null || l[i] == null || c[i - 1] == null) continue;
+        tr.push(Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])));
+      }
+      var last = tr.slice(-n);
+      return last.length ? last.reduce(function (a, b) { return a + b; }, 0) / last.length : null;
+    }
+
+    // 一檔持股的現況（價格用最新收盤；報酬沒有計入已領股利）
+    function hdRow(h, s) {
+      var d = s.d, n = d.c.length - 1, last = d.c[n], prev = d.c[n - 1];
+      var atr = hdAtr(d);
+      var stop = h.stop > 0 ? h.stop : (atr ? Math.max(0, h.cost - 2 * atr) : null);
+      var value = last * h.qty, pnl = (last - h.cost) * h.qty;
+      var g = hd.groups[h.code];
+      return {h: h, name: s.name, last: last, chg: prev ? (last / prev - 1) * 100 : null,
+              value: value, pnl: pnl, pnlPct: (last / h.cost - 1) * 100, atr: atr, stop: stop,
+              stopAuto: !(h.stop > 0), gap: stop ? (last / stop - 1) * 100 : null,
+              group: g ? g[0] : (s.industry || '其他'), groupLinked: g ? g[1] : false,
+              flag: s.flag || null, d: d};
+    }
+
+    function hdStatus(r) {
+      if (r.stop && r.last <= r.stop) return ['觸及停損', 'is-bad'];
+      if (r.gap != null && r.gap < 3) return ['接近停損', 'is-warn'];
+      return null;
+    }
+
+    function hdSummary(pane, rows) {
+      var box = pane.querySelector('.hd-summary');
+      box.textContent = '';
+      var value = 0, cost = 0;
+      rows.forEach(function (r) { value += r.value; cost += r.h.cost * r.h.qty; });
+      var pnl = value - cost;
+      var tiles = [['持股市值', fmt(value, 0) + ' 元', rows.length + ' 檔'],
+                   ['未實現損益', signed(pnl, 0) + ' 元', signed(cost ? pnl / cost * 100 : null, 2, '%'), dir(pnl)]];
+      if (hd.risk.capital > 0) {
+        tiles.push(['持股比重', fmt(value / hd.risk.capital * 100, 1) + '%',
+                    '總資金 ' + fmt(hd.risk.capital, 0) + ' 元']);
+      }
+      tiles.forEach(function (t) {
+        var b = el('div', 'ck-tile');
+        b.appendChild(el('span', 'ck-tile-k', t[0]));
+        b.appendChild(el('b', t[3] || '', t[1]));
+        b.appendChild(el('span', 'ck-tile-d', t[2]));
+        box.appendChild(b);
+      });
+      return {value: value, cost: cost};
+    }
+
+    function hdAlerts(pane, rows, total) {
+      var box = pane.querySelector('.hd-alerts');
+      box.textContent = '';
+      var msgs = [];
+      rows.forEach(function (r) {
+        var st = hdStatus(r);
+        if (st) msgs.push([st[1], r.h.code + ' ' + r.name + ' ' + st[0] + '：收盤 ' + fmt(r.last, 2) +
+                                  '，停損 ' + fmt(r.stop, 2) + (r.stopAuto ? '（預設：成本 − 2 × ATR）' : '')]);
+        if (r.flag) msgs.push(['is-warn', r.h.code + ' ' + r.name + ' 是' + r.flag[0] + '股' +
+                               (r.flag[0] === '處置' ? '（' + r.flag[1] + '～' + r.flag[2] + '，交易受限）' : '')]);
+      });
+      var by = {};
+      rows.forEach(function (r) { by[r.group] = (by[r.group] || 0) + r.value; });
+      Object.keys(by).forEach(function (g) {
+        var pct = total.value ? by[g] / total.value * 100 : 0;
+        if (pct > hd.risk.groupMax && rows.length > 1) {
+          msgs.push(['is-warn', '「' + g + '」占持股 ' + fmt(pct, 1) + '%，超過上限 ' + hd.risk.groupMax + '%']);
+        }
+      });
+      if (!msgs.length) {
+        box.appendChild(el('p', 'sd-note', rows.length ? '沒有觸及停損、沒有超過族群上限。' : ''));
+        return;
+      }
+      var ul = el('ul', 'ck-list hd-warn');
+      msgs.forEach(function (m) { ul.appendChild(el('li', m[0], m[1])); });
+      box.appendChild(ul);
+    }
+
+    function hdTable(pane, rows) {
+      var box = pane.querySelector('.hd-table');
+      box.textContent = '';
+      if (!rows.length) {
+        box.appendChild(el('p', 'ov-empty', '還沒有持股。用下面的表單加入第一筆（只會存在這個瀏覽器）。'));
+        return;
+      }
+      var t = el('table', 'ov-table');
+      var hr = el('tr');
+      ['股票', '股數', '成本', '收盤', '損益', '停損', '族群', ''].forEach(function (x) { hr.appendChild(el('th', null, x)); });
+      var thead = el('thead'); thead.appendChild(hr); t.appendChild(thead);
+      var tb = el('tbody');
+      rows.forEach(function (r) {
+        var tr = el('tr');
+        var c0 = el('td');
+        var link = el('button', 'rec-stock', r.h.code + ' ' + r.name);
+        link.type = 'button';
+        link.addEventListener('click', function () { openStock(r.h.code); });
+        c0.appendChild(link);
+        var fb = flagBadge(r.h.code, r.flag && r.flag[0]);
+        if (fb) c0.appendChild(fb);
+        var st = hdStatus(r);
+        if (st) c0.appendChild(el('span', 'hd-state ' + st[1], st[0]));
+        if (r.h.note) c0.appendChild(el('span', 'scr-reason', r.h.note));
+        tr.appendChild(c0);
+        tr.appendChild(el('td', null, fmt(r.h.qty, 0)));
+        tr.appendChild(el('td', null, fmt(r.h.cost, 2)));
+        tr.appendChild(el('td', dir(r.chg), fmt(r.last, 2)));
+        var pl = el('td', dir(r.pnl));
+        pl.appendChild(el('span', null, signed(r.pnl, 0)));
+        pl.appendChild(el('span', 'scr-reason', signed(r.pnlPct, 2, '%')));
+        tr.appendChild(pl);
+        var sp = el('td');
+        sp.appendChild(el('span', null, r.stop ? fmt(r.stop, 2) : '—'));
+        sp.appendChild(el('span', 'scr-reason', (r.stopAuto ? '預設　' : '') +
+                          (r.gap == null ? '' : '距離 ' + signed(r.gap, 1, '%'))));
+        tr.appendChild(sp);
+        tr.appendChild(el('td', null, r.group + (r.groupLinked ? '（族群連動）' : '')));
+        var act = el('td');
+        var edit = el('button', 'chip', '編輯');
+        edit.type = 'button';
+        edit.addEventListener('click', function () { hdEdit(pane, r.h); });
+        var del = el('button', 'chip', '刪除');
+        del.type = 'button';
+        del.addEventListener('click', function () {
+          if (del.dataset.armed) {
+            hd.list = hd.list.filter(function (x) { return x.id !== r.h.id; });
+            hdSave();
+            hdDraw(pane);
+          } else {
+            del.dataset.armed = '1';
+            del.textContent = '確定刪除？';
+          }
+        });
+        act.appendChild(edit);
+        act.appendChild(del);
+        tr.appendChild(act);
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb);
+      var wrap = el('div', 'ov-table-wrap');
+      wrap.appendChild(t);
+      box.appendChild(wrap);
+    }
+
+    function hdGroups(rows, total) {
+      var gd = document.getElementById('ov-hold-groups'), c = palette();
+      if (!rows.length) { gd.hidden = true; return; }
+      gd.hidden = false;
+      var by = {};
+      rows.forEach(function (r) { by[r.group] = (by[r.group] || 0) + r.value; });
+      var keys = Object.keys(by).sort(function (a, b) { return by[a] - by[b]; });
+      var pct = keys.map(function (k) { return by[k] / total.value * 100; });
+      gd.style.height = (50 + 30 * keys.length) + 'px';
+      Plotly.react(gd, [{
+        type: 'bar', orientation: 'h', y: keys, x: pct,
+        marker: {color: pct.map(function (p) { return p > hd.risk.groupMax ? c.orange : c.blue; })},
+        text: pct.map(function (p) { return fmt(p, 1) + '%'; }), textposition: 'outside', cliponaxis: false,
+        hovertemplate: '%{y}　%{x:.1f}%<extra></extra>'
+      }], layout({
+        margin: {l: 10, r: 40, t: 6, b: 28},
+        xaxis: {ticksuffix: '%', range: [0, Math.max(100, Math.max.apply(null, pct) * 1.1)], gridcolor: c.grid, fixedrange: true},
+        yaxis: {automargin: true, fixedrange: true},
+        shapes: [{type: 'line', x0: hd.risk.groupMax, x1: hd.risk.groupMax, yref: 'paper', y0: 0, y1: 1,
+                  line: {color: c.orange, dash: 'dot', width: 1}}]
+      }), {displayModeBar: false, responsive: true});
+    }
+
+    // 未實現損益走勢：假設每一筆從買進日起一直持有（價格已還原權值，等於股利再投入）
+    function hdCurve(pane, rows) {
+      var gd = document.getElementById('ov-hold-curve'), c = palette();
+      var note = pane.querySelector('.hd-curve-note');
+      if (!rows.length) { gd.hidden = true; note.textContent = ''; return; }
+      var dates = {};
+      rows.forEach(function (r) { r.d.t.forEach(function (t) { dates[t] = true; }); });
+      var axis = Object.keys(dates).sort();
+      var start = rows.reduce(function (m, r) { return r.h.date && r.h.date < m ? r.h.date : m; }, axis[axis.length - 1]);
+      axis = axis.filter(function (t) { return t >= start; }).slice(-250);
+      var pnl = axis.map(function (t) {
+        var v = 0, held = false;
+        rows.forEach(function (r) {
+          if (r.h.date && t < r.h.date) return;
+          var i = r.d.t.indexOf(t);
+          if (i < 0) {                                       // 停牌：用之前最近的收盤
+            for (var k = r.d.t.length - 1; k >= 0; k--) { if (r.d.t[k] <= t) { i = k; break; } }
+          }
+          if (i < 0 || r.d.c[i] == null) return;
+          v += (r.d.c[i] - r.h.cost) * r.h.qty;
+          held = true;
+        });
+        return held ? v : null;
+      });
+      var peak = -Infinity, mdd = 0, base = rows.reduce(function (s, r) { return s + r.h.cost * r.h.qty; }, 0);
+      pnl.forEach(function (v) {
+        if (v == null) return;
+        peak = Math.max(peak, v);
+        mdd = Math.max(mdd, peak - v);
+      });
+      gd.hidden = false;
+      note.textContent = '最大回落 ' + fmt(mdd, 0) + ' 元（成本的 ' + fmt(base ? mdd / base * 100 : 0, 1) +
+        '%）。假設每筆從買進日起持有到今天；價格已還原權值（等於股利再投入）。';
+      Plotly.react(gd, [{
+        type: 'scatter', mode: 'lines', x: axis.map(function (t) { return t.slice(5).replace('-', '/'); }), y: pnl,
+        line: {color: c.blue, width: 2}, connectgaps: true,
+        hovertemplate: '%{x}　%{y:,.0f} 元<extra></extra>'
+      }], layout({
+        margin: {l: 64, r: 10, t: 8, b: 30},
+        xaxis: {type: 'category', nticks: 8, fixedrange: true},
+        yaxis: {zeroline: true, zerolinecolor: c.gray, gridcolor: c.grid, fixedrange: true, tickformat: ',.0f'}
+      }), {displayModeBar: false, responsive: true});
+    }
+
+    function hdDraw(pane) {
+      var list = hd.list.slice();
+      Promise.all(list.map(function (h) {
+        return hdShard(h.code).then(function (s) { return hdRow(h, s); }, function () { return null; });
+      })).then(function (rows) {
+        var missing = list.filter(function (h, i) { return !rows[i]; }).map(function (h) { return h.code; });
+        rows = rows.filter(Boolean).sort(function (a, b) { return b.value - a.value; });
+        var total = hdSummary(pane, rows);
+        hdAlerts(pane, rows, total);
+        hdTable(pane, rows);
+        if (missing.length) {
+          pane.querySelector('.hd-table').appendChild(el('p', 'sd-note', '查不到資料：' + missing.join('、')));
+        }
+        hdGroups(rows, total);
+        hdCurve(pane, rows);
+      });
+    }
+
+    function hdEdit(pane, h) {
+      hd.editing = h ? h.id : null;
+      var f = pane.querySelector('.hd-form');
+      f.querySelector('#hd-code').value = h ? h.code : '';
+      f.querySelector('#hd-qty').value = h ? h.qty : '';
+      f.querySelector('#hd-cost').value = h ? h.cost : '';
+      f.querySelector('#hd-date').value = h ? (h.date || '') : '';
+      f.querySelector('#hd-stop').value = h && h.stop > 0 ? h.stop : '';
+      f.querySelector('#hd-note').value = h ? (h.note || '') : '';
+      f.querySelector('.hd-submit').textContent = h ? '儲存修改' : '加入持股';
+      f.querySelector('.hd-cancel').hidden = !h;
+      if (h) f.scrollIntoView({block: 'nearest'});
+    }
+
+    function hdForm(pane) {
+      var f = pane.querySelector('.hd-form');
+      if (f._bound) return;
+      f._bound = true;
+      var msg = f.querySelector('.hd-msg');
+      f.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var code = f.querySelector('#hd-code').value.trim().split(/\s+/)[0].toUpperCase();
+        var qty = Number(f.querySelector('#hd-qty').value), cost = Number(f.querySelector('#hd-cost').value);
+        var date = f.querySelector('#hd-date').value, stop = Number(f.querySelector('#hd-stop').value) || 0;
+        if (!code || !(qty > 0) || !(cost > 0)) {
+          msg.textContent = '請填代號、股數與成本（股數要大於 0；1 張＝1000 股）。';
+          return;
+        }
+        if (stop && stop >= cost) {
+          msg.textContent = '停損價要低於成本；不填就用預設（成本 − 2 × ATR）。';
+          return;
+        }
+        hdShard(code).then(function () {
+          var item = {id: hd.editing || String(Date.now()), code: code, qty: qty, cost: cost, date: date,
+                      stop: stop, note: f.querySelector('#hd-note').value.trim().slice(0, 60)};
+          if (hd.editing) {
+            hd.list = hd.list.map(function (x) { return x.id === hd.editing ? item : x; });
+          } else {
+            hd.list.push(item);
+          }
+          hdSave();
+          msg.textContent = (hd.editing ? '已修改 ' : '已加入 ') + code;
+          hdEdit(pane, null);
+          hdDraw(pane);
+        }, function () {
+          msg.textContent = '查不到「' + code + '」，請確認是上市櫃股票或 ETF 代號。';
+        });
+      });
+      f.querySelector('.hd-cancel').addEventListener('click', function () { hdEdit(pane, null); msg.textContent = ''; });
+    }
+
+    // 部位大小：每筆最多虧總資金的 riskPct%，股數＝可承受虧損 ÷（進場價 − 停損價）
+    function hdCalc(pane) {
+      var f = pane.querySelector('.hd-calc');
+      if (f._bound) return;
+      f._bound = true;
+      var out = pane.querySelector('.hd-calc-out');
+      f.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var code = f.querySelector('#hc-code').value.trim().split(/\s+/)[0].toUpperCase();
+        var entry = Number(f.querySelector('#hc-entry').value), stop = Number(f.querySelector('#hc-stop').value);
+        var k = Number(f.querySelector('#hc-k').value) || 2;
+        var capital = hd.risk.capital, risk = hd.risk.riskPct;
+        if (!(capital > 0)) { out.textContent = '先在下面「設定」填總資金。'; return; }
+        var finish = function (entry, stop, atrText) {
+          if (!(entry > 0) || !(stop > 0) || stop >= entry) {
+            out.textContent = '進場價要大於停損價。';
+            return;
+          }
+          var loss = capital * risk / 100, per = entry - stop;
+          var shares = Math.floor(loss / per);
+          var lots = Math.floor(shares / 1000);
+          out.textContent = '';
+          [['可承受虧損', fmt(loss, 0) + ' 元（總資金的 ' + risk + '%）'],
+           ['每股風險', fmt(per, 2) + ' 元（' + fmt(per / entry * 100, 1) + '%）' + (atrText || '')],
+           ['建議股數', fmt(shares, 0) + ' 股（' + lots + ' 張＋' + (shares - lots * 1000) + ' 股零股）'],
+           ['部位金額', fmt(shares * entry, 0) + ' 元，占總資金 ' + fmt(shares * entry / capital * 100, 1) + '%' +
+                       (shares * entry > capital * 0.2 ? '（超過 20%，一檔押太重，可以把停損放寬一點或少買）' : '')]
+          ].forEach(function (x) {
+            var p = el('p', 'hd-calc-row');
+            p.appendChild(el('span', 'ck-tile-k', x[0]));
+            p.appendChild(el('b', null, x[1]));
+            out.appendChild(p);
+          });
+        };
+        if (code && !(stop > 0)) {
+          hdShard(code).then(function (s) {
+            var atr = hdAtr(s.d), last = s.d.c[s.d.c.length - 1];
+            var e2 = entry > 0 ? entry : last;
+            finish(e2, atr ? e2 - k * atr : 0, '，停損＝進場 − ' + k + ' × ATR（' + fmt(atr, 2) + '）');
+          }, function () { out.textContent = '查不到「' + code + '」。'; });
+        } else {
+          finish(entry, stop);
+        }
+      });
+    }
+
+    function hdSettings(pane) {
+      var f = pane.querySelector('.hd-settings');
+      f.querySelector('#hs-capital').value = hd.risk.capital || '';
+      f.querySelector('#hs-risk').value = hd.risk.riskPct;
+      f.querySelector('#hs-group').value = hd.risk.groupMax;
+      if (f._bound) return;
+      f._bound = true;
+      f.addEventListener('submit', function (e) {
+        e.preventDefault();
+        hd.risk = {capital: Math.max(0, Number(f.querySelector('#hs-capital').value) || 0),
+                   riskPct: Math.min(10, Math.max(0.1, Number(f.querySelector('#hs-risk').value) || 1)),
+                   groupMax: Math.min(100, Math.max(5, Number(f.querySelector('#hs-group').value) || 30))};
+        hdSave();
+        f.querySelector('.hd-msg').textContent = '已儲存';
+        hdDraw(pane);
+      });
+      var io = pane.querySelector('.hd-io');
+      io.querySelector('.hd-export').addEventListener('click', function () {
+        var blob = new Blob([JSON.stringify({holdings: hd.list, risk: hd.risk}, null, 1)], {type: 'application/json'});
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'holdings-' + new Date().toISOString().slice(0, 10) + '.json';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      });
+      io.querySelector('#hd-import').addEventListener('change', function (e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function () {
+          try {
+            var data = JSON.parse(reader.result);
+            var list = (data.holdings || []).filter(function (h) { return h && h.code && h.qty > 0 && h.cost > 0; });
+            hd.list = list.map(function (h, i) { return {id: h.id || String(Date.now() + i), code: String(h.code),
+              qty: +h.qty, cost: +h.cost, date: h.date || '', stop: +h.stop || 0, note: h.note || ''}; });
+            if (data.risk) hd.risk = {capital: +data.risk.capital || 0, riskPct: +data.risk.riskPct || 1,
+                                      groupMax: +data.risk.groupMax || 30};
+            hdSave();
+            io.querySelector('.hd-msg').textContent = '已匯入 ' + hd.list.length + ' 筆';
+            hdSettings(pane);
+            hdDraw(pane);
+          } catch (err) {
+            io.querySelector('.hd-msg').textContent = '檔案格式不對，請用這裡匯出的 JSON。';
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+      });
+      io.querySelector('.hd-clear').addEventListener('click', function (e) {
+        var b = e.currentTarget;
+        if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = '確定清除全部持股？'; return; }
+        hd.list = [];
+        hdSave();
+        delete b.dataset.armed;
+        b.textContent = '清除全部持股';
+        io.querySelector('.hd-msg').textContent = '已清除';
+        hdDraw(pane);
+      });
+    }
+
+    function hold(pane) {
+      hdLoad();
+      // 族群：強勢紀錄最新一天的判定；沒有的話用產業別
+      var groupsP = getJSON('data/record/index.json').then(function (ix) {
+        if (!ix.dates || !ix.dates.length) return null;
+        return getJSON('data/record/' + ix.dates[ix.dates.length - 1] + '.json');
+      }).then(function (day) {
+        hd.groups = {};
+        (day && day.rows || []).forEach(function (r) { if (r[11]) hd.groups[r[0]] = [r[11], r[12]]; });
+      }, function () {});
+      return Promise.all([loadFlags(), groupsP]).then(function () {
+        hdForm(pane);
+        hdCalc(pane);
+        hdSettings(pane);
+        hdDraw(pane);
+      });
+    }
+
     var RENDER = {today: today, market: market, sectors: sectors, momentum: momentum,
-                  record: record, perf: perf, flows: flows};
+                  record: record, perf: perf, hold: hold, flows: flows};
 
     function show(sub) {
       if (!sub || !RENDER[sub]) return;
