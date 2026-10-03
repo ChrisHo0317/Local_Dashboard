@@ -509,6 +509,33 @@
       box.appendChild(ul);
     }
 
+    // 熱門新聞分析（國際、台灣各前三個事件），點了到新聞分頁
+    function ckHot(box, h) {
+      box.textContent = '';
+      if (!h || !h.generated) {
+        box.appendChild(el('p', 'ov-empty', '熱門新聞分析還沒產生（每天 08:00、14:00、21:00）。'));
+        return;
+      }
+      if (h.headline) box.appendChild(el('p', 'ck-hot-head', h.headline));
+      [['國際', h.intl], ['台灣', h.tw]].forEach(function (x) {
+        if (!x[1] || !x[1].length) return;
+        var ul = el('ul', 'ck-list');
+        x[1].forEach(function (t) {
+          var li = el('li');
+          li.appendChild(el('span', 'ck-when', x[0]));
+          li.appendChild(el('span', 'ck-hot-t', t[0]));
+          li.appendChild(el('span', 'hot-impact ' + (t[1] === '利多' ? 'up' : t[1] === '利空' ? 'down' : ''), t[1]));
+          ul.appendChild(li);
+        });
+        box.appendChild(ul);
+      });
+      if (h.method !== 'claude') box.appendChild(el('p', 'sd-note', '尚未設定 Claude，只有熱門排行。'));
+      var more = el('button', 'ck-more', '看熱門新聞分析 ›（' + h.label + ' ' + h.generated.slice(5) + '）');
+      more.type = 'button';
+      more.addEventListener('click', function () { if (typeof selectTab === 'function') selectTab('news', true); });
+      box.appendChild(more);
+    }
+
     function cockpit(pane, d) {
       ckDigest(pane.querySelector('.ck-digest'), d.digest);
       ckTemp(pane, d.temp);
@@ -516,6 +543,7 @@
       ckAlerts(pane.querySelector('.ck-alerts .ov-body'), d.alerts);
       ckPerf(pane.querySelector('.ck-perf .ov-body'), d.perf);
       ckNext(pane.querySelector('.ck-next .ov-body'), d.events);
+      ckHot(pane.querySelector('.ck-hot .ov-body'), d.hot);
       var q = d.quality || {};
       var qa = pane.querySelector('.ck-quality');
       qa.textContent = !q.status ? '' : q.status === 'ok'

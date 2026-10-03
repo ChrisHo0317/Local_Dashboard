@@ -83,6 +83,7 @@ def panel_html(data) -> str:
         '        <section class="ov-card ck-perf"><h3>訊號績效（持有 20 日、超額報酬）</h3>'
         '<div class="ov-body"></div></section>\n'
         '        <section class="ov-card ck-next"><h3>接下來兩天</h3><div class="ov-body"></div></section>\n'
+        '        <section class="ov-card ck-hot"><h3>熱門新聞</h3><div class="ov-body"></div></section>\n'
         '      </div>\n'
         '      <p class="ck-quality sd-note"></p>\n'
         '    </section>\n'

@@ -41,10 +41,19 @@ jobs:
       - name: Fetch news
         run: python update_data.py news
 
+      - name: Hot news analysis
+        # 08:00、14:00、21:00（台北）三個時段各做一次，其他時候直接跳過；重要的新事件會推播
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+          ALERTS_ENABLED: ${{ vars.ALERTS_ENABLED }}
+        run: python update_data.py hotnews
+
       - name: Commit if changed
         id: commit
         run: |
-          if git diff --quiet -- data/news_articles.csv; then
+          if git diff --quiet -- data/news_articles.csv data/hot_news.json \
+             && [ -z "$(git ls-files --others --exclude-standard data/hot_news.json)" ]; then
             echo "無新新聞，略過 commit"
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -52,6 +61,7 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/news_articles.csv
+          [ -f data/hot_news.json ] && git add data/hot_news.json
           git commit -m "chore: 更新新聞 ($(date -u +'%Y-%m-%d %H:%M') UTC)"
           # 行情排程可能同時在推。衝突就放棄這一輪 ——
           # 十分鐘後會再跑一次，硬解衝突反而可能推出壞掉的資料。

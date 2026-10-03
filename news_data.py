@@ -90,4 +90,5 @@ def merge_news(rows: list[dict]) -> int:
 
 def load_all() -> dict:
     """新聞分頁需要的資料。"""
-    return {"news": load_news()}
+    import hot_news
+    return {"news": load_news(), "hot": hot_news.load()}

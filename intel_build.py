@@ -509,6 +509,17 @@ def _watch_alerts(codes: set) -> list:
              "text": e.get("line") or f"{e.get('title', '')}：{e.get('body', '')}"} for e in events][:10]
 
 
+def _hot_summary() -> dict:
+    """熱門新聞分析的前三個事件（國際、台灣各三），首頁用。"""
+    import hot_news
+    h = hot_news.load()
+    if not h:
+        return {}
+    pick = lambda r: [[t["title"], t["impact"], t["importance"]] for t in (h.get(r) or {}).get("topics", [])[:3]]
+    return {"generated": h.get("generated", ""), "label": h.get("label", ""), "method": h.get("method", ""),
+            "headline": h.get("headline", ""), "intl": pick("intl"), "tw": pick("tw")}
+
+
 def _digest() -> dict:
     try:
         return json.loads((Path(__file__).resolve().parent / "data" / "digest.json").read_text(encoding="utf-8"))
@@ -733,6 +744,7 @@ def build(out_dir: Path) -> dict:
         "groups": _top_groups(),
         "alerts": _watch_alerts(watch_codes),
         "digest": _digest(),
+        "hot": _hot_summary(),
         "perf": [[s["id"], s["name"], s["stats"]["20"].get("exc"), s["stats"]["20"].get("verdict"),
                   s["stats"]["20"].get("n")] for s in perf["signals"] if s["mode"] == "回測"],
         "quality": {"status": quality.get("status", ""), "generated": quality.get("generated", ""),

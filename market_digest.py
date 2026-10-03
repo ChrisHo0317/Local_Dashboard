@@ -106,7 +106,20 @@ def context(mode: str) -> dict:
                     "why": s.get("why")} for c, s in strong],
         "watch": [e.get("line") or (e.get("title", "") + "：" + e.get("body", "")) for e in wev][:8],
         "events": [f"{e['date'][5:]} {e['time']} {e['text']}".replace("  ", " ") for e in events][:8],
+        "news": _hot_topics(),
     }
+
+
+def _hot_topics() -> list:
+    """熱門新聞分析的重點事件（重要性 3 以上），讓摘要也提到。"""
+    import hot_news
+    h = hot_news.load()
+    out = []
+    for region, label in (("intl", "國際"), ("tw", "台灣")):
+        for t in (h.get(region) or {}).get("topics", []):
+            if t.get("importance", 0) >= 3:
+                out.append(f"{label}｜{t['title']}｜{t['impact']}｜{t['why']}")
+    return out[:8]
 
 
 def rule_digest(ctx: dict) -> dict:

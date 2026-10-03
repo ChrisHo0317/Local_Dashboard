@@ -535,6 +535,8 @@ JOBS = {
     "backfill": backfill,
     "signallog": update_signal_log,
     "options": lambda: __import__("options_data").update(log),
+    # 國際／台灣熱門新聞分析：新聞排程每 10 分鐘呼叫，08:00、14:00、21:00 三個時段各做一次
+    "hotnews": lambda: __import__("hot_news").update(log),
     # 盤前／盤後摘要（Claude 整理、Bark 推播；依台北時間決定是盤前還是盤後）
     "digest": lambda: __import__("market_digest").update(log),
     # 強勢股新聞與上漲原因（會呼叫 Claude，見 stock_news.py）
@@ -544,7 +546,9 @@ JOBS = {
 # 不在預設清單裡的一次性工作（要明確指定才會跑）
 MANUAL_JOBS = {"repair": repair_history,
                # 本機一次補完：python update_data.py backfillall
-               "backfillall": lambda: backfill(limit=10_000)}
+               "backfillall": lambda: backfill(limit=10_000),
+               # 不管時段，現在就整理一次熱門新聞
+               "hotnewsnow": lambda: __import__("hot_news").update(log, force=True)}
 
 
 def main(argv: list[str] | None = None) -> int:

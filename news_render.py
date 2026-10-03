@@ -45,11 +45,17 @@ def stats(data: dict) -> dict:
     }
 
 
+HOT_META = "國際與台灣熱門財經新聞，每天 08:00、14:00、21:00 整理"
+
+
 def _subtabs_html() -> str:
     btns = [
+        '      <button type="button" class="subtab" data-sub="hot"'
+        f' data-title="熱門新聞分析" data-meta="{escape(HOT_META)}"'
+        ' aria-selected="true">熱門分析</button>',
         '      <button type="button" class="subtab" data-sub="digest"'
         f' data-title="今日重點" data-meta="{escape(DIGEST_META)}"'
-        ' aria-selected="true">重點</button>'
+        ' aria-selected="false">重點</button>',
     ]
     for s in SOURCES:
         btns.append(
@@ -137,7 +143,7 @@ def _digest_html(df: pd.DataFrame) -> str:
     """重點：跨來源合併去重、依重要性排序後的短清單。"""
     events = build_digest(df, watch_terms()) if not df.empty else []
     if not events:
-        return ('  <div class="subpanel" data-sub="digest">\n'
+        return ('  <div class="subpanel" data-sub="digest" hidden>\n'
                 '    <p class="cal-empty">目前沒有可整理的新聞。</p>\n  </div>')
 
     items = []
@@ -163,7 +169,7 @@ def _digest_html(df: pd.DataFrame) -> str:
             f'      </li>'
         )
 
-    return ('  <div class="subpanel" data-sub="digest">\n'
+    return ('  <div class="subpanel" data-sub="digest" hidden>\n'
             '    <ul class="news-list">\n' + "\n".join(items) + "\n    </ul>\n"
             '    <button type="button" class="news-more" hidden>載入更多</button>\n'
             '    <div class="news-article" hidden>\n'
@@ -174,11 +180,85 @@ def _digest_html(df: pd.DataFrame) -> str:
             '    </div>\n  </div>')
 
 
+IMPACT_CLASS = {"利多": "up", "利空": "down"}
+
+
+def _hot_topic(t: dict, items: dict) -> str:
+    stars = "●" * t["importance"] + "○" * (5 - t["importance"])
+    tags = "".join(f'<span class="hot-tag">{escape(x)}</span>' for x in t.get("sectors", []))
+    tags += "".join(f'<span class="hot-tag is-stock">{escape(x)}</span>' for x in t.get("stocks", []))
+    links = []
+    for i in t.get("ids", [])[:3]:
+        it = items.get(i)
+        if not it:
+            continue
+        src = escape("、".join(dict.fromkeys(it["srcs"]))[:30])
+        title = escape(it["title"])
+        link = (f'<a href="{escape(it["url"])}" target="_blank" rel="noopener noreferrer">{title}</a>'
+                if it.get("url") else title)
+        links.append(f'<li>{link}<span class="hot-src">{src}</span></li>')
+    return (f'      <article class="hot-topic imp-{t["importance"]}">\n'
+            f'        <div class="hot-head"><span class="hot-imp" title="重要性 {t["importance"]}／5">{stars}</span>'
+            f'<span class="hot-impact {IMPACT_CLASS.get(t["impact"], "")}">{escape(t["impact"])}</span></div>\n'
+            f'        <h4>{escape(t["title"])}</h4>\n'
+            f'        <p class="hot-sum">{escape(t["summary"])}</p>\n'
+            f'        <p class="hot-why">對台股：{escape(t["why"])}</p>\n'
+            + (f'        <p class="hot-tags">{tags}</p>\n' if tags else "")
+            + (f'        <ul class="hot-links">{"".join(links)}</ul>\n' if links else "")
+            + '      </article>')
+
+
+def _hot_raw(region: dict, label: str) -> str:
+    rows = []
+    for it in region.get("items", [])[:20]:
+        src = escape("、".join(dict.fromkeys(it["srcs"]))[:30])
+        title = escape(it["title"])
+        link = (f'<a href="{escape(it["url"])}" target="_blank" rel="noopener noreferrer">{title}</a>'
+                if it.get("url") else title)
+        rows.append(f'<li><span class="hot-rank">{it["id"]}</span>{link}<span class="hot-src">{src}</span></li>')
+    srcs = "、".join(region.get("sources", []))
+    return (f'      <section><h4>{label}（{escape(srcs)}）</h4>\n'
+            f'        <ol class="hot-raw-list">{"".join(rows)}</ol>\n      </section>')
+
+
+def _hot_html(hot: dict) -> str:
+    """熱門分析：國際、台灣熱門新聞歸成事件，對台股的影響與相關族群、個股。"""
+    if not hot or not (hot.get("intl") or hot.get("tw")):
+        return ('  <div class="subpanel hot" data-sub="hot">\n'
+                '    <p class="cal-empty">熱門新聞分析還沒產生：每天 08:00、14:00、21:00 各整理一次。</p>\n'
+                '  </div>')
+    how = (f'{hot.get("model")} 分析' if hot.get("method") == "claude"
+           else "只有熱門排行（尚未設定 ANTHROPIC_API_KEY，沒有 AI 分析）")
+    parts = [f'  <div class="subpanel hot" data-sub="hot">\n'
+             f'    <p class="hot-meta">{escape(hot.get("label", ""))}　·　{escape(hot.get("generated", ""))}'
+             f'　·　{escape(how)}　·　依各來源名次與重複報導估計熱度</p>']
+    if hot.get("headline"):
+        parts.append(f'    <p class="hot-headline">{escape(hot["headline"])}</p>')
+    if hot.get("method") == "claude":
+        parts.append('    <div class="hot-grid">')
+        for region, label in (("intl", "國際"), ("tw", "台灣")):
+            data = hot.get(region) or {}
+            items = {it["id"]: it for it in data.get("items", [])}
+            topics = data.get("topics", [])
+            parts.append(f'     <section class="hot-col"><h3>{label}</h3>')
+            parts += [_hot_topic(t, items) for t in topics] or ['      <p class="cal-empty">沒有整理出事件。</p>']
+            parts.append('     </section>')
+        parts.append('    </div>')
+        parts.append('    <details class="hot-raw"><summary>熱門排行原文</summary>\n    <div class="hot-grid">')
+    else:
+        parts.append('    <div class="hot-grid">')
+    parts.append(_hot_raw(hot.get("intl") or {}, "國際"))
+    parts.append(_hot_raw(hot.get("tw") or {}, "台灣"))
+    parts.append('    </div>' + ('</details>' if hot.get("method") == "claude" else ""))
+    parts.append('    <p class="sd-note">AI 判讀僅供參考，不是投資建議；點標題看原文。</p>\n  </div>')
+    return "\n".join(parts)
+
+
 def panel_html(data: dict) -> str:
     """產生新聞分頁的內容（不含 <section> 外框）。"""
     df = data.get("news", pd.DataFrame())
 
-    body = [_digest_html(df)]
+    body = [_hot_html(data.get("hot") or {}), _digest_html(df)]
     for source in SOURCES:
         part = df[df["source"] == source["id"]] if not df.empty else df
         body.append(
