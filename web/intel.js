@@ -632,7 +632,8 @@
                      '#d6336c', '#0c8599', '#5c940d', '#ae3ec9', '#495057'];
     var mo = {data: null, ind: -1, min: 1, sort: 'a', desc: true, shown: MO_PAGE,
               t: null, k: null, playing: false, render: null,
-              ext: 0, full: false};   // ext：只看最極端的比例（0＝全部）；full：播放中所有點都要畫
+              ext: 0, full: false,
+              news: null, newsMeta: null, strong: []};   // news：{代號: 近五日新聞與上漲原因}   // ext：只看最極端的比例（0＝全部）；full：播放中所有點都要畫
 
     // 第 i 天的強度與加速度
     function moAt(c, i) {
@@ -665,6 +666,79 @@
       return v[lo] + (v[hi] - v[lo]) * (i - lo);
     }
 
+    // 一行「最可能原因」：分類標籤＋原因（沒有整理就回傳 null）
+    function moWhy(code) {
+      var n = mo.news && mo.news[code];
+      if (!n || !n.why) return null;
+      var w = el('span', 'mo-why');
+      w.appendChild(el('b', 'mo-tag', n.tag));
+      w.appendChild(document.createTextNode(n.why));
+      return w;
+    }
+
+    function moNewsLink(it) {
+      if (it.k === 'a') return el('span', 'mo-item-t', it.t);       // 重大訊息沒有連結
+      // Google 新聞的轉址連結太長的沒有存，改連到標題搜尋
+      var a = el('a', 'mo-item-t', it.t);
+      a.href = it.u || 'https://www.google.com/search?tbm=nws&q=' + encodeURIComponent('"' + it.t + '"');
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      return a;
+    }
+
+    // 點排行的一列展開：最可能原因、重點整理、近五日新聞與重大訊息
+    function moDetail(r, span) {
+      var tr = el('tr', 'mo-detail');
+      var td = el('td');
+      td.colSpan = span;
+      var box = el('div', 'mo-news');
+      var n = mo.news && mo.news[r.code];
+      var meta = mo.newsMeta || {};
+      if (n) {
+        var head = el('p', 'mo-news-why');
+        head.appendChild(el('b', 'mo-tag', n.tag));
+        head.appendChild(document.createTextNode(n.why || '找不到明確消息'));
+        head.appendChild(el('span', 'mo-conf mo-conf-' + (n.conf === '高' ? 'hi' : n.conf === '中' ? 'mid' : 'lo'),
+                            '可信度 ' + n.conf));
+        box.appendChild(head);
+        if (n.points && n.points.length) {
+          var ul = el('ul', 'mo-points');
+          n.points.forEach(function (t) { ul.appendChild(el('li', null, t)); });
+          box.appendChild(ul);
+        }
+        if (n.items && n.items.length) {
+          var list = el('ul', 'mo-items');
+          n.items.forEach(function (it) {
+            var li = el('li', it.key ? 'is-key' : null);
+            if (it.key) li.appendChild(el('span', 'mo-key', '關鍵'));
+            li.appendChild(el('span', 'mo-item-d', it.d));
+            li.appendChild(el('span', 'mo-item-src', it.src));
+            li.appendChild(moNewsLink(it));
+            list.appendChild(li);
+          });
+          box.appendChild(list);
+        } else {
+          box.appendChild(el('p', 'sd-note', '近五個交易日沒有找到這檔的新聞或重大訊息。'));
+        }
+        var how = n.method === 'claude'
+          ? (meta.model || 'Claude') + ' 依近五個交易日的新聞與重大訊息整理，AI 判讀僅供參考'
+          : '尚未設定 Claude，暫以標題關鍵字挑出最可能的一則，僅供參考';
+        box.appendChild(el('p', 'mo-news-foot', how + (meta.generated ? '　·　' + meta.generated : '') +
+                           (n.total > (n.items || []).length ? '　·　共找到 ' + n.total + ' 則，只列相關的' : '')));
+      } else {
+        box.appendChild(el('p', 'sd-note', mo.news && Object.keys(mo.news).length
+          ? '這檔不在新聞整理名單（越來越強前 60 檔＋自選股），沒有整理新聞。'
+          : '新聞整理還沒有資料。'));
+      }
+      var go = el('button', 'chip', '看個股 ›');
+      go.type = 'button';
+      go.addEventListener('click', function () { openStock(r.code); });
+      box.appendChild(go);
+      td.appendChild(box);
+      tr.appendChild(td);
+      return tr;
+    }
+
     function moPicked(pane, r) {
       var box = pane.querySelector('.mo-pick');
       box.textContent = '';
@@ -675,6 +749,8 @@
       go.type = 'button';
       go.addEventListener('click', function () { openStock(r.code); });
       box.appendChild(go);
+      var why = moWhy(r.code);
+      if (why) box.appendChild(why);
       box.hidden = false;
     }
 
@@ -1176,13 +1252,25 @@
         c0.appendChild(el('span', 'ov-code', ' ' + r.code));
         c0.appendChild(el('span', 'ov-name', r.name));
         c0.appendChild(el('span', 'scr-reason', mo.data.industries[r.ind] + '　·　均量 ' + fmt(r.tv, 1) + ' 億'));
+        var why = moWhy(r.code);
+        if (why) c0.appendChild(why);
         tr.appendChild(c0);
         [r.s, r.r5, r.p5].forEach(function (v) { tr.appendChild(el('td', dir(v), signed(v, 1, '%'))); });
         tr.appendChild(el('td', dir(r.a), signed(r.a, 1)));
         var c5 = el('td');
         c5.appendChild(sparkSvg(r.c.slice(-21)));
         tr.appendChild(c5);
-        tr.addEventListener('click', function () { openStock(r.code); });
+        tr.setAttribute('aria-expanded', 'false');
+        tr.addEventListener('click', function () {
+          var next = tr.nextSibling;
+          if (next && next.classList.contains('mo-detail')) {
+            next.remove();
+            tr.setAttribute('aria-expanded', 'false');
+          } else {
+            tr.parentNode.insertBefore(moDetail(r, cols.length), tr.nextSibling);
+            tr.setAttribute('aria-expanded', 'true');
+          }
+        });
         tb.appendChild(tr);
       });
       t.appendChild(tb);
@@ -1238,6 +1326,7 @@
       mo.full = false;
       mo.rows = rows;
       mo.top = top;
+      mo.strong = strong;
       pane.querySelector('.mo-count').textContent = ext
         ? '符合 ' + strong.length + ' 檔（今天最極端 ' + Math.round(mo.ext * 100) + '%：' + picked.length +
           ' 檔／目前篩選共 ' + rows.length + ' 檔）'
@@ -1279,7 +1368,23 @@
       });
     }
 
+    function moNewsMeta(pane) {
+      var m = mo.newsMeta, note = pane.querySelector('.mo-news-meta');
+      if (!m || !m.stocks || !Object.keys(m.stocks).length) { note.hidden = true; return; }
+      note.textContent = '上漲原因：' + (m.model ? m.model + ' 整理' : '標題關鍵字挑選（尚未設定 Claude）') +
+        '，近五個交易日（' + md(m.since) + ' 起）的新聞與重大訊息　·　更新於 ' + m.generated;
+      note.hidden = false;
+    }
+
     function momentum(pane) {
+      // 新聞另外載入：抓不到也不影響圖表，晚到就補畫排行
+      getJSON('data/stocknews.json').then(function (n) {
+        if (mo.newsMeta === n) return;
+        mo.newsMeta = n;
+        mo.news = (n && n.stocks) || {};
+        moNewsMeta(pane);
+        if (mo.data) moTable(pane, mo.strong);
+      }, function () {});
       return getJSON('data/momentum.json').then(function (d) {
         mo.data = d;
         pane.querySelector('.ov-asof').textContent = '資料日期 ' + d.asof + '（盤後）';

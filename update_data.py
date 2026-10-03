@@ -20,6 +20,7 @@ from curl_cffi import requests as cffi_requests
 
 import fundamentals as fund
 import market_data as md
+import stock_news
 from bond_data import CSV_PATH as BOND_CSV, merge_yields
 from bond_scraper import MoneyDJBondScraper
 from btc_data import CSV_PATH as BTC_CSV, merge_prices as merge_btc
@@ -408,6 +409,8 @@ JOBS = {
     "market": update_market,
     "chips": update_chips,
     "xmarket": update_xmarket,
+    # 強勢股新聞與上漲原因（會呼叫 Claude，見 stock_news.py）
+    "stocknews": lambda: stock_news.update(log),
 }
 
 # 不在預設清單裡的一次性工作（要明確指定才會跑）

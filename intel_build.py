@@ -6,6 +6,7 @@
     overview.json        總覽：市場數字、自選股異動、事件、條件命中數、重點新聞、
                          大盤走勢、類股、法人排行、期貨未平倉
     screen.json          選股：每個條件的規則、狀態與命中清單
+    stocknews.json       強勢股的近五日新聞與上漲原因（點進強勢股才下載）
 
 數字在這裡就換好單位（張、億元），前端只負責畫。
 """
@@ -34,6 +35,7 @@ QUARTERS = 12
 PE_MONTHS = 60
 ANN_KEEP = 30
 TOP_FLOW = 20
+STOCK_NEWS = Path(__file__).resolve().parent / "data" / "stock_news.json"
 
 
 def _r(x, n=2):
@@ -384,6 +386,17 @@ def _momentum(panel: pd.DataFrame, master: pd.DataFrame, days: list, xm: pd.Data
             "bench": [_r(v) for v in bench]}
 
 
+def _stock_news() -> dict:
+    """強勢股新聞與上漲原因（stock_news.py 產生）；網頁用不到資料指紋。"""
+    try:
+        d = json.loads(STOCK_NEWS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"stocks": {}}
+    for s in (d.get("stocks") or {}).values():
+        s.pop("hash", None)
+    return d
+
+
 def _flows(panel: pd.DataFrame, names: dict, latest) -> dict:
     day = panel[(panel["date"] == latest) & ~panel["code"].str.startswith("00")]
     out = {}
@@ -489,4 +502,5 @@ def build(out_dir: Path) -> dict:
     # 類股、強勢股的資料比較大，點進子分頁才下載
     _dump(_sectors(panel, master, days), data_dir / "sectors.json")
     _dump(_momentum(panel, master, days, xm, watch_codes), data_dir / "momentum.json")
+    _dump(_stock_news(), data_dir / "stocknews.json")
     return {"latest": latest.strftime("%Y-%m-%d"), "stocks": shards, "watch": len(watch)}

@@ -15,6 +15,9 @@ dash-bootstrap-components>=2.0
 # 積分榜的中文名簡繁混雜，用 OpenCC 統一成台灣正體（f1_scraper.py）
 opencc-python-reimplemented>=0.1.7
 
+# 強勢股新聞的上漲原因分析（stock_news.py）；沒有 ANTHROPIC_API_KEY 時不會呼叫
+anthropic>=1.11
+
 # TrendForce 爬蟲（scraper.py）
 curl_cffi>=0.15
 beautifulsoup4>=4.13

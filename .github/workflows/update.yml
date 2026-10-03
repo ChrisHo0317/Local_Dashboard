@@ -1,13 +1,16 @@
 name: Update market data
 
-# 三個時段（台北時間）：
+# 四個時段（台北時間）：
+#   08:10  強勢股新聞（開盤前，補上前一晚到早上的新聞；週一～五）
 #   09:00  DRAM、美債、黃金、BTC、行事曆、F1、SpaceX，並補抓前一天盤後還缺的資料
-#   17:30  收盤行情、三大法人、本益比（證交所、櫃買中心約傍晚公布）
+#   17:30  收盤行情、三大法人、本益比（證交所、櫃買中心約傍晚公布），之後跑強勢股新聞
 #   21:40  融資融券、重大訊息、月營收、財報
+# 強勢股新聞會呼叫 Claude（Secrets 的 ANTHROPIC_API_KEY）；沒設定就只用關鍵字規則。
 # 全市場日資料每次都回頭檢查幾天，缺什麼補什麼；公布時間晚了也會在下一次補上。
 # GitHub 的排程常延遲十幾分鐘到半小時，不影響盤後資料。
 on:
   schedule:
+    - cron: "10 0 * * 1-5"
     - cron: "0 1 * * *"
     - cron: "30 9 * * 1-5"
     - cron: "40 13 * * 1-5"
@@ -45,12 +48,21 @@ jobs:
         # 新聞不在這裡跑，它有自己的十分鐘排程（news.yml）
         env:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          if [ "${{ github.event.schedule }}" = "0 1 * * *" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket stock
-          else
-            python update_data.py market chips xmarket stock
-          fi
+          case "${{ github.event.schedule }}" in
+            "10 0 * * 1-5")
+              python update_data.py stocknews ;;
+            "0 1 * * *")
+              python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket stock ;;
+            "30 9 * * 1-5")
+              python update_data.py market chips xmarket stock stocknews ;;
+            "")
+              # 手動執行：全部跑一次
+              python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket stock stocknews ;;
+            *)
+              python update_data.py market chips xmarket stock ;;
+          esac
 
       - name: Alerts
         # 自選股推播。BARK_KEY 沒設定就只記在執行紀錄；ALERTS_ENABLED 設成 false 就完全不推

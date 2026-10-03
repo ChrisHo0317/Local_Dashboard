@@ -587,6 +587,35 @@
   .mo-play { display:flex; align-items:center; gap:10px; margin:6px 0 2px; }
   .mo-btn { flex:none; min-width:84px; }
   .mo-slider { flex:1; min-width:0; accent-color:var(--accent); height:28px; }
-  .ichart.mo-busy { pointer-events:none; }   /* 播放中滑過去的數字對不上，先不給互動 */
+  .ichart.mo-busy { pointer-events:none; }
+  /* 強勢股：上漲原因與近五日新聞 */
+  .mo-why { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+            font-size:12px; line-height:1.5; color:var(--fg); margin-top:3px; white-space:normal; }
+  .mo-pick .mo-why { flex-basis:100%; -webkit-line-clamp:3; }
+  .mo-table .scr-table td:first-child { max-width:300px; }   /* 原因很長時不要把表格撐寬 */
+  .mo-tag { display:inline-block; font-size:11px; font-weight:600; line-height:1.5; padding:0 6px;
+            margin-right:6px; border-radius:6px; color:var(--accent); border:1px solid var(--accent); }
+  .ov-table tr[aria-expanded="true"] td { background:var(--hover); box-shadow:none; }
+  .ov-table tr.mo-detail td { text-align:left; white-space:normal; padding:4px 6px 14px;
+                              background:var(--hover); }
+  /* 手機上表格會左右捲動；展開的新聞固定貼左、寬度不超過畫面，不用跟著橫捲 */
+  .mo-news { display:flex; flex-direction:column; gap:8px; position:sticky; left:6px;
+             width:min(760px, calc(100vw - 48px)); }
+  .mo-news .chip { align-self:flex-start; }
+  .mo-news-why { margin:4px 0 0; font-size:14px; line-height:1.6; font-weight:600; }
+  .mo-conf { display:inline-block; margin-left:8px; font-size:11px; font-weight:400; color:var(--muted); }
+  .mo-conf-hi { color:var(--accent); }
+  .mo-points { margin:0; padding-left:18px; font-size:13px; line-height:1.6; }
+  .mo-items { list-style:none; margin:0; padding:0; font-size:13px; line-height:1.5; }
+  .mo-items li { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; padding:5px 0;
+                 border-top:1px solid var(--border); }
+  .mo-items li.is-key .mo-item-t { font-weight:600; }
+  .mo-key { font-size:11px; font-weight:600; padding:0 5px; border-radius:5px; color:var(--bg);
+            background:var(--accent); }
+  .mo-item-d, .mo-item-src { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .mo-item-t { flex-basis:100%; color:var(--fg); }
+  a.mo-item-t { text-decoration:none; }
+  a.mo-item-t:hover { text-decoration:underline; }
+  .mo-news-foot { margin:0; font-size:11px; color:var(--muted); line-height:1.6; }   /* 播放中滑過去的數字對不上，先不給互動 */
   .mo-date { flex:none; min-width:76px; text-align:right; font-size:13px;
              font-variant-numeric:tabular-nums; color:var(--fg); }
