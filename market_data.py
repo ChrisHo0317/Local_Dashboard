@@ -26,9 +26,13 @@ MARKET_DIR = BASE_DIR / "data" / "market"
 DAILY_DIR = MARKET_DIR / "daily"
 SUMMARY_CSV = MARKET_DIR / "summary.csv"
 STOCKS_CSV = MARKET_DIR / "stocks.csv"
+EVENTS_CSV = MARKET_DIR / "adjust_events.csv"   # 除權息、減資、變更面額（還原權值）
+FLAGS_CSV = MARKET_DIR / "flags.csv"            # 注意股、處置股
+PATCH_DIR = MARKET_DIR / "patch"                # 歷史底稿的修補（零價、參考價），一天一個市場一檔
 
 GROUPS = {
-    "quotes": ["open", "high", "low", "close", "volume", "turnover"],
+    # ref：參考價（收盤 − 漲跌），還原權值用；舊的日期檔沒有這欄
+    "quotes": ["open", "high", "low", "close", "volume", "turnover", "ref"],
     "insti": ["foreign", "trust", "dealer"],
     "margin": ["margin_bal", "short_bal"],
     "valuation": ["per", "yield_pct", "pbr"],
@@ -212,3 +216,86 @@ def merge_stocks(rows: pd.DataFrame) -> bool:
     MARKET_DIR.mkdir(parents=True, exist_ok=True)
     merged.to_csv(STOCKS_CSV, index=False, encoding="utf-8", lineterminator="\n")
     return True
+
+
+# ── 權值事件、注意／處置、歷史修補 ──────────────────────────
+EVENT_COLUMNS = ["date", "code", "market", "kind", "before", "ref", "factor"]
+FLAG_COLUMNS = ["date", "code", "name", "market", "kind", "start", "end", "detail"]
+
+
+def _load_csv(path: Path, cols: list[str]) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame(columns=cols)
+    return pd.read_csv(path, dtype=str).fillna("").reindex(columns=cols)
+
+
+def load_events() -> pd.DataFrame:
+    df = _load_csv(EVENTS_CSV, EVENT_COLUMNS)
+    for col in ("before", "ref", "factor"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
+
+
+def merge_events(rows: list[dict]) -> int:
+    """同一天同一檔只留一筆（後抓到的為準）。回傳新增筆數。"""
+    if not rows:
+        return 0
+    old = _load_csv(EVENTS_CSV, EVENT_COLUMNS)
+    new = pd.DataFrame(rows).reindex(columns=EVENT_COLUMNS).astype(str)
+    merged = (pd.concat([old, new], ignore_index=True)
+              .drop_duplicates(["date", "code"], keep="last")
+              .sort_values(["date", "code"]).reset_index(drop=True))
+    if len(merged) == len(old) and merged.equals(old.sort_values(["date", "code"]).reset_index(drop=True)):
+        return 0
+    MARKET_DIR.mkdir(parents=True, exist_ok=True)
+    merged.to_csv(EVENTS_CSV, index=False, lineterminator="\n")
+    return len(merged) - len(old)
+
+
+def load_flags() -> pd.DataFrame:
+    return _load_csv(FLAGS_CSV, FLAG_COLUMNS)
+
+
+def merge_flags(rows: list[dict], keep_days: int = 400) -> int:
+    if not rows:
+        return 0
+    old = _load_csv(FLAGS_CSV, FLAG_COLUMNS)
+    new = pd.DataFrame(rows).reindex(columns=FLAG_COLUMNS).fillna("").astype(str)
+    merged = pd.concat([old, new], ignore_index=True).drop_duplicates(
+        ["date", "code", "kind"], keep="last")
+    cutoff = (pd.Timestamp.today() - pd.Timedelta(days=keep_days)).strftime("%Y-%m-%d")
+    merged = merged[merged["date"] >= cutoff].sort_values(["date", "code"]).reset_index(drop=True)
+    before = old.sort_values(["date", "code"]).reset_index(drop=True)
+    if len(merged) == len(before) and merged.equals(before):
+        return 0
+    MARKET_DIR.mkdir(parents=True, exist_ok=True)
+    merged.to_csv(FLAGS_CSV, index=False, lineterminator="\n")
+    return max(len(merged) - len(before), 1)
+
+
+PATCH_COLUMNS = ["code", "open", "high", "low", "close", "ref"]
+
+
+def patch_path(day: date, market: str) -> Path:
+    return PATCH_DIR / f"{day.isoformat()}_{market}.parquet"
+
+
+def save_patch(day: date, market: str, df: pd.DataFrame) -> None:
+    PATCH_DIR.mkdir(parents=True, exist_ok=True)
+    out = df.reindex(columns=PATCH_COLUMNS).copy()
+    out["code"] = out["code"].astype(str)
+    for col in PATCH_COLUMNS[1:]:
+        out[col] = pd.to_numeric(out[col], errors="coerce").astype("float32")
+    out.to_parquet(patch_path(day, market), index=False, compression="zstd")
+
+
+def load_patches() -> pd.DataFrame:
+    """所有修補合成一張表：date, code + PATCH_COLUMNS。"""
+    frames = []
+    for path in sorted(PATCH_DIR.glob("*.parquet")) if PATCH_DIR.exists() else []:
+        df = pd.read_parquet(path)
+        df["date"] = pd.Timestamp(path.stem.split("_")[0])
+        frames.append(df)
+    if not frames:
+        return pd.DataFrame(columns=["date"] + PATCH_COLUMNS)
+    return pd.concat(frames, ignore_index=True)

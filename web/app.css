@@ -618,6 +618,19 @@
   a.mo-item-t:hover { text-decoration:underline; }
   .mo-news-foot { margin:0; font-size:11px; color:var(--muted); line-height:1.6; }
 
+  /* 訊號績效 */
+  #ov-perf-monthly { height:320px; }
+  .pf-tbl tr.is-picked td { background:var(--hover); }
+  .pf-verdict { font-size:12px; white-space:nowrap; color:var(--muted); }
+  .pf-verdict.is-good { color:var(--up); font-weight:600; }
+  .pf-verdict.is-bad { color:var(--down); font-weight:600; }
+
+  /* 注意股、處置股 */
+  .flag-badge { display:inline-block; font-size:11px; font-weight:600; line-height:1.5; padding:0 6px;
+                margin-left:6px; border-radius:6px; color:var(--warn); border:1px solid var(--warn);
+                vertical-align:1px; }
+  .flag-badge.is-disp { color:var(--danger); border-color:var(--danger); }
+
   /* 強勢紀錄 */
   #ov-record-heat { min-height:96px; }
   .rec-search { flex:1; min-width:160px; }

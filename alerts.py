@@ -4,6 +4,7 @@
     python alerts.py            比對事件，有新的就推播
     python alerts.py --dry-run  只列出會推什麼，不送出、不記錄
     python alerts.py --test     送一則測試通知
+    python alerts.py --failure 名稱   排程失敗時通知（workflow 的 if: failure() 步驟呼叫）
 
 環境變數（GitHub Actions 的 Secrets／Variables）：
     BARK_KEY        Bark App 給的金鑰（Secret）。沒有就只記在執行紀錄，不送出
@@ -14,7 +15,8 @@
     重大訊息         近 3 天的新重訊，每則一個通知，時效性通知
     月營收公布       最新一個月的營收進來時
     法人連買／連賣   外資或投信連續 3 個交易日同方向（第 3 天那次才推）
-    站上／跌破季線   收盤價穿越 60 日均線
+    站上／跌破季線   收盤價穿越 60 日均線（還原權值後的價格）
+    注意股／處置股   新列入時（處置是時效性通知）
 除了重訊，其他事件彙整成一則。選股條件命中不推播（條件尚未回測）。
 
 已推過的事件記在 data/alerts_sent.csv，同一件事只推一次。
@@ -32,6 +34,7 @@ import pandas as pd
 from curl_cffi import requests as cffi_requests
 
 import intel_data
+import market_data as md
 from fundamentals import load_announce, load_revenue
 from watchlist import load_watchlist
 
@@ -157,6 +160,25 @@ def ma_events(panel: pd.DataFrame, codes: set, names: dict) -> list[dict]:
     return out
 
 
+def flag_events(codes: set, names: dict, today: pd.Timestamp) -> list[dict]:
+    """近 3 天新列入的注意股、處置股。處置會限制交易（分盤撮合、預收款券），單獨推。"""
+    flags = md.load_flags()
+    if flags.empty:
+        return []
+    since = (today - timedelta(days=3)).strftime("%Y-%m-%d")
+    out = []
+    for r in flags[(flags["code"].isin(codes)) & (flags["date"] >= since)].itertuples():
+        name = names.get(r.code, r.name)
+        if r.kind == "處置":
+            out.append({"id": f"flag|{r.code}|處置|{r.start}", "code": r.code, "urgent": True,
+                        "title": f"處置股：{r.code} {name}",
+                        "body": f"{r.start} ～ {r.end}　{r.detail}"[:180]})
+        else:
+            out.append({"id": f"flag|{r.code}|注意|{r.date}", "code": r.code, "urgent": False,
+                        "line": f"{r.code} {name} 列入注意股：{r.detail[:40]}"})
+    return out
+
+
 def collect() -> list[dict]:
     watch = [w for w in load_watchlist() if w["push"]]
     if not watch:
@@ -167,7 +189,8 @@ def collect() -> list[dict]:
     panel = intel_data.daily_panel(days=80)
     today = pd.Timestamp(intel_data.today_taipei())
     return (announce_events(codes, names, today) + revenue_events(codes, names)
-            + flow_events(panel, codes, names) + ma_events(panel, codes, names))
+            + flow_events(panel, codes, names) + ma_events(panel, codes, names)
+            + flag_events(codes, names, today))
 
 
 def messages(events: list[dict]) -> list[dict]:
@@ -206,11 +229,24 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--test", action="store_true")
+    parser.add_argument("--failure", metavar="NAME")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
     key = os.environ.get("BARK_KEY", "").strip()
     server = os.environ.get("BARK_SERVER", "").strip() or "https://api.day.app"
+
+    if args.failure:
+        # 排程失敗：不看 ALERTS_ENABLED，沒有金鑰就只記在執行紀錄
+        run_url = "{}/{}/actions/runs/{}".format(os.environ.get("GITHUB_SERVER_URL", "https://github.com"),
+                                                 os.environ.get("GITHUB_REPOSITORY", ""),
+                                                 os.environ.get("GITHUB_RUN_ID", ""))
+        log.error(f"排程失敗：{args.failure}")
+        if not key:
+            return 0
+        send({"title": "台股情報：排程失敗", "body": f"{args.failure} 執行失敗，點開看執行紀錄",
+              "level": "timeSensitive", "url": run_url}, key, server)
+        return 0
 
     if args.test:
         if not key:

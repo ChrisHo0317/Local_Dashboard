@@ -1,0 +1,48 @@
+{
+ "generated": "2026-10-03 14:32",
+ "status": "warn",
+ "checks": [
+  {
+   "id": "zero",
+   "level": "warn",
+   "title": "近 60 日有 40 筆成交 1 張以上卻沒有收盤價",
+   "detail": "歷史回補會逐步修正"
+  },
+  {
+   "id": "jump",
+   "level": "warn",
+   "title": "近 60 日有 33 次大跳動找不到除權息或減資紀錄",
+   "detail": "這些天的報酬先記為 0：6461（09/09）、6482（08/25）、6590（09/08）、6664（07/28）、6870（07/21）、6874（09/03）、7747（07/13）、7805（08/24）"
+  },
+  {
+   "id": "backfill",
+   "level": "info",
+   "title": "上櫃歷史回補還剩 253 天",
+   "detail": "每次排程補一批，補完後上櫃的除權息也會還原"
+  },
+  {
+   "id": "stocknews",
+   "level": "info",
+   "title": "強勢股新聞以關鍵字挑選（沒有設定 ANTHROPIC_API_KEY）",
+   "detail": ""
+  },
+  {
+   "id": "stale",
+   "level": "ok",
+   "title": "行情最新到 2026-10-02",
+   "detail": ""
+  },
+  {
+   "id": "coverage",
+   "level": "ok",
+   "title": "最新一天兩個市場的檔數正常",
+   "detail": ""
+  },
+  {
+   "id": "news",
+   "level": "ok",
+   "title": "新聞正常更新",
+   "detail": ""
+  }
+ ]
+}

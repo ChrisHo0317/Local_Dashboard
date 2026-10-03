@@ -7,6 +7,8 @@
                          大盤走勢、類股、法人排行、期貨未平倉
     screen.json          選股：每個條件的規則、狀態與命中清單
     stocknews.json       強勢股的近五日新聞與上漲原因（點進強勢股才下載）
+    flags.json           目前的注意股、處置股 {代號: [注意|處置, 起, 迄, 說明]}
+    perf.json            訊號績效：每個訊號新進榜後 5／10／20 日的報酬、勝率、超額報酬
     record/index.json    強勢紀錄：日期、族群輪動（每天每個族群幾檔）、每檔出現過的日子
     record/{日期}.json   那天每一檔強勢股的原因、族群與同族群個股
 
@@ -20,6 +22,8 @@ from pathlib import Path
 import pandas as pd
 
 import intel_data
+import market_data as md
+import signal_perf
 import signals
 from calendar_data import load_events
 from chip_data import load_futures, load_tdcc
@@ -109,8 +113,29 @@ def _pe_block(g: pd.DataFrame) -> dict:
             "pe": [_r(v) if v and v > 0 else None for v in g["pe"]]}
 
 
+def active_flags(today) -> dict:
+    """
+    目前有效的注意股、處置股：處置從公告日到處置期間結束；注意股看近 7 天公布的。
+    同一檔兩種都有時顯示處置（限制比較大）。
+    """
+    f = md.load_flags()
+    if f.empty:
+        return {}
+    t = pd.Timestamp(today).strftime("%Y-%m-%d")
+    recent = (pd.Timestamp(today) - pd.Timedelta(days=7)).strftime("%Y-%m-%d")
+    out = {}
+    for r in f.sort_values("date").itertuples():
+        if r.kind == "處置" and r.date <= t <= (r.end or r.date):
+            out[r.code] = ["處置", r.start, r.end, r.detail]
+        elif r.kind == "注意" and r.date >= recent and out.get(r.code, [""])[0] != "處置":
+            out[r.code] = ["注意", r.date, r.date, r.detail]
+    return out
+
+
 def write_stock_shards(out_dir: Path, panel: pd.DataFrame, master: pd.DataFrame,
-                       pe: pd.DataFrame, tdcc: pd.DataFrame, exdiv: pd.DataFrame) -> int:
+                       pe: pd.DataFrame, tdcc: pd.DataFrame, exdiv: pd.DataFrame,
+                       flags: dict | None = None) -> int:
+    flags = flags or {}
     revenue = {c: g for c, g in load_revenue().groupby("code")}
     income = {c: g for c, g in load_income().groupby("code")}
     pe_by = {c: g for c, g in pe.groupby("code")}
@@ -164,6 +189,8 @@ def write_stock_shards(out_dir: Path, panel: pd.DataFrame, master: pd.DataFrame,
         if code in ex_by:
             shard["exdiv"] = [[_roc_iso(r["date"]), r["kind"], r["cash"]]
                               for _, r in ex_by[code].iterrows()]
+        if code in flags:
+            shard["flag"] = flags[code]
         _dump(shard, stock_dir / f"{code}.json")
         count += 1
     return count
@@ -224,7 +251,9 @@ def _kpis(summary: pd.DataFrame, xm: pd.DataFrame, latest: str) -> list[dict]:
     return out
 
 
-def _watch_rows(panel: pd.DataFrame, names: dict, watch: list[dict], latest) -> list[dict]:
+def _watch_rows(panel: pd.DataFrame, names: dict, watch: list[dict], latest,
+                flags: dict | None = None) -> list[dict]:
+    flags = flags or {}
     ann = load_announce()
     roc = f"{latest.year - 1911:03d}{latest.month:02d}{latest.day:02d}"
     ann_codes = set(ann[ann["date"] == roc]["code"]) if not ann.empty else set()
@@ -243,6 +272,7 @@ def _watch_rows(panel: pd.DataFrame, names: dict, watch: list[dict], latest) -> 
                 "volr": _r(last["volume"] / vol20, 1) if vol20 else None,
                 "fi": _lots(last["foreign"]), "tr": _lots(last["trust"]),
                 "ann": w["code"] in ann_codes,
+                "flag": flags.get(w["code"], [None])[0],
             })
         out.append(row)
     return out
@@ -281,7 +311,8 @@ def _events(today, watch_codes: set, names: dict, exdiv: pd.DataFrame) -> list[d
 
 
 def _market_series(panel: pd.DataFrame, xm: pd.DataFrame) -> dict:
-    p = panel.assign(fv=panel["foreign"] * panel["close"], tv=panel["trust"] * panel["close"])
+    px = panel["raw_close"] if "raw_close" in panel else panel["close"]   # 金額用當時的實際股價
+    p = panel.assign(fv=panel["foreign"] * px, tv=panel["trust"] * px)
     daily = p.groupby("date").agg(fv=("fv", "sum"), tv=("tv", "sum"), turnover=("turnover", "sum"))
     taiex = xm[xm["item"] == "加權指數"].set_index("price_date")["price"]
     taiex = taiex.reindex(daily.index)
@@ -299,7 +330,7 @@ def _sectors(panel: pd.DataFrame, master: pd.DataFrame, days: list) -> dict:
     類股：每個產業的加權漲跌、家數、成交值，以及「每一檔」的漲跌與成交值
     （熱力圖點進產業、清單依成交值或漲跌排序都要用到全部股票）。
 
-    漲跌分 1／5／10／20／60 日，都是用收盤價算（沒有還原除權息）；
+    漲跌分 1／5／10／20／60 日，用還原權值後的收盤算；
     中間停牌的日子沿用停牌前的收盤。產業漲跌以最新一天的成交值加權。
 
     stocks：[[代號, 名稱, 產業序號, 收盤, 成交值億, 1日%, 5日%, 10日%, 20日%, 60日%]]
@@ -389,6 +420,15 @@ def _momentum(panel: pd.DataFrame, master: pd.DataFrame, days: list, xm: pd.Data
             "dates": [pd.Timestamp(d).strftime("%Y-%m-%d") for d in window],
             "industries": industries, "stocks": stocks,
             "bench": [_r(v) for v in bench]}
+
+
+def _quality() -> dict:
+    """資料品質檢查的結果（quality.py 在排程最後寫的）。"""
+    try:
+        return json.loads((Path(__file__).resolve().parent / "data" / "quality.json")
+                          .read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"status": "", "checks": []}
 
 
 def _stock_news() -> dict:
@@ -530,7 +570,9 @@ def build(out_dir: Path) -> dict:
     _dump([[r["code"], r["name"], r["market"], r["industry"]] for _, r in listed.iterrows()],
           data_dir / "stocks.json")
 
-    shards = write_stock_shards(data_dir, panel, master, pe, tdcc, exdiv)
+    flags = active_flags(today)
+    _dump(flags, data_dir / "flags.json")
+    shards = write_stock_shards(data_dir, panel, master, pe, tdcc, exdiv, flags)
 
     results = signals.run(panel, load_revenue(), pe, tdcc, master)
     _dump(_screen(results, panel, master, latest), data_dir / "screen.json")
@@ -539,7 +581,7 @@ def build(out_dir: Path) -> dict:
     overview = {
         "asof": latest.strftime("%Y-%m-%d"),
         "kpi": _kpis(summary, xm, latest.strftime("%Y-%m-%d")),
-        "watch": _watch_rows(panel, names, watch, latest),
+        "watch": _watch_rows(panel, names, watch, latest, flags),
         "edit_url": EDIT_URL,
         "events": _events(today, watch_codes, names, exdiv),
         "signals": [{"id": c["id"], "name": c["name"], "total": results[c["id"]]["total"],
@@ -555,4 +597,9 @@ def build(out_dir: Path) -> dict:
     _dump(_momentum(panel, master, days, xm, watch_codes), data_dir / "momentum.json")
     _dump(_stock_news(), data_dir / "stocknews.json")
     _strong_record(data_dir)
-    return {"latest": latest.strftime("%Y-%m-%d"), "stocks": shards, "watch": len(watch)}
+    _dump(signal_perf.build(panel, load_revenue(), master, load_strong_history(), names),
+          data_dir / "perf.json")
+    quality = _quality()
+    _dump(quality, data_dir / "quality.json")
+    return {"latest": latest.strftime("%Y-%m-%d"), "stocks": shards, "watch": len(watch),
+            "quality": quality}

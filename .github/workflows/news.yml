@@ -72,3 +72,18 @@ jobs:
       contents: read
       pages: write
       id-token: write
+
+  notify-failure:
+    needs: [news]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - env:
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+        run: python alerts.py --failure "Update news"

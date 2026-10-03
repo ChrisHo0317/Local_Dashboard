@@ -22,6 +22,7 @@ SUBTABS = [
     ("sectors", "類股", "類股", "面積＝成交值，顏色＝所選區間的漲跌（紅漲綠跌）"),
     ("momentum", "強勢股", "強勢股", "哪些股票漲得越來越快：強度 × 加速度"),
     ("record", "強勢紀錄", "強勢紀錄", "每天強勢股的上漲原因、是否族群連動與同族群個股"),
+    ("perf", "訊號績效", "訊號績效", "每個訊號之後 5／10／20 日的報酬、勝率與超額報酬"),
     ("flows", "法人籌碼", "法人籌碼", "外資、投信買賣超排行　·　期貨未平倉"),
 ]
 
@@ -29,14 +30,19 @@ SUBTABS = [
 def stats(data) -> dict:
     """設定頁的資料卡：由 intel_build 算好後塞進 data。"""
     info = data or {}
-    return {
-        "latest": info.get("latest", "無資料"),
-        "rows_html": [
-            ("最新交易日", info.get("latest", "無資料")),
-            ("個股資料", f"{info.get('stocks', 0):,} 檔"),
-            ("自選股", f"{info.get('watch', 0)} 檔"),
-        ],
-    }
+    rows = [
+        ("最新交易日", info.get("latest", "無資料")),
+        ("個股資料", f"{info.get('stocks', 0):,} 檔"),
+        ("自選股", f"{info.get('watch', 0)} 檔"),
+    ]
+    q = info.get("quality") or {}
+    issues = [c for c in q.get("checks", []) if c.get("level") in ("error", "warn", "info")]
+    label = {"error": "錯誤", "warn": "注意", "info": "提醒"}
+    rows.append(("資料品質", (f"{len(issues)} 項待處理" if issues else "正常")
+                 + (f"（{q['generated']} 檢查）" if q.get("generated") else "")))
+    for c in issues[:6]:
+        rows.append((label[c["level"]], c["title"]))
+    return {"latest": info.get("latest", "無資料"), "rows_html": rows}
 
 
 def _range_chips(cls: str, default: int) -> str:
@@ -161,6 +167,29 @@ def panel_html(data) -> str:
         '    </div>\n'
         '    <p class="rec-sum sec-sum"></p>\n'
         '    <div class="rec-body"></div>\n'
+        '  </div>',
+        '  <div class="subpanel ov" data-sub="perf" hidden>\n'
+        '    <p class="ov-asof"></p>\n'
+        '    <p class="mo-explain">每個訊號「新進榜」的隔天開盤買進，持有 5／10／20 個交易日後以收盤計算；'
+        '價格已還原權值，報酬已扣來回成本（手續費＋證交稅）。<b>超額報酬</b>＝訊號報酬 − 同期市場平均'
+        '（均量 1 億以上股票等權）。<b>判讀</b>：至少 30 次，而且超額報酬的 t 值 ≥ 2 才算「優於大盤」。'
+        '回測用過去一年的資料、只用當時就知道的資訊；追蹤是從開始記錄那天起累積。</p>\n'
+        '    <div class="sec-bar"><div class="pf-h sec-period" role="group" aria-label="持有天數">\n'
+        '      <button type="button" class="chip" data-h="5" aria-pressed="false">持有 5 日</button>\n'
+        '      <button type="button" class="chip" data-h="10" aria-pressed="false">10 日</button>\n'
+        '      <button type="button" class="chip" data-h="20" aria-pressed="true">20 日</button>\n'
+        '    </div></div>\n'
+        '    <h3 class="sd-h">平均超額報酬</h3>\n'
+        '    <div class="ichart" id="ov-perf-bars"></div>\n'
+        '    <div class="pf-table"></div>\n'
+        '    <h3 class="sd-h">每月平均超額報酬</h3>\n'
+        '    <p class="sd-note">看訊號是一直有效，還是只在某幾個月有用。點圖例可以隱藏某條線。</p>\n'
+        '    <div class="ichart" id="ov-perf-monthly"></div>\n'
+        '    <h3 class="sd-h pf-recent-h">最近的訊號</h3>\n'
+        '    <p class="sd-note">點上面表格的一列切換訊號；點股票打開個股頁。</p>\n'
+        '    <div class="pf-recent"></div>\n'
+        '    <p class="sd-note">回測沒有考慮滑價、漲停買不到、已下市的股票；同一檔短期內反覆進榜時事件會重疊，'
+        't 值會偏樂觀。結果只能當參考，不是投資建議。</p>\n'
         '  </div>',
         '  <div class="subpanel ov" data-sub="flows" hidden>\n'
         '    <div class="ov-flow-tabs" role="group" aria-label="法人">\n'

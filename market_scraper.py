@@ -10,7 +10,15 @@
                                         afterTrading/peQryDate（本益比）
            www.tpex.org.tw/openapi/v1/tpex_index（櫃買指數，當月每日）
 
+    權值事件 證交所 exRight/TWT49U（除權除息計算結果）、reducation/TWTAUU（減資恢復買賣）、
+           change/TWTB8U（變更面額恢復買賣）；櫃買 openapi tpex_exright_daily（除權除息）
+    注意／處置 證交所 openapi announcement/notice、announcement/punish；
+           櫃買 openapi tpex_trading_warning_information、tpex_disposal_information
+
 這些都是官方公開、可帶日期的端點，所以缺了哪天就能回頭補，不必用 FinMind。
+
+參考價（ref）：收盤 − 漲跌。除權息、減資、分割那天的參考價不是前一天收盤，
+還原權值就靠它；證交所那幾天的漲跌欄是「X」（不比價），改用上面的權值事件表。
 回應的解析寫成獨立函式（parse_*），測試用存下來的樣本直接餵。
 
 休市日：證交所回「很抱歉，沒有符合條件的資料」，櫃買回 stat ok 但沒有資料列，
@@ -25,6 +33,7 @@ import pandas as pd
 from curl_cffi import requests as cffi_requests
 
 TWSE = "https://www.twse.com.tw/rwd/zh/"
+TWSE_OPENAPI = "https://openapi.twse.com.tw/v1/"
 TPEX = "https://www.tpex.org.tw/www/zh-tw/"
 TPEX_OPENAPI = "https://www.tpex.org.tw/openapi/v1/"
 
@@ -52,6 +61,17 @@ def _sign(value) -> int:
     return -1 if text.startswith("-") else 1
 
 
+def _ref(close, sign_cell, change) -> float | None:
+    """參考價＝收盤 − 漲跌。「X」（不比價：除權息、減資、分割、新上市）回傳 None。"""
+    mark = re.sub(r"<[^>]+>", "", str(sign_cell or "")).strip()
+    if close is None or mark.upper() == "X":
+        return None
+    chg = num(change)
+    if chg is None:
+        return None
+    return round(close - (-chg if mark.startswith("-") else chg), 4)
+
+
 def _code(value) -> str:
     return str(value or "").strip()
 
@@ -73,11 +93,14 @@ def parse_twse_quotes(payload: dict) -> tuple[pd.DataFrame | None, dict]:
         if "證券代號" in fields and "收盤價" in fields:
             ix = {f: i for i, f in enumerate(fields)}
             for r in data:
+                close = num(r[ix["收盤價"]])
                 rows.append({
                     "code": _code(r[ix["證券代號"]]), "market": "twse",
                     "open": num(r[ix["開盤價"]]), "high": num(r[ix["最高價"]]),
-                    "low": num(r[ix["最低價"]]), "close": num(r[ix["收盤價"]]),
+                    "low": num(r[ix["最低價"]]), "close": close,
                     "volume": num(r[ix["成交股數"]]), "turnover": num(r[ix["成交金額"]]),
+                    "ref": _ref(close, r[ix["漲跌(+/-)"]], r[ix["漲跌價差"]])
+                           if "漲跌(+/-)" in ix and "漲跌價差" in ix else None,
                 })
         elif fields[:2] == ["指數", "收盤指數"]:
             for r in data:
@@ -169,11 +192,18 @@ def parse_tpex_quotes(payload: dict) -> tuple[pd.DataFrame | None, dict]:
     table = _tpex_table(payload)
     if not table:
         return None, {}
-    rows = [{
-        "code": _code(r[0]), "market": "tpex",
-        "close": num(r[2]), "open": num(r[4]), "high": num(r[5]), "low": num(r[6]),
-        "volume": num(r[7]), "turnover": num(r[8]),
-    } for r in table["data"]]
+    rows = []
+    for r in table["data"]:
+        close = num(r[2])
+        chg = str(r[3]).strip()
+        rows.append({
+            "code": _code(r[0]), "market": "tpex",
+            "close": close, "open": num(r[4]), "high": num(r[5]), "low": num(r[6]),
+            "volume": num(r[7]), "turnover": num(r[8]),
+            # 櫃買的漲跌是「+0.50」「-1.20」；除權息、新上市等不是數字的就沒有參考價
+            "ref": _ref(close, "-" if chg.startswith("-") else "+", chg.lstrip("+-"))
+                   if re.fullmatch(r"[+-]?[\d.,]+", chg) else None,
+        })
     df = pd.DataFrame(rows)
     return df, {"tpex_turnover": float(df["turnover"].fillna(0).sum())}
 
@@ -251,6 +281,105 @@ def names_from_quotes(payload: dict, market: str) -> pd.DataFrame:
             rows = [{"code": _code(r[0]), "name": str(r[1]).strip(), "market": "tpex"}
                     for r in table["data"]]
     return pd.DataFrame(rows, columns=["code", "name", "market"])
+
+
+# ── 權值事件 ────────────────────────────────────────────────
+EVENT_COLUMNS = ["date", "code", "market", "kind", "before", "ref", "factor"]
+
+
+def _roc_date(text) -> str | None:
+    """「115年09月01日」「114/09/15」「1151002」→ 2026-09-01。"""
+    digits = re.findall(r"\d+", str(text or ""))
+    if len(digits) == 1 and len(digits[0]) == 7:
+        d = digits[0]
+        digits = [d[:3], d[3:5], d[5:]]
+    if len(digits) != 3:
+        return None
+    try:
+        return date(int(digits[0]) + 1911, int(digits[1]), int(digits[2])).isoformat()
+    except ValueError:
+        return None
+
+
+def _event(day, code, market, kind, before, ref) -> dict | None:
+    before, ref = num(before), num(ref)
+    if not day or not code or not before or not ref:
+        return None
+    return {"date": day, "code": code, "market": market, "kind": kind,
+            "before": before, "ref": ref, "factor": round(ref / before, 8)}
+
+
+def parse_twse_events(payload: dict, kind: str) -> list[dict]:
+    """TWT49U／TWTAUU／TWTB8U：日期、代號、事件前收盤、參考價。"""
+    if not payload or payload.get("stat") != "OK":
+        return []
+    ix = {f: i for i, f in enumerate(payload.get("fields") or [])}
+    day_col = "資料日期" if "資料日期" in ix else "恢復買賣日期"
+    before_col = "除權息前收盤價" if "除權息前收盤價" in ix else "停止買賣前收盤價格"
+    ref_col = "除權息參考價" if "除權息參考價" in ix else "恢復買賣參考價"
+    out = []
+    for r in payload.get("data") or []:
+        e = _event(_roc_date(r[ix[day_col]]), _code(r[ix["股票代號"]]), "twse", kind,
+                   r[ix[before_col]], r[ix[ref_col]])
+        if e:
+            out.append(e)
+    return out
+
+
+def parse_tpex_events(payload: list) -> list[dict]:
+    """tpex_exright_daily：除權除息計算結果（openapi 只有最近幾天，每天累積）。"""
+    out = []
+    for r in payload or []:
+        e = _event(_roc_date(r.get("Date")), _code(r.get("SecuritiesCompanyCode")), "tpex",
+                   r.get("ExRightsDiviend") or "除權息",
+                   r.get("ClosePriceBeforeExRightsDiviend"), r.get("ExRightsDiviendQuote"))
+        if e:
+            out.append(e)
+    return out
+
+
+# ── 注意股、處置股 ──────────────────────────────────────────
+FLAG_COLUMNS = ["date", "code", "name", "market", "kind", "start", "end", "detail"]
+
+
+def _period(text) -> tuple[str | None, str | None]:
+    """「115/10/01～115/10/07」「1151005~1151012」→ 起迄。"""
+    parts = re.split(r"[～~]", str(text or ""))
+    if len(parts) != 2:
+        return None, None
+    return _roc_date(parts[0]), _roc_date(parts[1])
+
+
+def parse_flags(twse_notice: list, twse_punish: list, tpex_warn: list, tpex_disp: list) -> list[dict]:
+    out = []
+    for r in twse_notice or []:
+        code, day = _code(r.get("Code")), _roc_date(r.get("Date"))
+        if code and day:
+            out.append({"date": day, "code": code, "name": str(r.get("Name") or "").strip(),
+                        "market": "twse", "kind": "注意", "start": day, "end": day,
+                        "detail": str(r.get("TradingInfoForAttention") or "").strip()[:200]})
+    for r in twse_punish or []:
+        code, day = _code(r.get("Code")), _roc_date(r.get("Date"))
+        start, end = _period(r.get("DispositionPeriod"))
+        if code and day:
+            out.append({"date": day, "code": code, "name": str(r.get("Name") or "").strip(),
+                        "market": "twse", "kind": "處置", "start": start or day, "end": end or day,
+                        "detail": (str(r.get("DispositionMeasures") or "") + "：" +
+                                   str(r.get("ReasonsOfDisposition") or "")).strip("：")[:200]})
+    for r in tpex_warn or []:
+        code, day = _code(r.get("SecuritiesCompanyCode")), _roc_date(r.get("Date"))
+        if code and day:
+            out.append({"date": day, "code": code, "name": str(r.get("CompanyName") or "").strip(),
+                        "market": "tpex", "kind": "注意", "start": day, "end": day,
+                        "detail": str(r.get("TradingInformation") or "").strip()[:200]})
+    for r in tpex_disp or []:
+        code, day = _code(r.get("SecuritiesCompanyCode")), _roc_date(r.get("Date"))
+        start, end = _period(r.get("DispositionPeriod"))
+        if code and day:
+            out.append({"date": day, "code": code, "name": str(r.get("CompanyName") or "").strip(),
+                        "market": "tpex", "kind": "處置", "start": start or day, "end": end or day,
+                        "detail": str(r.get("DispositionReasons") or "").strip()[:200]})
+    return out
 
 
 # ── 抓取 ────────────────────────────────────────────────────
@@ -353,3 +482,37 @@ class MarketScraper:
         asked_quotes = ("quotes" in tw) + ("quotes" in tp)
         out["closed"] = asked_quotes == 2 and no_quotes == 2
         return out
+
+    def quotes(self, day: date, market: str):
+        """只抓一個市場一天的收盤行情（回補參考價、修正零價用）；失敗回傳 None。"""
+        if market == "twse":
+            df, _ = parse_twse_quotes(self._twse(
+                f"afterTrading/MI_INDEX?date={day:%Y%m%d}&type=ALLBUT0999&response=json"))
+        else:
+            df, _ = parse_tpex_quotes(self._tpex(
+                f"afterTrading/otc?date={day:%Y}%2F{day:%m}%2F{day:%d}&type=EW&response=json"))
+        return df
+
+    def events(self, start: date, end: date) -> list[dict]:
+        """start～end 之間的權值事件。證交所除權息表按月查（一次查太久會被拒）。"""
+        out = []
+        month = date(start.year, start.month, 1)
+        while month <= end:
+            nxt = date(month.year + (month.month == 12), month.month % 12 + 1, 1)
+            a, b = max(start, month), min(end, date.fromordinal(nxt.toordinal() - 1))
+            out += parse_twse_events(self._twse(
+                f"exRight/TWT49U?startDate={a:%Y%m%d}&endDate={b:%Y%m%d}&response=json"), "除權息")
+            month = nxt
+        rng = f"startDate={start:%Y%m%d}&endDate={end:%Y%m%d}&response=json"
+        out += parse_twse_events(self._twse(f"reducation/TWTAUU?{rng}"), "減資")
+        out += parse_twse_events(self._twse(f"change/TWTB8U?{rng}"), "變更面額")
+        out += parse_tpex_events(self._get(TPEX_OPENAPI + "tpex_exright_daily", "tpex", TPEX_GAP))
+        return out
+
+    def flags(self) -> list[dict]:
+        """今天公布的注意股與目前的處置股（上市＋上櫃）。"""
+        return parse_flags(
+            self._get(TWSE_OPENAPI + "announcement/notice", "twse-open", TPEX_GAP),
+            self._get(TWSE_OPENAPI + "announcement/punish", "twse-open", TPEX_GAP),
+            self._get(TPEX_OPENAPI + "tpex_trading_warning_information", "tpex", TPEX_GAP),
+            self._get(TPEX_OPENAPI + "tpex_disposal_information", "tpex", TPEX_GAP))

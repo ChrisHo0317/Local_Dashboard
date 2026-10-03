@@ -367,6 +367,106 @@ def repair_history() -> int:
     return sum(len(a) for a in added)
 
 
+def update_events() -> int:
+    """權值事件（除權息、減資、變更面額）與注意股、處置股：每次回頭抓近 45 天，順便看未來幾天。"""
+    today = today_taipei()
+    scraper = MarketScraper(logger=log)
+    added = md.merge_events(scraper.events(today - timedelta(days=45), today + timedelta(days=10)))
+    flags = md.merge_flags(scraper.flags())
+    log.info(f"權值事件：新增 {added} 筆；注意／處置：{'有更新' if flags else '無變動'}")
+    return added + flags
+
+
+BACKFILL_LIMIT = 80   # 每次最多重抓幾天，排程每次補一些，補完就什麼都不做
+
+
+def backfill(limit: int = BACKFILL_LIMIT) -> int:
+    """
+    歷史資料回補（可以重複執行，做完的不會再抓）：
+
+      1. 權值事件表比歷史起點晚 → 從歷史起點補抓證交所的除權息、減資、變更面額
+      2. 歷史底稿（一次性匯出的那段）：
+           上市：收盤記成 0、但當天有成交的日子 → 重抓收盤行情修正零價
+           上櫃：每一天都重抓收盤行情 → 修正零價並取得參考價（還原權值用）
+         一天一個市場寫一個修補檔（data/market/patch/），寫過就不再抓
+      3. 之後的日期檔裡上櫃沒有參考價的（加這欄以前抓的）→ 重抓收盤行情補上
+
+    新的日子優先（強勢股、類股看的是最近幾個月）。
+    """
+    path = md.MARKET_DIR / "history_base.parquet"
+    scraper = MarketScraper(logger=log)
+    done = 0
+    if path.exists():
+        base = pd.read_parquet(path, columns=["date", "code", "market", "close", "volume"])
+        start = base["date"].min().date()
+        events = md.load_events()
+        if events.empty or pd.Timestamp(events["date"].min()) > pd.Timestamp(start) + pd.Timedelta(days=10):
+            done += md.merge_events(scraper.events(start, today_taipei()))
+        bad = base[((base["close"] <= 0) | base["close"].isna()) & (base["volume"] > 0)]
+        need = []
+        for day in sorted(base["date"].unique(), reverse=True):
+            d = pd.Timestamp(day).date()
+            if not md.patch_path(d, "tpex").exists():
+                need.append((d, "tpex"))
+            twse_bad = bad[(bad["date"] == day) & (bad["market"] == "twse")]
+            if len(twse_bad) and not md.patch_path(d, "twse").exists():
+                need.append((d, "twse"))
+        base_end = base["date"].max().date()
+    else:
+        base, bad, need, base_end = None, None, [], None
+    # 之後的日期檔：上櫃沒有參考價的
+    for d in sorted(md.dates(), reverse=True):
+        if base_end and d <= base_end:
+            continue
+        day = md.load_day(d)
+        tp = day[day["market"] == "tpex"]
+        if len(tp) and tp["ref"].isna().all():
+            need.append((d, "tpex-day"))
+    need.sort(key=lambda x: x[0], reverse=True)
+    if not need:
+        log.info("回補：歷史資料都補齊了")
+        return done
+    for d, kind in need[:limit]:
+        market = "twse" if kind == "twse" else "tpex"
+        df = scraper.quotes(d, market)
+        if df is None or df.empty:
+            log.warning(f"回補：{d} {market} 抓不到，下次再試")
+            continue
+        if kind == "tpex-day":
+            done += md.save_day(d, df)
+            continue
+        df = df.copy()
+        rows = base[(base["date"] == pd.Timestamp(d)) & (base["market"] == market)]
+        broken = set(rows.loc[(rows["close"] <= 0) | rows["close"].isna(), "code"])
+        fix = df["code"].isin(broken)
+        for col in ("open", "high", "low", "close"):
+            df.loc[~fix, col] = float("nan")          # 只修壞掉的價格，其他保留底稿原值
+        if market == "twse":
+            df = df[fix]
+        md.save_patch(d, market, df)
+        done += 1
+    left = max(len(need) - limit, 0)
+    log.info(f"回補：這次補 {min(len(need), limit)} 天，還剩 {left} 天")
+    return done
+
+
+def update_signal_log() -> int:
+    """選股條件當天的命中名單記下來（訊號績效的往後追蹤）。"""
+    import intel_data
+    import signal_perf
+    import signals
+    from chip_data import load_tdcc
+    panel = intel_data.daily_panel(260)
+    if panel.empty:
+        return 0
+    master = intel_data.stock_master()
+    results = signals.run(panel, fund.load_revenue(), intel_data.pe_series(panel), load_tdcc(), master)
+    day = panel["date"].max().strftime("%Y-%m-%d")
+    n = signal_perf.append_log(day, results)
+    log.info(f"訊號紀錄：{day} {'記錄 ' + str(n) + ' 筆' if n else '與上次相同'}")
+    return int(bool(n))
+
+
 def update_chips() -> int:
     """集保股權分散（每週）、期貨三大法人未平倉（每日）。"""
     scraper = ChipScraper(logger=log)
@@ -409,12 +509,17 @@ JOBS = {
     "market": update_market,
     "chips": update_chips,
     "xmarket": update_xmarket,
+    "events": update_events,
+    "backfill": backfill,
+    "signallog": update_signal_log,
     # 強勢股新聞與上漲原因（會呼叫 Claude，見 stock_news.py）
     "stocknews": lambda: stock_news.update(log),
 }
 
 # 不在預設清單裡的一次性工作（要明確指定才會跑）
-MANUAL_JOBS = {"repair": repair_history}
+MANUAL_JOBS = {"repair": repair_history,
+               # 本機一次補完：python update_data.py backfillall
+               "backfillall": lambda: backfill(limit=10_000)}
 
 
 def main(argv: list[str] | None = None) -> int:

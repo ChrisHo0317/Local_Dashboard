@@ -19,6 +19,21 @@
     return cache[path];
   }
 
+  // 注意股、處置股（data/flags.json）：{代號: [注意|處置, 起, 迄, 說明]}
+  var FLAGS = {};
+  function loadFlags() {
+    return getJSON('data/flags.json').then(function (f) { FLAGS = f || {}; }, function () {});
+  }
+  function flagBadge(code, kind) {
+    var f = kind ? [kind] : FLAGS[code];
+    if (!f || !f[0]) return null;
+    var b = document.createElement('span');
+    b.className = 'flag-badge' + (f[0] === '處置' ? ' is-disp' : '');
+    b.textContent = f[0];
+    if (f[3]) b.title = (f[0] === '處置' ? '處置期間 ' + f[1] + ' ～ ' + f[2] + '\n' : '') + f[3];
+    return b;
+  }
+
   function el(tag, cls, text) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -263,6 +278,8 @@
         c0.appendChild(el('span', 'ov-code', r.code));
         c0.appendChild(el('span', 'ov-name', r.name));
         if (r.ann) c0.appendChild(el('span', 'ov-flag', '重訊'));
+        var fb = flagBadge(r.code, r.flag);
+        if (fb) c0.appendChild(fb);
         tr.appendChild(c0);
         tr.appendChild(el('td', null, fmt(r.close, 2)));
         tr.appendChild(el('td', dir(r.chg), signed(r.chg, 2, '%')));
@@ -1252,6 +1269,8 @@
         c0.appendChild(el('span', 'ov-code', ' ' + r.code));
         c0.appendChild(el('span', 'ov-name', r.name));
         c0.appendChild(el('span', 'scr-reason', mo.data.industries[r.ind] + '　·　均量 ' + fmt(r.tv, 1) + ' 億'));
+        var fb = flagBadge(r.code);
+        if (fb) c0.insertBefore(fb, c0.querySelector('.scr-reason'));
         var why = moWhy(r.code);
         if (why) c0.appendChild(why);
         tr.appendChild(c0);
@@ -1377,6 +1396,7 @@
     }
 
     function momentum(pane) {
+      loadFlags().then(function () { if (mo.data) moTable(pane, mo.strong); });
       // 新聞另外載入：抓不到也不影響圖表，晚到就補畫排行
       getJSON('data/stocknews.json').then(function (n) {
         if (mo.newsMeta === n) return;
@@ -1445,6 +1465,8 @@
       head.appendChild(el('span', 'rec-num ' + dir(row[R_R5]), '近 5 日 ' + signed(row[R_R5], 1, '%')));
       head.appendChild(el('span', 'rec-num', '20 日 ' + signed(row[R_S], 1, '%')));
       if (row[R_RANK]) head.appendChild(el('span', 'rec-num', '第 ' + row[R_RANK] + ' 名'));
+      var fb = flagBadge(row[R_CODE]);
+      if (fb) head.appendChild(fb);
       if (showGroup && row[R_GROUP]) {
         head.appendChild(el('span', row[R_LINKED] ? 'rec-badge is-linked' : 'rec-badge',
                             row[R_GROUP] + (row[R_LINKED] ? '・族群連動' : '・個股')));
@@ -1650,7 +1672,7 @@
     }
 
     function record(pane) {
-      return getJSON('data/record/index.json').then(function (ix) {
+      return loadFlags().then(function () { return getJSON('data/record/index.json'); }).then(function (ix) {
         rec.index = ix;
         if (!ix.dates.length) {
           pane.querySelector('.rec-sum').textContent = '還沒有紀錄：每天盤後整理強勢股新聞時會自動累積。';
@@ -1666,8 +1688,163 @@
       });
     }
 
+    // ── 訊號績效：新進榜後 5／10／20 日的報酬、勝率、超額報酬 ────────────
+    var pf = {data: null, h: '20', pick: null};
+
+    function pfSignals() {
+      return pf.data.signals.filter(function (s) { return (s.stats[pf.h] || {}).n; });
+    }
+
+    function pfVerdictClass(v) {
+      return v === '優於大盤' ? 'is-good' : v === '輸給大盤' ? 'is-bad' : '';
+    }
+
+    function perfBars(pane) {
+      var c = palette(), gd = document.getElementById('ov-perf-bars');
+      var list = pfSignals().slice().reverse();          // 橫條由上往下照原本順序
+      if (!list.length) { gd.hidden = true; return; }
+      gd.hidden = false;
+      var x = list.map(function (s) { return s.stats[pf.h].exc; });
+      gd.style.height = (60 + 34 * list.length) + 'px';
+      Plotly.react(gd, [{
+        type: 'bar', orientation: 'h', y: list.map(function (s) { return s.name; }), x: x,
+        marker: {color: x.map(function (v) { return v >= 0 ? c.up : c.down; })},
+        text: x.map(function (v) { return signed(v, 2, '%'); }),
+        customdata: list.map(function (s) { var st = s.stats[pf.h]; return [st.beat, st.n, st.win]; }),
+        textposition: 'outside', cliponaxis: false, textfont: {size: 11, color: c.text},
+        hovertemplate: '%{y}<br>平均超額報酬 %{x:+.2f}%<br>勝過大盤 %{customdata[0]:.0f}%　勝率 ' +
+                       '%{customdata[2]:.0f}%　%{customdata[1]} 次<extra></extra>'
+      }], layout({
+        margin: {l: 10, r: 20, t: 8, b: 30},
+        // 左右留空間給數字標籤，負的長條標籤才不會壓到訊號名稱
+        xaxis: {ticksuffix: '%', zeroline: true, zerolinecolor: c.gray, gridcolor: c.grid, fixedrange: true,
+                range: [Math.min(0, Math.min.apply(null, x)) * 1.6 - 0.4, Math.max(0, Math.max.apply(null, x)) * 1.35 + 0.4]},
+        yaxis: {automargin: true, fixedrange: true}
+      }), {displayModeBar: false, responsive: true});
+    }
+
+    function perfTable(pane) {
+      var box = pane.querySelector('.pf-table');
+      box.textContent = '';
+      var t = el('table', 'ov-table scr-table pf-tbl');
+      var h = el('tr');
+      ['訊號', '方式', '次數', '平均報酬', '平均超額', '勝率', '勝過大盤', '判讀'].forEach(function (x) {
+        h.appendChild(el('th', null, x));
+      });
+      var thead = el('thead'); thead.appendChild(h); t.appendChild(thead);
+      var tb = el('tbody');
+      pf.data.signals.forEach(function (s) {
+        var st = s.stats[pf.h] || {n: 0};
+        var tr = el('tr', 'go' + (pf.pick === s.id ? ' is-picked' : ''));
+        var c0 = el('td');
+        c0.appendChild(el('span', 'ov-name', s.name));
+        c0.appendChild(el('span', 'scr-reason', s.desc));
+        tr.appendChild(c0);
+        tr.appendChild(el('td', null, s.mode + (s.mode === '追蹤' && s.since ? '（' + md(s.since) + ' 起）' : '')));
+        tr.appendChild(el('td', null, st.n ? String(st.n) : '—'));
+        tr.appendChild(el('td', dir(st.ret), st.n ? signed(st.ret, 2, '%') : '—'));
+        tr.appendChild(el('td', dir(st.exc), st.n ? signed(st.exc, 2, '%') : '—'));
+        tr.appendChild(el('td', null, st.n ? fmt(st.win, 1) + '%' : '—'));
+        tr.appendChild(el('td', null, st.n ? fmt(st.beat, 1) + '%' : '—'));
+        var v = el('td');
+        v.appendChild(el('span', 'pf-verdict ' + pfVerdictClass(st.verdict),
+                         st.n ? st.verdict : (s.mode === '追蹤' ? '累積中' : '—')));
+        tr.appendChild(v);
+        tr.addEventListener('click', function () { pf.pick = s.id; perfTable(pane); perfRecent(pane); });
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb);
+      var wrap = el('div', 'ov-table-wrap');
+      wrap.appendChild(t);
+      box.appendChild(wrap);
+    }
+
+    function perfMonthly(pane) {
+      var c = palette(), gd = document.getElementById('ov-perf-monthly');
+      var hi = pf.data.horizons.indexOf(Number(pf.h)) + 1;
+      var colors = [c.up, c.blue, c.orange, c.purple, c.gray, '#0c8599', '#5c940d', '#ae3ec9', '#d6336c'];
+      var traces = [];
+      pf.data.signals.forEach(function (s, i) {
+        if (!s.monthly.some(function (m) { return m[hi] != null; })) return;   // 還在累積、沒有到期的不畫
+        traces.push({type: 'scatter', mode: 'lines+markers', name: s.name,
+                     x: s.monthly.map(function (m) { return m[0]; }),
+                     y: s.monthly.map(function (m) { return m[hi]; }),
+                     line: {color: colors[i % colors.length], width: 2}, marker: {size: 5},
+                     hovertemplate: s.name + '　%{x}<br>平均超額 %{y:+.2f}%<extra></extra>'});
+      });
+      if (!traces.length) { gd.hidden = true; return; }
+      gd.hidden = false;
+      Plotly.react(gd, traces, layout({
+        showlegend: true, legend: {orientation: 'h', y: -0.25, font: {size: 11}},
+        margin: {l: 48, r: 10, t: 8, b: 70},
+        xaxis: {type: 'category', fixedrange: true},
+        yaxis: {ticksuffix: '%', zeroline: true, zerolinecolor: c.gray, gridcolor: c.grid, fixedrange: true},
+        hovermode: 'closest'
+      }), {displayModeBar: false, responsive: true});
+    }
+
+    function perfRecent(pane) {
+      var box = pane.querySelector('.pf-recent');
+      box.textContent = '';
+      var s = pf.data.signals.filter(function (x) { return x.id === pf.pick; })[0];
+      pane.querySelector('.pf-recent-h').textContent = s ? '最近的訊號：' + s.name : '最近的訊號';
+      if (!s || !s.recent.length) {
+        box.appendChild(el('p', 'sd-note', s && s.mode === '追蹤' ? '還在累積：每天盤後記錄，之後才看得到報酬。' : '沒有資料。'));
+        return;
+      }
+      var t = el('table', 'ov-table');
+      var h = el('tr');
+      ['日期', '股票', '5 日', '10 日', '20 日'].forEach(function (x) { h.appendChild(el('th', null, x)); });
+      var thead = el('thead'); thead.appendChild(h); t.appendChild(thead);
+      var tb = el('tbody');
+      s.recent.forEach(function (r) {
+        var tr = el('tr', 'go');
+        tr.appendChild(el('td', null, md(r[0])));
+        var c1 = el('td');
+        c1.appendChild(el('span', 'ov-code', r[1]));
+        c1.appendChild(el('span', 'ov-name', r[2]));
+        tr.appendChild(c1);
+        [r[3], r[4], r[5]].forEach(function (v) {
+          tr.appendChild(el('td', dir(v), v == null ? '未到期' : signed(v, 1, '%')));
+        });
+        tr.addEventListener('click', function () { openStock(r[1]); });
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb);
+      var wrap = el('div', 'ov-table-wrap');
+      wrap.appendChild(t);
+      box.appendChild(wrap);
+      box.appendChild(el('p', 'sd-note', '報酬已扣來回成本；「未到期」是持有天數還沒滿。'));
+    }
+
+    function perfDraw(pane) {
+      perfBars(pane);
+      perfTable(pane);
+      perfMonthly(pane);
+      perfRecent(pane);
+    }
+
+    function perf(pane) {
+      return getJSON('data/perf.json').then(function (d) {
+        pf.data = d;
+        if (!d.signals || !d.signals.length) {
+          pane.querySelector('.ov-asof').textContent = '還沒有資料。';
+          return;
+        }
+        if (!pf.pick) pf.pick = d.signals[0].id;
+        pane.querySelector('.ov-asof').textContent = '回測 ' + md(d.start) + ' ～ ' + md(d.asof) +
+          '　·　來回成本 ' + d.cost + '%';
+        var chips = pane.querySelector('.pf-h');
+        if (!chips._bound) {
+          chips._bound = true;
+          bindChips(chips, function (chip) { pf.h = chip.dataset.h; perfDraw(pane); });
+        }
+        perfDraw(pane);
+      });
+    }
+
     var RENDER = {today: today, market: market, sectors: sectors, momentum: momentum,
-                  record: record, flows: flows};
+                  record: record, perf: perf, flows: flows};
 
     function show(sub) {
       if (!sub || !RENDER[sub]) return;
@@ -1997,6 +2174,11 @@
       st.appendChild(stat('本益比', s.val && s.val.per ? fmt(s.val.per, 2) : '—'));
       st.appendChild(stat('殖利率', s.val && s.val.yield != null ? fmt(s.val.yield, 2) + '%' : '—'));
       st.appendChild(stat('股價淨值比', s.val && s.val.pbr ? fmt(s.val.pbr, 2) : '—'));
+      if (s.flag) {
+        st.appendChild(stat(s.flag[0] === '處置' ? '處置股' : '注意股',
+                            s.flag[0] === '處置' ? md(s.flag[1]) + '～' + md(s.flag[2]) : md(s.flag[1]),
+                            null));
+      }
       drawPrice(s);
       drawRevenue(s);
       drawEps(s);

@@ -52,16 +52,16 @@ jobs:
         run: |
           case "${{ github.event.schedule }}" in
             "10 0 * * 1-5")
-              python update_data.py stocknews ;;
+              python update_data.py events stocknews ;;
             "0 1 * * *")
-              python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket stock ;;
+              python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket stock events backfill ;;
             "30 9 * * 1-5")
-              python update_data.py market chips xmarket stock stocknews ;;
+              python update_data.py market chips xmarket stock events signallog stocknews ;;
             "")
               # 手動執行：全部跑一次
-              python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket stock stocknews ;;
+              python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket stock events signallog backfill stocknews ;;
             *)
-              python update_data.py market chips xmarket stock ;;
+              python update_data.py market chips xmarket stock events signallog backfill ;;
           esac
 
       - name: Alerts
@@ -70,6 +70,15 @@ jobs:
           BARK_KEY: ${{ secrets.BARK_KEY }}
           ALERTS_ENABLED: ${{ vars.ALERTS_ENABLED }}
         run: python alerts.py
+
+      - name: Data quality
+        # 資料品質檢查：結果寫 data/quality.json；有錯誤等級的問題就推播
+        if: always()
+        env:
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ALERTS_ENABLED: ${{ vars.ALERTS_ENABLED }}
+        run: python quality.py
 
       - name: Commit if changed
         id: commit
@@ -103,3 +112,19 @@ jobs:
       contents: read
       pages: write
       id-token: write
+
+  notify-failure:
+    # 任何一步失敗都推播（BARK_KEY 沒設定就只留在執行紀錄）
+    needs: [update, deploy]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - env:
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+        run: python alerts.py --failure "Update market data"
