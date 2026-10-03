@@ -9,7 +9,7 @@
     stocknews.json       強勢股的近五日新聞與上漲原因（點進強勢股才下載）
     flags.json           目前的注意股、處置股 {代號: [注意|處置, 起, 迄, 說明]}
     perf.json            訊號績效：每個訊號新進榜後 5／10／20 日的報酬、勝率、超額報酬
-    record/index.json    強勢紀錄：日期、族群輪動（每天每個族群幾檔）、每檔出現過的日子
+    record/index.json    強勢紀錄：日期、族群輪動（每天每個族群幾檔）、每檔出現過的日子、上榜次數排行
     record/{日期}.json   那天每一檔強勢股的原因、族群與同族群個股
 
 數字在這裡就換好單位（張、億元），前端只負責畫。
@@ -536,7 +536,47 @@ def _stock_news() -> dict:
     return d
 
 
-def _strong_record(data_dir: Path) -> None:
+FREQ_DAYS = 120          # 上榜次數排行看幾個交易日
+FREQ_WINDOWS = [20, 60, 120]
+FREQ_KEEP = 400
+
+
+def _strong_freq(panel: pd.DataFrame, hist: pd.DataFrame, master: pd.DataFrame) -> dict:
+    """
+    上榜次數排行：依每天收盤重算強勢紀錄的名單（越來越強、均量 0.3 億以上、加速度前 60），
+    算近 20／60／120 個交易日各上榜幾次、目前連續幾天、最後一次是哪天；
+    族群連動次數與最常見的族群只能用有新聞紀錄的日子（強勢紀錄）。
+    rows：[代號, 名稱, 產業, 20日次數, 60日次數, 120日次數, 連續天數, 最後上榜序號, 族群連動次數, 常見族群]
+    """
+    if panel is None or panel.empty:
+        return {}
+    m = signal_perf.matrices(panel)
+    member = signal_perf.strong_members(m).iloc[-FREQ_DAYS:]
+    if member.empty:
+        return {}
+    st = signal_perf.member_stats(member, FREQ_WINDOWS)
+    st = st[(st[f"c{FREQ_WINDOWS[-1]}"] >= 3) | (st[f"c{FREQ_WINDOWS[0]}"] >= 1)]
+    st = st.sort_values([f"c{FREQ_WINDOWS[-1]}", "streak"], ascending=False).head(FREQ_KEEP)
+    info = master.set_index("code")
+    linked_n, top_group = {}, {}
+    if not hist.empty:
+        h = hist.copy()
+        h["linked"] = h["linked"].astype(bool)
+        linked_n = h[h["linked"]].groupby("code").size().to_dict()
+        g = h[h["group"].fillna("") != ""]
+        top_group = g.groupby("code")["group"].agg(lambda x: x.value_counts().index[0]).to_dict()
+    rows = []
+    for code, r in st.iterrows():
+        rows.append([code, info["name"].get(code, "") if code in info.index else "",
+                     (info["industry"].get(code, "") if code in info.index else "") or "其他"]
+                    + [int(r[f"c{w}"]) for w in FREQ_WINDOWS]
+                    + [int(r["streak"]), int(r["last"]), int(linked_n.get(code, 0)), top_group.get(code, "")])
+    return {"dates": [d.strftime("%Y-%m-%d") for d in member.index], "windows": FREQ_WINDOWS,
+            "rows": rows, "since": min(hist["date"]) if not hist.empty else ""}
+
+
+def _strong_record(data_dir: Path, panel: pd.DataFrame | None = None,
+                   master: pd.DataFrame | None = None) -> None:
     """
     強勢紀錄分頁（stock_news.py 每天存的歷史）：
 
@@ -548,8 +588,9 @@ def _strong_record(data_dir: Path) -> None:
     """
     out = data_dir / "record"
     hist = load_strong_history()
+    freq = _strong_freq(panel, hist, master if master is not None else pd.DataFrame(columns=["code"]))
     if hist.empty:
-        _dump({"dates": [], "themes": [], "stocks": {}, "summary": []}, out / "index.json")
+        _dump({"dates": [], "themes": [], "stocks": {}, "summary": [], "freq": freq}, out / "index.json")
         return
     dates = sorted(hist["date"].unique())[-RECORD_DAYS:]
     hist = hist[hist["date"].isin(dates)].copy()
@@ -567,7 +608,7 @@ def _strong_record(data_dir: Path) -> None:
                         int(day.loc[day["linked"], "group"].nunique())])
     _dump({"dates": dates,
            "themes": [[g, [int(counts.get((g, d), 0)) for d in dates]] for g in top.index],
-           "stocks": stocks, "summary": summary}, out / "index.json")
+           "stocks": stocks, "summary": summary, "freq": freq}, out / "index.json")
     for d, day in hist.groupby("date"):
         rows = []
         for r in day.itertuples(index=False):
@@ -703,7 +744,7 @@ def build(out_dir: Path) -> dict:
     _dump(_sectors(panel, master, days), data_dir / "sectors.json")
     _dump(_momentum(panel, master, days, xm, watch_codes), data_dir / "momentum.json")
     _dump(_stock_news(), data_dir / "stocknews.json")
-    _strong_record(data_dir)
+    _strong_record(data_dir, panel, master)
     _dump(perf, data_dir / "perf.json")
     _dump(quality, data_dir / "quality.json")
     return {"latest": latest.strftime("%Y-%m-%d"), "stocks": shards, "watch": len(watch),

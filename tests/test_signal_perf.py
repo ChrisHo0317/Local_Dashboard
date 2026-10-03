@@ -54,3 +54,15 @@ def test_summarize_verdicts():
     assert sp.summarize(few)["20"]["verdict"] == "樣本不足"
     flat = good.assign(x20=rng.normal(0, 1, 50))
     assert sp.summarize(flat)["20"]["verdict"] in ("沒有明顯差異", "優於大盤", "輸給大盤")
+
+
+def test_member_stats_counts_streak_and_last():
+    idx = pd.bdate_range("2026-06-01", periods=6)
+    member = pd.DataFrame({"A": [True, True, False, True, True, True],
+                           "B": [True, False, False, False, False, False],
+                           "C": [False] * 6}, index=idx)
+    st = sp.member_stats(member, windows=(3, 6))
+    assert st.loc["A", "c3"] == 3 and st.loc["A", "c6"] == 5 and st.loc["A", "streak"] == 3
+    assert st.loc["A", "last"] == 5
+    assert st.loc["B", "c6"] == 1 and st.loc["B", "streak"] == 0 and st.loc["B", "last"] == 0
+    assert st.loc["C", "c6"] == 0 and st.loc["C", "last"] == -1

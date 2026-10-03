@@ -1777,7 +1777,7 @@
       }).slice(0, 5);
       pane.querySelector('.rec-sum').textContent = hits.length
         ? '「' + q + '」：' + hits.map(function (c) { return ix.stocks[c][0] + ' ' + c; }).join('、')
-        : '「' + q + '」沒有上過強勢股名單。';
+        : '「' + q + '」在有新聞紀錄的日子（' + md(ix.dates[0]) + ' 起）沒有上過強勢股名單。';
       body.textContent = '';
       var want = {};
       hits.forEach(function (code) {
@@ -1799,6 +1799,118 @@
           });
         });
       });
+    }
+
+    // 上榜次數排行：依收盤重算的每日名單（近 20／60／120 個交易日）
+    // rows：[代號, 名稱, 產業, 20日次數, 60日次數, 120日次數, 連續天數, 最後上榜序號, 族群連動次數, 常見族群]
+    var REC_FREQ_PAGE = 30;
+    rec.win = 1;                 // 預設看近 60 日
+    rec.freqShown = REC_FREQ_PAGE;
+
+    function recFreqRows() {
+      var f = rec.index.freq, col = 3 + rec.win;
+      return f.rows.filter(function (r) { return r[col] > 0; }).sort(function (a, b) {
+        return (b[col] - a[col]) || (b[6] - a[6]) || (b[7] - a[7]);
+      });
+    }
+
+    function recFreqChart(rows) {
+      var gd = document.getElementById('ov-record-freq'), c = palette();
+      var f = rec.index.freq, n = f.windows[rec.win], col = 3 + rec.win;
+      var top = rows.slice(0, 15).reverse();
+      if (!top.length) { gd.hidden = true; return; }
+      gd.hidden = false;
+      gd.style.height = (50 + 26 * top.length) + 'px';
+      Plotly.react(gd, [{
+        type: 'bar', orientation: 'h',
+        y: top.map(function (r) { return r[1] + ' ' + r[0]; }),
+        x: top.map(function (r) { return r[col]; }),
+        marker: {color: top.map(function (r) { return r[6] > 0 ? c.up : c.blue; })},
+        text: top.map(function (r) { return r[col] + ' 次' + (r[6] > 0 ? '・連續 ' + r[6] + ' 天' : ''); }),
+        textposition: 'outside', cliponaxis: false, textfont: {size: 11, color: c.text},
+        hovertemplate: '%{y}<br>近 ' + n + ' 日上榜 %{x} 次<extra></extra>'
+      }], layout({
+        margin: {l: 10, r: 110, t: 6, b: 28},
+        xaxis: {range: [0, Math.max.apply(null, top.map(function (r) { return r[col]; })) * 1.15 + 1],
+                gridcolor: c.grid, fixedrange: true, title: {text: '上榜次數', font: {size: 11}}},
+        yaxis: {automargin: true, fixedrange: true}
+      }), {displayModeBar: false, responsive: true});
+    }
+
+    function recFreqTable(pane, rows) {
+      var box = pane.querySelector('.rec-freq');
+      box.textContent = '';
+      var f = rec.index.freq, n = f.windows[rec.win], col = 3 + rec.win;
+      var t = el('table', 'ov-table rec-freq-tbl');
+      var h = el('tr');
+      ['股票', '近 ' + n + ' 日上榜', '連續', '最近上榜', '族群連動', '常見族群'].forEach(function (x) {
+        h.appendChild(el('th', null, x));
+      });
+      var thead = el('thead'); thead.appendChild(h); t.appendChild(thead);
+      var tb = el('tbody');
+      rows.slice(0, rec.freqShown).forEach(function (r, i) {
+        var tr = el('tr', 'go');
+        var c0 = el('td');
+        c0.appendChild(el('span', 'ov-name', (i + 1) + '.'));
+        c0.appendChild(recStockLink(r[0], r[1]));
+        var fb = flagBadge(r[0]);
+        if (fb) c0.appendChild(fb);
+        c0.appendChild(el('span', 'scr-reason', r[2]));
+        tr.appendChild(c0);
+        var cnt = el('td');
+        cnt.appendChild(el('b', null, String(r[col])));
+        cnt.appendChild(el('span', 'scr-reason', '占 ' + Math.round(r[col] / n * 100) + '% 的交易日'));
+        tr.appendChild(cnt);
+        tr.appendChild(el('td', r[6] > 0 ? 'up' : null, r[6] > 0 ? r[6] + ' 天' : '—'));
+        tr.appendChild(el('td', null, r[7] >= 0 ? md(f.dates[r[7]]) : '—'));
+        tr.appendChild(el('td', null, r[8] ? r[8] + ' 次' : '—'));
+        tr.appendChild(el('td', null, r[9] || '—'));
+        // 點一列：在下面列出這檔的強勢紀錄（有新聞紀錄的日子）
+        tr.addEventListener('click', function () {
+          var input = pane.querySelector('.rec-search');
+          input.value = r[0];
+          rec.query = r[0];
+          rec.theme = null;
+          recShow(pane);
+          pane.querySelector('.rec-sum').scrollIntoView({block: 'start', behavior: 'smooth'});
+        });
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb);
+      var wrap = el('div', 'ov-table-wrap');
+      wrap.appendChild(t);
+      box.appendChild(wrap);
+      if (rows.length > rec.freqShown) {
+        var more = el('button', 'scr-more', '再顯示 ' + Math.min(REC_FREQ_PAGE, rows.length - rec.freqShown) +
+                      ' 檔（共 ' + rows.length + ' 檔）');
+        more.type = 'button';
+        more.addEventListener('click', function () { rec.freqShown += REC_FREQ_PAGE; recFreqTable(pane, rows); });
+        box.appendChild(more);
+      }
+    }
+
+    function recFreq(pane) {
+      var f = rec.index.freq;
+      var sec = pane.querySelector('.rec-freq-sec');
+      if (!f || !f.rows || !f.rows.length) { sec.hidden = true; return; }
+      sec.hidden = false;
+      pane.querySelector('.rec-freq-note').textContent =
+        '名單依每天收盤重算（和強勢紀錄相同的條件：近 20 日上漲、近 5 日漲得比前 5 日多、均量 0.3 億以上、' +
+        '依加速度前 60 名），所以能往回看 ' + md(f.dates[0]) + ' 起的 ' + f.dates.length + ' 個交易日。' +
+        '紅色是到最新一天仍連續在榜。族群連動次數只算有新聞紀錄的日子' + (f.since ? '（' + md(f.since) + ' 起）' : '') +
+        '。點一列在下面看它的強勢紀錄。';
+      var chips = pane.querySelector('.rec-win');
+      if (!chips._bound) {
+        chips._bound = true;
+        bindChips(chips, function (chip) {
+          rec.win = Number(chip.dataset.win);
+          rec.freqShown = REC_FREQ_PAGE;
+          recFreq(pane);
+        });
+      }
+      var rows = recFreqRows();
+      recFreqChart(rows);
+      recFreqTable(pane, rows);
     }
 
     function recShow(pane) {
@@ -1894,6 +2006,7 @@
           md(ix.dates[ix.dates.length - 1]) + '，共 ' + ix.dates.length + ' 個交易日';
         recControls(pane);
         recHeat(pane);
+        recFreq(pane);
         return recShow(pane);
       });
     }

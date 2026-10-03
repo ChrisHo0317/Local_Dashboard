@@ -21,7 +21,7 @@ SUBTABS = [
     ("market", "大盤", "大盤", "加權指數與法人買賣超（估算）"),
     ("sectors", "類股", "類股", "面積＝成交值，顏色＝所選區間的漲跌（紅漲綠跌）"),
     ("momentum", "強勢股", "強勢股", "哪些股票漲得越來越快：強度 × 加速度"),
-    ("record", "強勢紀錄", "強勢紀錄", "每天強勢股的上漲原因、是否族群連動與同族群個股"),
+    ("record", "強勢紀錄", "強勢紀錄", "每天強勢股的上漲原因、族群連動、同族群個股與上榜次數排行"),
     ("perf", "訊號績效", "訊號績效", "每個訊號之後 5／10／20 日的報酬、勝率與超額報酬"),
     ("hold", "持股風控", "持股風控", "持股損益、停損、族群集中度與部位大小（只存在這個瀏覽器）"),
     ("flows", "法人籌碼", "法人籌碼", "外資、投信買賣超排行　·　期貨未平倉"),
@@ -178,6 +178,18 @@ def panel_html(data) -> str:
         '    <h3 class="sd-h">族群輪動</h3>\n'
         '    <p class="sd-note rec-heat-note"></p>\n'
         '    <div class="ichart" id="ov-record-heat"></div>\n'
+        '    <section class="rec-freq-sec">\n'
+        '      <h3 class="sd-h">上榜次數排行</h3>\n'
+        '      <p class="sd-note rec-freq-note"></p>\n'
+        '      <div class="sec-bar"><div class="rec-win sec-period" role="group" aria-label="期間">\n'
+        '        <button type="button" class="chip" data-win="0" aria-pressed="false">近 20 日</button>\n'
+        '        <button type="button" class="chip" data-win="1" aria-pressed="true">近 60 日</button>\n'
+        '        <button type="button" class="chip" data-win="2" aria-pressed="false">近 120 日</button>\n'
+        '      </div></div>\n'
+        '      <div class="ichart" id="ov-record-freq"></div>\n'
+        '      <div class="rec-freq"></div>\n'
+        '    </section>\n'
+        '    <h3 class="sd-h">每日紀錄</h3>\n'
         '    <div class="sec-bar">\n'
         '      <select class="rec-date sec-pick" aria-label="日期"></select>\n'
         '      <input class="rec-search sec-pick" type="search" placeholder="查股票代號或名稱"'

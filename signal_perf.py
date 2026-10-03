@@ -110,6 +110,34 @@ def momentum_members(m: dict) -> dict:
     return out
 
 
+def strong_members(m: dict, top: int = 60, liquid: float = 3e7) -> pd.DataFrame:
+    """
+    每天的強勢紀錄名單（布林矩陣）：近 20 日上漲、近 5 日漲得比前 5 日多、
+    均量 0.3 億以上，依加速度前 top 名（和 stock_news.pick_targets 同樣的條件，不含自選股）。
+    """
+    c = m["close"]
+    s = (c / c.shift(20) - 1) * 100
+    a = (c / c.shift(5) - 1) * 100 - (c.shift(5) / c.shift(10) - 1) * 100
+    ok = (m["tv20"] >= liquid) & (s > 0) & (a > 0)
+    return a.where(ok).rank(axis=1, ascending=False, method="first") <= top
+
+
+def member_stats(member: pd.DataFrame, windows=(20, 60, 120)) -> pd.DataFrame:
+    """
+    每一檔：近 N 天上榜次數、到最後一天為止連續上榜天數、最後一次上榜的位置（日期序號，-1＝沒上過）。
+    """
+    member = member.fillna(False).astype(bool)
+    out = pd.DataFrame(index=member.columns)
+    for w in windows:
+        out[f"c{w}"] = member.tail(w).sum().astype(int)
+    out["streak"] = member.iloc[::-1].astype(int).cumprod().sum().astype(int)
+    arr = member.to_numpy()
+    any_hit = arr.any(axis=0)
+    last = len(member) - 1 - np.argmax(arr[::-1], axis=0)
+    out["last"] = np.where(any_hit, last, -1)
+    return out
+
+
 def trust_events(m: dict) -> pd.DataFrame:
     """投信連買剛好第 3 天、之前 20 日累計 ≤ 0（缺值不超過 5 天）。"""
     t = m["trust"]
