@@ -498,7 +498,7 @@ def update_chips() -> int:
 
 
 def update_xmarket() -> int:
-    """加權指數、費半、那斯達克、美元兌台幣、台積電 ADR、VIX、美元指數（Yahoo Finance）＋台指期夜盤。"""
+    """Yahoo Finance 的指數、期貨、龍頭股、原物料、匯率（xmarket_data.SYMBOLS）＋台指期夜盤。"""
     from xmarket_data import SYMBOLS, load_xmarket
     have = set(load_xmarket()["item"]) if XMARKET_CSV.exists() else set()
     scraper = XMarketScraper(logger=log)

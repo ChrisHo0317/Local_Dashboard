@@ -723,6 +723,16 @@
   /* 訊號績效 */
   #ov-perf-monthly { height:320px; }
   .pf-tbl tr.is-picked td { background:var(--hover); }
+  /* 國際 */
+  .gl-tbl tr.is-picked td { background:var(--hover); }
+  .gl-tbl td:first-child { min-width:96px; }
+  .gl-corr b { font-weight:500; }
+  .gl-corr b.gl-strong { font-weight:700; }
+  .gl-mode { font-size:10px; color:var(--muted); margin-left:4px; }
+  .ck-gl li { justify-content:space-between; }
+  .ck-gl-n { flex:1; min-width:0; }
+  .ck-gl-d { min-width:64px; text-align:right; }
+  @media (max-width:600px) { .gl-wide { display:none; } }
   .pf-verdict { font-size:12px; white-space:nowrap; color:var(--muted); }
   .pf-verdict.is-good { color:var(--up); font-weight:600; }
   .pf-verdict.is-bad { color:var(--down); font-weight:600; }

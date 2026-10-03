@@ -19,6 +19,7 @@ META = "資料來源：證交所、櫃買、期交所、集保　·　盤後更�
 SUBTABS = [
     ("today", "今日重點", "今日重點", "摘要、市場溫度、主流族群、自選股警示與市場數字"),
     ("market", "大盤", "大盤", "加權指數與法人買賣超（估算）"),
+    ("global", "國際", "國際市場", "美股、期貨、亞股、供應鏈龍頭、原物料、匯率與美債，以及和台股的連動"),
     ("sectors", "類股", "類股", "面積＝成交值，顏色＝所選區間的漲跌（紅漲綠跌）"),
     ("momentum", "強勢股", "強勢股", "哪些股票漲得越來越快：強度 × 加速度"),
     ("record", "強勢紀錄", "強勢紀錄", "每天強勢股的上漲原因、族群連動、同族群個股與上榜次數排行"),
@@ -84,6 +85,7 @@ def panel_html(data) -> str:
         '<div class="ov-body"></div></section>\n'
         '        <section class="ov-card ck-next"><h3>接下來兩天</h3><div class="ov-body"></div></section>\n'
         '        <section class="ov-card ck-hot"><h3>熱門新聞</h3><div class="ov-body"></div></section>\n'
+        '        <section class="ov-card ck-global"><h3>國際市場</h3><div class="ov-body"></div></section>\n'
         '      </div>\n'
         '      <p class="ck-quality sd-note"></p>\n'
         '    </section>\n'
@@ -103,6 +105,22 @@ def panel_html(data) -> str:
         '    <div class="ichart ichart-lg" id="ov-market"></div>\n'
         '    <p class="sd-note">法人買賣超是用每一檔的買賣超股數乘以收盤價加總估算，'
         '與交易所公布的金額會有些微差距；總覽第一頁的數字是交易所公布的金額。</p>\n'
+        '  </div>',
+        '  <div class="subpanel ov" data-sub="global" hidden>\n'
+        '    <p class="ov-asof"></p>\n'
+        '    <p class="mo-explain">台股開盤前最該看的國際行情。<b>連動</b>＝和加權指數每日漲跌的相關係數'
+        '（近 120 個台股交易日，1 是完全同向、−1 是完全反向）；<b>隔日</b>是用美股等前一晚的漲跌對台股隔天，'
+        '<b>同日</b>是亞洲市場同一天。殖利率與利差的漲跌是百分點。點任一列看走勢。</p>\n'
+        '    <p class="gl-head sec-sum"></p>\n'
+        '    <div class="sec-bar">\n'
+        f'{_range_chips("gl-range", 130)}'
+        '      <button type="button" class="chip gl-cmp" aria-pressed="false">疊加加權指數</button>\n'
+        '    </div>\n'
+        '    <p class="sd-note zoom-hint"></p>\n'
+        '    <div class="ichart ichart-sm" id="ov-global"></div>\n'
+        '    <div class="gl-groups"></div>\n'
+        '    <p class="sd-note">資料：Yahoo Finance（日收盤；期貨與匯率是最近一次更新）、美國財政部殖利率。'
+        '各市場休市日不同，名稱下方的日期是該項目最新一筆的日期。</p>\n'
         '  </div>',
         '  <div class="subpanel ov" data-sub="sectors" hidden>\n'
         '    <p class="ov-asof"></p>\n'

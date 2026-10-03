@@ -536,6 +536,31 @@
       box.appendChild(more);
     }
 
+    function ckGlobal(box, g) {
+      box.textContent = '';
+      if (!g || !g.key || !g.key.length) {
+        box.appendChild(el('p', 'ov-empty', '還沒有國際市場資料。'));
+        return;
+      }
+      var ul = el('ul', 'ck-list ck-gl');
+      g.key.forEach(function (k) {
+        var li = el('li');
+        li.appendChild(el('span', 'ck-gl-n', k.name));
+        li.appendChild(el('span', 'num', fmt(k.last, k.dec)));
+        li.appendChild(el('span', 'num ck-gl-d ' + dir(k.d1),
+                          k.unit === 'pt' ? signed(k.d1, 2) : signed(k.d1, 2, '%')));
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+      var more = el('button', 'ck-more', '看國際市場 ›' + (g.asof ? '（' + g.asof.slice(5) + '）' : ''));
+      more.type = 'button';
+      more.addEventListener('click', function () {
+        var tab = panel.querySelector('.subtab[data-sub="global"]');
+        if (tab) { tab.click(); window.scrollTo(0, 0); }
+      });
+      box.appendChild(more);
+    }
+
     function cockpit(pane, d) {
       ckDigest(pane.querySelector('.ck-digest'), d.digest);
       ckTemp(pane, d.temp);
@@ -544,6 +569,7 @@
       ckPerf(pane.querySelector('.ck-perf .ov-body'), d.perf);
       ckNext(pane.querySelector('.ck-next .ov-body'), d.events);
       ckHot(pane.querySelector('.ck-hot .ov-body'), d.hot);
+      ckGlobal(pane.querySelector('.ck-global .ov-body'), d.global);
       var q = d.quality || {};
       var qa = pane.querySelector('.ck-quality');
       qa.textContent = !q.status ? '' : q.status === 'ok'
@@ -606,6 +632,155 @@
         {type: 'bar', x: m.t, y: m.tr, name: '投信', yaxis: 'y2', marker: {color: c.purple},
          hovertemplate: '%{y:+,.1f} 億<extra>投信</extra>'}
       ], L, n, rescale);
+    }
+
+    // ── 國際：美股、期貨、亞股、供應鏈龍頭、原物料、匯率、美債（data/global.json）──
+    var gl = {data: null, pick: '標普500', days: 130, cmp: false};
+
+    function glChg(r, v) { return r.unit === 'pt' ? signed(v, 2) : signed(v, 2, '%'); }
+
+    function glChart(pane) {
+      var d = gl.data, s = d.series[gl.pick];
+      var gd = document.getElementById('ov-global');
+      if (!s || !s[0].length) { failMsg(gd, '沒有資料。'); return; }
+      var row = null;
+      d.groups.forEach(function (g) { g.items.forEach(function (r) { if (r.name === gl.pick) row = r; }); });
+      var dec = row ? row.dec : 2, c = palette();
+      var x = s[0], y = s[1], n = x.length;
+      var head = pane.querySelector('.gl-head');
+      head.textContent = '';
+      head.appendChild(el('b', null, gl.pick + '　'));
+      if (row) {
+        head.appendChild(document.createTextNode(fmt(row.last, dec) + '　'));
+        head.appendChild(el('span', dir(row.d1), glChg(row, row.d1)));
+        head.appendChild(document.createTextNode('　' + md(row.date)));
+      }
+      var traces = [{type: 'scatter', mode: 'lines', x: x, y: y, name: gl.pick,
+                     line: {color: c.blue, width: 2},
+                     hovertemplate: '%{y:,.' + dec + 'f}<extra>' + gl.pick + '</extra>'}];
+      var tw = null;
+      if (gl.cmp && gl.pick !== '加權指數' && d.series['加權指數']) {
+        // 對齊到這個項目的日期：用那天以前最後一個台股收盤
+        var ts = d.series['加權指數'], j = 0, last = null;
+        tw = x.map(function (day) {
+          while (j < ts[0].length && ts[0][j] <= day) { last = ts[1][j]; j++; }
+          return last;
+        });
+        traces.push({type: 'scatter', mode: 'lines', x: x, y: tw, name: '加權指數', yaxis: 'y2',
+                     line: {color: c.gray, width: 1.5, dash: 'dot'},
+                     hovertemplate: '%{y:,.0f}<extra>加權指數</extra>'});
+      }
+      function rescale(from, to) {
+        var up = {};
+        var a = span([y], from, to);
+        if (a) up['yaxis.range'] = a;
+        if (tw) {
+          var b = span([tw], from, to);
+          if (b) up['yaxis2.range'] = b;
+        }
+        return up;
+      }
+      var w = windowFor(n, gl.days);
+      var init = rescale(w.from, w.to);
+      var L = layout({
+        xaxis: {type: 'category', gridcolor: c.grid, linecolor: c.grid, nticks: 7, tickangle: 0,
+                automargin: true, showspikes: true, spikemode: 'across', spikethickness: 1,
+                spikedash: 'dot', spikecolor: c.gray, range: [w.from - 0.5, w.to + 0.5]},
+        yaxis: {gridcolor: c.grid, automargin: true, tickformat: ',.' + Math.min(dec, 2) + 'f',
+                range: init['yaxis.range']},
+        margin: {l: 56, r: tw ? 56 : 14, t: 10, b: 34},
+        showlegend: !!tw, legend: {orientation: 'h', y: 1.12, x: 0, font: {size: 11}}
+      });
+      if (tw) {
+        L.yaxis2 = {overlaying: 'y', side: 'right', showgrid: false, automargin: true,
+                    tickformat: ',.0f', range: init['yaxis2.range']};
+      }
+      plotZoom('ov-global', traces, L, n, rescale);
+    }
+
+    function glTables(pane) {
+      var box = pane.querySelector('.gl-groups');
+      box.textContent = '';
+      gl.data.groups.forEach(function (g) {
+        box.appendChild(el('h3', 'sd-h', g.name));
+        if (g.note) box.appendChild(el('p', 'sd-note', g.note));
+        // 這一組多數項目的日期；不一樣的（休市）才在名稱下標出來
+        var cnt = {}, common = null;
+        g.items.forEach(function (r) { cnt[r.date] = (cnt[r.date] || 0) + 1; });
+        Object.keys(cnt).forEach(function (k) { if (!common || cnt[k] > cnt[common]) common = k; });
+        var t = el('table', 'ov-table scr-table gl-tbl');
+        var h = el('tr');
+        [['名稱'], ['最新'], ['日'], ['週'], ['月'], ['季', 'gl-wide'], ['今年', 'gl-wide'],
+         ['連動'], ['近 60 日']].forEach(function (x) { h.appendChild(el('th', x[1] || null, x[0])); });
+        var thead = el('thead'); thead.appendChild(h); t.appendChild(thead);
+        var tb = el('tbody');
+        g.items.forEach(function (r) {
+          var tr = el('tr', 'go' + (r.name === gl.pick ? ' is-picked' : ''));
+          tr.dataset.name = r.name;
+          var c0 = el('td');
+          c0.appendChild(el('span', 'ov-code', r.name));
+          if (r.date !== common) c0.appendChild(el('span', 'scr-reason', md(r.date)));
+          tr.appendChild(c0);
+          tr.appendChild(el('td', null, fmt(r.last, r.dec)));
+          [['d1'], ['d5'], ['d20'], ['d60', 'gl-wide'], ['ytd', 'gl-wide']].forEach(function (k) {
+            tr.appendChild(el('td', (dir(r[k[0]]) + ' ' + (k[1] || '')).trim() || null, glChg(r, r[k[0]])));
+          });
+          var cc = el('td', 'gl-corr');
+          if (r.corr != null) {
+            cc.appendChild(el('b', Math.abs(r.corr) >= 0.5 ? 'gl-strong' : null, signed(r.corr, 2)));
+            cc.appendChild(el('span', 'gl-mode', r.mode === 'lead' ? '隔日' : '同日'));
+          } else {
+            cc.textContent = '—';
+          }
+          tr.appendChild(cc);
+          var sp = el('td');
+          sp.appendChild(sparkSvg(r.spark));
+          tr.appendChild(sp);
+          tr.addEventListener('click', function () {
+            gl.pick = r.name;
+            Array.prototype.slice.call(box.querySelectorAll('tr.is-picked')).forEach(function (x) {
+              x.classList.remove('is-picked');
+            });
+            tr.classList.add('is-picked');
+            glChart(pane);
+            var gd = document.getElementById('ov-global');
+            if (gd.getBoundingClientRect().top < 0) gd.scrollIntoView({behavior: 'smooth', block: 'center'});
+          });
+          tb.appendChild(tr);
+        });
+        t.appendChild(tb);
+        var wrap = el('div', 'ov-table-wrap');
+        wrap.appendChild(t);
+        box.appendChild(wrap);
+      });
+    }
+
+    function globalMkt(pane) {
+      return getJSON('data/global.json').then(function (d) {
+        gl.data = d;
+        pane.querySelector('.ov-asof').textContent = d.asof ? '資料更新到 ' + d.asof : '';
+        zoomHint(pane.querySelector('.zoom-hint'));
+        if (!d.groups || !d.groups.length) {
+          failMsg(pane.querySelector('.gl-groups'), '還沒有國際市場資料。');
+          return;
+        }
+        if (!d.series[gl.pick]) gl.pick = d.groups[0].items[0].name;
+        if (!pane.dataset.bound) {
+          pane.dataset.bound = '1';
+          bindChips(pane.querySelector('.gl-range'), function (chip) {
+            gl.days = Number(chip.dataset.days);
+            setWindow(document.getElementById('ov-global'), gl.days);
+          });
+          var cmp = pane.querySelector('.gl-cmp');
+          cmp.addEventListener('click', function () {
+            gl.cmp = !gl.cmp;
+            cmp.setAttribute('aria-pressed', String(gl.cmp));
+            glChart(pane);
+          });
+        }
+        glTables(pane);
+        glChart(pane);
+      });
     }
 
     bindChips(panel.querySelector('.ov-range'), function (chip) {
@@ -2630,7 +2805,7 @@
       });
     }
 
-    var RENDER = {today: today, market: market, sectors: sectors, momentum: momentum,
+    var RENDER = {today: today, market: market, global: globalMkt, sectors: sectors, momentum: momentum,
                   record: record, perf: perf, hold: hold, flows: flows};
 
     function show(sub) {

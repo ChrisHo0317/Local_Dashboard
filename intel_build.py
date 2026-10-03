@@ -36,6 +36,7 @@ from stock_news import load_history as load_strong_history
 from stock_data import load as load_stock_list
 from watchlist import EDIT_URL, load_watchlist
 from xmarket_data import load_xmarket
+import global_market
 
 DAYS = 260          # 個股頁的日資料約一年
 REV_MONTHS = 36
@@ -726,6 +727,7 @@ def build(out_dir: Path) -> dict:
     summary = load_summary()
     quality = _quality()
     perf = signal_perf.build(panel, load_revenue(), master, load_strong_history(), names)
+    glob = global_market.build()
     overview = {
         "asof": latest.strftime("%Y-%m-%d"),
         "kpi": _kpis(summary, xm, latest.strftime("%Y-%m-%d"), global_extras(panel, xm)),
@@ -745,6 +747,7 @@ def build(out_dir: Path) -> dict:
         "alerts": _watch_alerts(watch_codes),
         "digest": _digest(),
         "hot": _hot_summary(),
+        "global": {"asof": glob["asof"], "key": glob["key"]},
         "perf": [[s["id"], s["name"], s["stats"]["20"].get("exc"), s["stats"]["20"].get("verdict"),
                   s["stats"]["20"].get("n")] for s in perf["signals"] if s["mode"] == "回測"],
         "quality": {"status": quality.get("status", ""), "generated": quality.get("generated", ""),
@@ -758,6 +761,7 @@ def build(out_dir: Path) -> dict:
     _dump(_stock_news(), data_dir / "stocknews.json")
     _strong_record(data_dir, panel, master)
     _dump(perf, data_dir / "perf.json")
+    _dump(glob, data_dir / "global.json")
     _dump(quality, data_dir / "quality.json")
     return {"latest": latest.strftime("%Y-%m-%d"), "stocks": shards, "watch": len(watch),
             "quality": quality}

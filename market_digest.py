@@ -2,7 +2,8 @@
 盤前／盤後摘要（python update_data.py digest）
 
     盤後（17:30 排程）：大盤與成交、市場溫度、法人、主流族群、強勢股、自選股異動
-    盤前（08:10 排程）：前一晚美股與費半、匯率、昨天收盤的重點、今天的事件、自選股新消息
+    盤前（08:10 排程）：前一晚美股、費半、供應鏈龍頭、美股期貨、原物料、匯率、美債（global_market）、
+                        昨天收盤的重點、今天的事件、自選股新消息
 
 由 Claude Sonnet 5.5 整理成一句標題＋3～5 點；沒有 ANTHROPIC_API_KEY 或呼叫失敗時，
 直接用數字組成。寫到 data/digest.json（盤前、盤後各留最新一份），並用 Bark 推播
@@ -97,6 +98,8 @@ def context(mode: str) -> dict:
     strong = sorted(((c, s) for c, s in (sn.get("stocks") or {}).items() if s.get("rank")),
                     key=lambda x: x[1]["rank"])[:8]
     wev = alerts.watch_events(codes)
+    import global_market
+    glob = global_market.build()
     return {
         "mode": mode, "asof": latest, "today": today.isoformat(),
         "kpi": [{k: v for k, v in x.items() if k in ("label", "value", "delta", "note")} for x in kpi],
@@ -107,6 +110,9 @@ def context(mode: str) -> dict:
         "watch": [e.get("line") or (e.get("title", "") + "：" + e.get("body", "")) for e in wev][:8],
         "events": [f"{e['date'][5:]} {e['time']} {e['text']}".replace("  ", " ") for e in events][:8],
         "news": _hot_topics(),
+        "global": global_market.digest_lines(glob),
+        "global_key": [f"{k['name']} {k['d1']:+.2f}{'個百分點' if k['unit'] == 'pt' else '%'}"
+                       for k in glob["key"] if k["d1"] is not None],
     }
 
 
@@ -140,7 +146,9 @@ def rule_digest(ctx: dict) -> dict:
     if ctx["groups"]:
         bullets.append("主流族群：" + "、".join(f"{g['group']}（{g['n']} 檔）" for g in ctx["groups"]))
     fx = kpi.get("費半（前一晚）")
-    if ctx["mode"] == "pre" and fx and fx.get("value") != "—":
+    if ctx["mode"] == "pre" and ctx.get("global_key"):
+        bullets.insert(0, "國際：" + "、".join(ctx["global_key"][:6]))
+    elif ctx["mode"] == "pre" and fx and fx.get("value") != "—":
         bullets.insert(0, f"費半前一晚 {fx['value']}（{fx.get('delta') or '—'}）")
     head = (f"市場溫度 {t.get('temp')}，{t.get('label')}" if t else "盤後摘要")
     risks = []
