@@ -181,9 +181,13 @@ def flag_events(codes: set, names: dict, today: pd.Timestamp) -> list[dict]:
 
 def collect() -> list[dict]:
     watch = [w for w in load_watchlist() if w["push"]]
-    if not watch:
+    return watch_events({w["code"] for w in watch})
+
+
+def watch_events(codes: set) -> list[dict]:
+    """指定股票的所有事件（推播只用「推播＝是」的；首頁的自選股警示用全部）。"""
+    if not codes:
         return []
-    codes = {w["code"] for w in watch}
     master = intel_data.stock_master()
     names = dict(zip(master["code"], master["name"]))
     panel = intel_data.daily_panel(days=80)

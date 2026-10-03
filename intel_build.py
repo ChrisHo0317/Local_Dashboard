@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pandas as pd
 
+import breadth
 import intel_data
 import market_data as md
 import signal_perf
@@ -422,6 +423,29 @@ def _momentum(panel: pd.DataFrame, master: pd.DataFrame, days: list, xm: pd.Data
             "bench": [_r(v) for v in bench]}
 
 
+def _top_groups() -> list:
+    from market_digest import top_groups
+    return top_groups(load_strong_history())
+
+
+def _watch_alerts(codes: set) -> list:
+    """自選股近幾天的事件（重訊、營收、法人連買賣、季線、注意處置），首頁顯示用。"""
+    import alerts
+    try:
+        events = alerts.watch_events(codes)
+    except Exception:
+        return []
+    return [{"code": e["code"], "urgent": bool(e.get("urgent")),
+             "text": e.get("line") or f"{e.get('title', '')}：{e.get('body', '')}"} for e in events][:10]
+
+
+def _digest() -> dict:
+    try:
+        return json.loads((Path(__file__).resolve().parent / "data" / "digest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
 def _quality() -> dict:
     """資料品質檢查的結果（quality.py 在排程最後寫的）。"""
     try:
@@ -578,6 +602,8 @@ def build(out_dir: Path) -> dict:
     _dump(_screen(results, panel, master, latest), data_dir / "screen.json")
 
     summary = load_summary()
+    quality = _quality()
+    perf = signal_perf.build(panel, load_revenue(), master, load_strong_history(), names)
     overview = {
         "asof": latest.strftime("%Y-%m-%d"),
         "kpi": _kpis(summary, xm, latest.strftime("%Y-%m-%d")),
@@ -590,6 +616,16 @@ def build(out_dir: Path) -> dict:
         "market": _market_series(panel, xm),
         "flows": _flows(panel, names, latest),
         "futures": _futures(),
+        # 決策首頁
+        "temp": breadth.summary(panel),
+        "groups": _top_groups(),
+        "alerts": _watch_alerts(watch_codes),
+        "digest": _digest(),
+        "perf": [[s["id"], s["name"], s["stats"]["20"].get("exc"), s["stats"]["20"].get("verdict"),
+                  s["stats"]["20"].get("n")] for s in perf["signals"] if s["mode"] == "回測"],
+        "quality": {"status": quality.get("status", ""), "generated": quality.get("generated", ""),
+                    "issues": [c["title"] for c in quality.get("checks", [])
+                               if c.get("level") in ("error", "warn")][:3]},
     }
     _dump(overview, data_dir / "overview.json")
     # 類股、強勢股的資料比較大，點進子分頁才下載
@@ -597,9 +633,7 @@ def build(out_dir: Path) -> dict:
     _dump(_momentum(panel, master, days, xm, watch_codes), data_dir / "momentum.json")
     _dump(_stock_news(), data_dir / "stocknews.json")
     _strong_record(data_dir)
-    _dump(signal_perf.build(panel, load_revenue(), master, load_strong_history(), names),
-          data_dir / "perf.json")
-    quality = _quality()
+    _dump(perf, data_dir / "perf.json")
     _dump(quality, data_dir / "quality.json")
     return {"latest": latest.strftime("%Y-%m-%d"), "stocks": shards, "watch": len(watch),
             "quality": quality}

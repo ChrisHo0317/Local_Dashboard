@@ -512,6 +512,8 @@ JOBS = {
     "events": update_events,
     "backfill": backfill,
     "signallog": update_signal_log,
+    # 盤前／盤後摘要（Claude 整理、Bark 推播；依台北時間決定是盤前還是盤後）
+    "digest": lambda: __import__("market_digest").update(log),
     # 強勢股新聞與上漲原因（會呼叫 Claude，見 stock_news.py）
     "stocknews": lambda: stock_news.update(log),
 }

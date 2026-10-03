@@ -346,8 +346,187 @@
       box.appendChild(ul);
     }
 
+    // ── 決策首頁：摘要、市場溫度、主流族群、自選股警示、訊號績效、接下來兩天 ────
+    function ckDigest(box, dg) {
+      box.textContent = '';
+      var pick = null;
+      ['pre', 'post'].forEach(function (k) {
+        if (dg && dg[k] && (!pick || dg[k].generated > pick.generated)) pick = dg[k];
+      });
+      if (!pick) {
+        box.appendChild(el('p', 'sd-note', '摘要還沒產生：每天開盤前與盤後各整理一次。'));
+        return;
+      }
+      var head = el('p', 'ck-label', (pick.mode === 'pre' ? '盤前摘要' : '盤後摘要') + '　' +
+                    pick.generated.slice(5).replace('-', '/') + '　·　' +
+                    (pick.method === 'claude' ? pick.model + ' 整理' : '依數字整理（尚未設定 Claude）'));
+      box.appendChild(head);
+      box.appendChild(el('h3', 'ck-headline', pick.headline));
+      var ul = el('ul', 'ck-bullets');
+      pick.bullets.forEach(function (b) { ul.appendChild(el('li', null, b)); });
+      box.appendChild(ul);
+      if (pick.watch && pick.watch.length) {
+        var w = el('ul', 'ck-bullets ck-watch');
+        pick.watch.forEach(function (b) { w.appendChild(el('li', null, b)); });
+        box.appendChild(el('p', 'ck-sub', '自選股'));
+        box.appendChild(w);
+      }
+      (pick.risks || []).forEach(function (r) { box.appendChild(el('p', 'ck-risk', r)); });
+    }
+
+    function ckTemp(pane, t) {
+      var box = pane.querySelector('.ck-temp');
+      if (!t || t.temp == null) { box.hidden = true; return; }
+      box.hidden = false;
+      var c = palette();
+      var big = pane.querySelector('.ck-gauge');
+      big.textContent = '';
+      var top = el('div', 'ck-temp-top');
+      top.appendChild(el('span', 'ck-temp-k', '市場溫度'));
+      top.appendChild(el('b', 'ck-temp-v', fmt(t.temp, 0)));
+      top.appendChild(el('span', 'ck-pill ' + (t.label === '偏多' ? 'is-hot' : t.label === '偏空' ? 'is-cold' : ''), t.label));
+      top.appendChild(el('span', 'ck-temp-d', '5 日前 ' + fmt(t.temp_5d, 0)));
+      big.appendChild(top);
+      var bar = el('div', 'ck-bar');
+      var mark = el('i');
+      mark.style.left = Math.max(0, Math.min(100, t.temp)) + '%';
+      bar.appendChild(mark);
+      big.appendChild(bar);
+      big.appendChild(el('p', 'ck-scale', '0 偏空　35　中性　65　偏多 100'));
+      var tiles = pane.querySelector('.ck-tiles');
+      tiles.textContent = '';
+      [['上漲家數比', fmt(t.adv_ratio, 0) + '%', t.adv + ' 漲 / ' + t.dec + ' 跌'],
+       ['站上 20 日線', fmt(t.above20, 0) + '%', '60 日線 ' + fmt(t.above60, 0) + '%'],
+       ['52 週新高 / 新低', t.nh + ' / ' + t.nl, '家數'],
+       ['漲停 / 跌停', t.limit_up + ' / ' + t.limit_down, '漲跌 ≥ 9.5%']].forEach(function (x) {
+        var b = el('div', 'ck-tile');
+        b.appendChild(el('span', 'ck-tile-k', x[0]));
+        b.appendChild(el('b', null, x[1]));
+        b.appendChild(el('span', 'ck-tile-d', x[2]));
+        tiles.appendChild(b);
+      });
+      var gd = document.getElementById('ov-temp');
+      var s = t.series || {t: [], temp: []};
+      Plotly.react(gd, [{
+        type: 'scatter', mode: 'lines', x: s.t.map(function (d) { return d.slice(5).replace('-', '/'); }),
+        y: s.temp, line: {color: c.blue, width: 2}, fill: 'tozeroy', fillcolor: 'rgba(0,0,0,0)',
+        hovertemplate: '%{x}　溫度 %{y:.0f}<extra></extra>'
+      }], layout({
+        margin: {l: 30, r: 8, t: 6, b: 24},
+        xaxis: {type: 'category', nticks: 6, fixedrange: true, showgrid: false},
+        yaxis: {range: [0, 100], tickvals: [35, 65], gridcolor: c.grid, fixedrange: true},
+        shapes: [{type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: 65, y1: 100, fillcolor: c.up,
+                  opacity: 0.07, line: {width: 0}},
+                 {type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: 0, y1: 35, fillcolor: c.down,
+                  opacity: 0.07, line: {width: 0}}]
+      }), {displayModeBar: false, responsive: true});
+    }
+
+    function ckGroups(box, groups) {
+      box.textContent = '';
+      if (!groups || !groups.length) {
+        box.appendChild(el('p', 'ov-empty', '還沒有族群連動的紀錄。'));
+        return;
+      }
+      groups.forEach(function (g) {
+        var b = el('button', 'ck-group');
+        b.type = 'button';
+        var h = el('span', 'ck-group-h');
+        h.appendChild(el('b', null, g.group));
+        h.appendChild(el('span', 'rec-n', '強勢股 ' + g.n + ' 檔'));
+        b.appendChild(h);
+        b.appendChild(el('span', 'ck-group-names', g.names.join('、')));
+        if (g.why) b.appendChild(el('span', 'ck-group-why', g.why));
+        b.addEventListener('click', function () {
+          rec.theme = g.group;
+          rec.query = '';
+          rec.date = null;
+          var tab = panel.querySelector('.subtab[data-sub="record"]');
+          if (tab) tab.click();
+        });
+        box.appendChild(b);
+      });
+    }
+
+    function ckAlerts(box, list) {
+      box.textContent = '';
+      if (!list || !list.length) {
+        box.appendChild(el('p', 'ov-empty', '自選股這幾天沒有新事件。'));
+        return;
+      }
+      var ul = el('ul', 'ck-list');
+      list.slice(0, 6).forEach(function (a) {
+        var li = el('li', a.urgent ? 'is-urgent' : null);
+        var b = el('button', 'ck-link', a.text);
+        b.type = 'button';
+        b.addEventListener('click', function () { openStock(a.code); });
+        li.appendChild(b);
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+    }
+
+    function ckPerf(box, list) {
+      box.textContent = '';
+      if (!list || !list.length) {
+        box.appendChild(el('p', 'ov-empty', '還沒有資料。'));
+        return;
+      }
+      var ul = el('ul', 'ck-list');
+      list.slice().sort(function (a, b) { return (b[2] || -99) - (a[2] || -99); }).forEach(function (p) {
+        var li = el('li', 'ck-perf-row');
+        li.appendChild(el('span', null, p[1]));
+        li.appendChild(el('b', dir(p[2]), p[2] == null ? '—' : signed(p[2], 2, '%')));
+        li.appendChild(el('span', 'pf-verdict ' + pfVerdictClass(p[3]), p[3] || ''));
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+      var more = el('button', 'ck-more', '看訊號績效 ›');
+      more.type = 'button';
+      more.addEventListener('click', function () {
+        var tab = panel.querySelector('.subtab[data-sub="perf"]');
+        if (tab) tab.click();
+      });
+      box.appendChild(more);
+    }
+
+    function ckNext(box, list) {
+      box.textContent = '';
+      var now = new Date();
+      var limit = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3).toISOString().slice(0, 10);
+      var soon = (list || []).filter(function (e) { return e.date < limit; });
+      if (!soon.length) {
+        box.appendChild(el('p', 'ov-empty', '接下來兩天沒有重要事件。'));
+        return;
+      }
+      var ul = el('ul', 'ck-list');
+      soon.slice(0, 6).forEach(function (e) {
+        var li = el('li');
+        li.appendChild(el('span', 'ck-when', md(e.date) + (e.time ? ' ' + e.time : '')));
+        li.appendChild(el('span', null, e.kind + '　' + e.text));
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+    }
+
+    function cockpit(pane, d) {
+      ckDigest(pane.querySelector('.ck-digest'), d.digest);
+      ckTemp(pane, d.temp);
+      ckGroups(pane.querySelector('.ck-groups .ov-body'), d.groups);
+      ckAlerts(pane.querySelector('.ck-alerts .ov-body'), d.alerts);
+      ckPerf(pane.querySelector('.ck-perf .ov-body'), d.perf);
+      ckNext(pane.querySelector('.ck-next .ov-body'), d.events);
+      var q = d.quality || {};
+      var qa = pane.querySelector('.ck-quality');
+      qa.textContent = !q.status ? '' : q.status === 'ok'
+        ? '資料狀態：正常' + (q.generated ? '（' + q.generated.slice(5) + ' 檢查）' : '')
+        : '資料狀態：' + q.issues.join('；') + '（詳細在設定頁）';
+      qa.className = 'ck-quality sd-note' + (q.status === 'error' ? ' is-error' : q.status === 'warn' ? ' is-warn' : '');
+    }
+
     function today(pane, d) {
       pane.querySelector('.ov-asof').textContent = '資料日期 ' + d.asof + '（盤後）';
+      cockpit(pane, d);
       kpis(pane.querySelector('.ov-kpis'), d.kpi || []);
       watch(pane.querySelector('.ov-watch .ov-body'), d);
       events(pane.querySelector('.ov-events .ov-body'), d.events);

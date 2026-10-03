@@ -17,7 +17,7 @@ META = "資料來源：證交所、櫃買、期交所、集保　·　盤後更�
 
 # (id, 標籤, 頁面標題, 說明)。說明要短：手機上標頭只留兩三行，太長會被切掉
 SUBTABS = [
-    ("today", "今日重點", "今日重點", "市場數字、自選股、近期事件、重點新聞"),
+    ("today", "今日重點", "今日重點", "摘要、市場溫度、主流族群、自選股警示與市場數字"),
     ("market", "大盤", "大盤", "加權指數與法人買賣超（估算）"),
     ("sectors", "類股", "類股", "面積＝成交值，顏色＝所選區間的漲跌（紅漲綠跌）"),
     ("momentum", "強勢股", "強勢股", "哪些股票漲得越來越快：強度 × 加速度"),
@@ -69,6 +69,23 @@ def panel_html(data) -> str:
     panes = [
         '  <div class="subpanel ov" data-sub="today">\n'
         '    <p class="ov-asof"></p>\n'
+        '    <section class="ck" aria-label="決策摘要">\n'
+        '      <div class="ck-digest ov-card"></div>\n'
+        '      <div class="ck-temp ov-card">\n'
+        '        <div class="ck-gauge"></div>\n'
+        '        <div class="ck-tiles"></div>\n'
+        '        <div class="ichart" id="ov-temp"></div>\n'
+        '      </div>\n'
+        '      <div class="ck-grid">\n'
+        '        <section class="ov-card ck-groups"><h3>主流族群</h3><div class="ov-body"></div></section>\n'
+        '        <section class="ov-card ck-alerts"><h3>自選股警示</h3><div class="ov-body"></div></section>\n'
+        '        <section class="ov-card ck-perf"><h3>訊號績效（持有 20 日、超額報酬）</h3>'
+        '<div class="ov-body"></div></section>\n'
+        '        <section class="ov-card ck-next"><h3>接下來兩天</h3><div class="ov-body"></div></section>\n'
+        '      </div>\n'
+        '      <p class="ck-quality sd-note"></p>\n'
+        '    </section>\n'
+        '    <h3 class="sd-h">市場數字</h3>\n'
         '    <div class="ov-kpis"></div>\n'
         '    <div class="ov-grid">\n'
         '      <section class="ov-card ov-watch"><h3>自選股今日異動</h3><div class="ov-body"></div></section>\n'
