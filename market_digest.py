@@ -111,9 +111,26 @@ def context(mode: str) -> dict:
         "events": [f"{e['date'][5:]} {e['time']} {e['text']}".replace("  ", " ") for e in events][:8],
         "news": _hot_topics(),
         "global": global_market.digest_lines(glob),
+        "macro": _macro(),
         "global_key": [f"{k['name']} {k['d1']:+.2f}{'個百分點' if k['unit'] == 'pt' else '%'}"
                        for k in glob["key"] if k["d1"] is not None],
     }
+
+
+def _macro() -> list:
+    """總經重點＋最近兩天公布的重要數據（公布值 vs 預估）。"""
+    import macro_data
+    try:
+        lines = macro_data.highlights(macro_data.cards(macro_data.load()))
+        cal = macro_data.calendar_rows(past=2)["recent"]
+    except Exception:
+        return []
+    word = {1: "高於預期", -1: "低於預期", 0: "符合預期"}
+    for e in cal:
+        if e["impact"] == "High":
+            lines.append(f"{e['when']} {e['country']}{e['title']} 公布 {e['actual']}"
+                         f"（預估 {e['forecast'] or '—'}，{word[e['surprise']]}）")
+    return lines[:16]
 
 
 def _hot_topics() -> list:

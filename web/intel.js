@@ -783,6 +783,146 @@
       });
     }
 
+    // ── 總經：台灣、美國的經濟數據卡片＋走勢＋經濟日曆公布值（data/macro.json）──
+    var mc = {data: null, pick: 'tw_signal'};
+    var LIGHT_COLOR = {'紅燈': '#e03131', '黃紅燈': '#f08c00', '綠燈': '#2f9e44',
+                       '黃藍燈': '#66a80f', '藍燈': '#1c7ed6'};
+
+    function mcUnit(c) { return c.unit === '%' ? '%' : ''; }
+
+    function mcChart(pane) {
+      var c = null;
+      mc.data.cards.forEach(function (x) { if (x.id === mc.pick) c = x; });
+      if (!c) return;
+      var p = palette(), gd = document.getElementById('ov-macro');
+      pane.querySelector('.mc-chart-h').textContent = c.name + '　' + fmt(c.last, c.dec) + mcUnit(c) +
+        (c.light ? ' ' + c.light : '') + '（' + c.period + '）';
+      pane.querySelector('.mc-chart-note').textContent = c.note || '';
+      var hv = '%{x|%Y-%m}　%{y:,.' + c.dec + 'f}' + mcUnit(c);
+      var traces, shapes = [];
+      if (c.id === 'tw_signal') {
+        traces = [{type: 'bar', x: c.t, y: c.v, name: c.name,
+                   marker: {color: c.lights.map(function (l) { return LIGHT_COLOR[l] || p.gray; })},
+                   customdata: c.lights, hovertemplate: '%{x|%Y-%m}　%{y} 分 %{customdata}<extra></extra>'}];
+      } else {
+        traces = [{type: 'scatter', mode: 'lines', x: c.t, y: c.v, name: c.id === 'tw_money' ? 'M1B 年增率' : c.name,
+                   line: {color: p.blue, width: 2}, hovertemplate: hv + '<extra></extra>'}];
+        if (c.v2) {
+          traces.push({type: 'scatter', mode: 'lines', x: c.t, y: c.v2, name: c.name2,
+                       line: {color: p.orange, width: 2}, hovertemplate: '%{x|%Y-%m}　M2 %{y:.2f}%<extra></extra>'});
+        }
+      }
+      var ref = c.id === 'tw_pmi' || c.id === 'tw_nmi' ? 50 : (c.unit === '%' && /年增|月增|GDP/.test(c.name) ? 0 : null);
+      if (c.id === 'us_core_pce') ref = 2;
+      if (ref != null) {
+        shapes.push({type: 'line', xref: 'paper', x0: 0, x1: 1, y0: ref, y1: ref,
+                     line: {color: p.gray, width: 1, dash: 'dot'}});
+      }
+      Plotly.react(gd, traces, layout({
+        xaxis: {type: 'date', gridcolor: p.grid, linecolor: p.grid, automargin: true, fixedrange: true},
+        yaxis: {gridcolor: p.grid, automargin: true, fixedrange: true,
+                ticksuffix: mcUnit(c), range: c.id === 'tw_signal' ? [0, 46] : undefined},
+        shapes: shapes, hovermode: 'x unified',
+        showlegend: !!c.v2, legend: {orientation: 'h', y: 1.12, x: 0, font: {size: 11}},
+        margin: {l: 48, r: 12, t: c.v2 ? 24 : 10, b: 34}
+      }), CONFIG);
+    }
+
+    function mcCards(pane) {
+      Array.prototype.slice.call(pane.querySelectorAll('.mc-cards')).forEach(function (box) {
+        box.textContent = '';
+        mc.data.cards.filter(function (c) { return c.region === box.dataset.region; }).forEach(function (c) {
+          var b = el('button', 'mc-card' + (c.id === mc.pick ? ' is-picked' : ''));
+          b.type = 'button';
+          b.appendChild(el('span', 'mc-name', c.name));
+          var v = el('span', 'mc-val', fmt(c.last, c.dec) + mcUnit(c));
+          if (c.light) {
+            var lt = el('span', 'mc-light', c.light);
+            lt.style.background = LIGHT_COLOR[c.light] || '';
+            v.appendChild(lt);
+          }
+          b.appendChild(v);
+          var sub = el('span', 'mc-sub', c.period);
+          if (c.chg != null) {
+            sub.appendChild(document.createTextNode('　'));
+            sub.appendChild(el('span', c.good ? dir(c.chg * c.good) : '', '比前期 ' + signed(c.chg, c.dec)));
+          }
+          b.appendChild(sub);
+          if (c.last2 != null) b.appendChild(el('span', 'mc-sub', 'M2 ' + fmt(c.last2, 2) + '%'));
+          b.appendChild(sparkSvg(c.spark));
+          b.addEventListener('click', function () {
+            mc.pick = c.id;
+            Array.prototype.slice.call(pane.querySelectorAll('.mc-card.is-picked')).forEach(function (x) {
+              x.classList.remove('is-picked');
+            });
+            b.classList.add('is-picked');
+            mcChart(pane);
+            var h = pane.querySelector('.mc-chart-h');
+            if (h.getBoundingClientRect().top < 0) h.scrollIntoView({behavior: 'smooth', block: 'start'});
+          });
+          box.appendChild(b);
+        });
+      });
+    }
+
+    function mcCal(box, rows, withActual) {
+      box.textContent = '';
+      if (!rows || !rows.length) { box.appendChild(el('p', 'ov-empty', '沒有資料。')); return; }
+      var t = el('table', 'ov-table scr-table mc-tbl');
+      var h = el('tr');
+      (withActual ? ['時間', '事件', '公布', '預估', '前值'] : ['時間', '事件', '預估', '前值']).forEach(function (x) {
+        h.appendChild(el('th', null, x));
+      });
+      var thead = el('thead'); thead.appendChild(h); t.appendChild(thead);
+      var tb = el('tbody');
+      rows.forEach(function (e) {
+        var tr = el('tr', e.impact === 'High' ? 'mc-high-imp' : null);
+        tr.appendChild(el('td', 'ov-when', e.when));
+        var ev = el('td');
+        ev.appendChild(el('span', 'ov-kind', e.country));
+        ev.appendChild(document.createTextNode(e.title));
+        tr.appendChild(ev);
+        if (withActual) {
+          var a = el('td');
+          var b = el('b', 'cal-act' + (e.better === '1' ? ' cal-good' : e.better === '0' ? ' cal-bad' : ''),
+                     e.actual + (e.surprise > 0 ? '▲' : e.surprise < 0 ? '▼' : ''));
+          b.title = (e.surprise > 0 ? '高於預期' : e.surprise < 0 ? '低於預期' : e.forecast ? '符合預期' : '沒有預估值') +
+                    (e.better === '1' ? '（對經濟偏正面）' : e.better === '0' ? '（對經濟偏負面）' : '');
+          a.appendChild(b);
+          tr.appendChild(a);
+        }
+        tr.appendChild(el('td', null, e.forecast || '—'));
+        tr.appendChild(el('td', null, e.previous || '—'));
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb);
+      var wrap = el('div', 'ov-table-wrap');
+      wrap.appendChild(t);
+      box.appendChild(wrap);
+    }
+
+    function macro(pane) {
+      return getJSON('data/macro.json').then(function (d) {
+        mc.data = d;
+        pane.querySelector('.ov-asof').textContent = d.generated ? '更新時間 ' + d.generated : '';
+        var hb = pane.querySelector('.mc-high .ov-body');
+        hb.textContent = '';
+        if (d.highlights && d.highlights.length) {
+          var ul = el('ul', 'ck-list');
+          d.highlights.forEach(function (x) { ul.appendChild(el('li', null, x)); });
+          hb.appendChild(ul);
+        } else {
+          hb.appendChild(el('p', 'ov-empty', '還沒有總經資料。'));
+        }
+        if (!d.cards || !d.cards.length) return;
+        if (!d.cards.some(function (c) { return c.id === mc.pick; })) mc.pick = d.cards[0].id;
+        mcCards(pane);
+        mcChart(pane);
+        mcCal(pane.querySelector('.mc-recent'), (d.calendar || {}).recent, true);
+        mcCal(pane.querySelector('.mc-next'), (d.calendar || {}).next, false);
+      });
+    }
+
     bindChips(panel.querySelector('.ov-range'), function (chip) {
       marketDays = Number(chip.dataset.days);
       setWindow(document.getElementById('ov-market'), marketDays);
@@ -2805,7 +2945,7 @@
       });
     }
 
-    var RENDER = {today: today, market: market, global: globalMkt, sectors: sectors, momentum: momentum,
+    var RENDER = {today: today, market: market, global: globalMkt, macro: macro, sectors: sectors, momentum: momentum,
                   record: record, perf: perf, hold: hold, flows: flows};
 
     function show(sub) {

@@ -20,6 +20,7 @@ SUBTABS = [
     ("today", "今日重點", "今日重點", "摘要、市場溫度、主流族群、自選股警示與市場數字"),
     ("market", "大盤", "大盤", "加權指數與法人買賣超（估算）"),
     ("global", "國際", "國際市場", "美股、期貨、亞股、供應鏈龍頭、原物料、匯率與美債，以及和台股的連動"),
+    ("macro", "總經", "總經數據", "台灣景氣燈號、PMI、M1B／M2、外銷訂單，美國通膨與就業，經濟數據公布值"),
     ("sectors", "類股", "類股", "面積＝成交值，顏色＝所選區間的漲跌（紅漲綠跌）"),
     ("momentum", "強勢股", "強勢股", "哪些股票漲得越來越快：強度 × 加速度"),
     ("record", "強勢紀錄", "強勢紀錄", "每天強勢股的上漲原因、族群連動、同族群個股與上榜次數排行"),
@@ -121,6 +122,26 @@ def panel_html(data) -> str:
         '    <div class="gl-groups"></div>\n'
         '    <p class="sd-note">資料：Yahoo Finance（日收盤；期貨與匯率是最近一次更新）、美國財政部殖利率。'
         '各市場休市日不同，名稱下方的日期是該項目最新一筆的日期。</p>\n'
+        '  </div>',
+        '  <div class="subpanel ov" data-sub="macro" hidden>\n'
+        '    <p class="ov-asof"></p>\n'
+        '    <section class="ov-card mc-high"><h3>總經重點</h3><div class="ov-body"></div></section>\n'
+        '    <h3 class="sd-h mc-chart-h"></h3>\n'
+        '    <p class="sd-note mc-chart-note"></p>\n'
+        '    <div class="ichart ichart-sm" id="ov-macro"></div>\n'
+        '    <h3 class="sd-h">台灣</h3>\n'
+        '    <p class="sd-note">點卡片看長期走勢。比前期的紅色代表對經濟偏好、綠色偏壞（失業率、通膨是越低越好）。</p>\n'
+        '    <div class="mc-cards" data-region="tw"></div>\n'
+        '    <h3 class="sd-h">美國</h3>\n'
+        '    <div class="mc-cards" data-region="us"></div>\n'
+        '    <h3 class="sd-h">最近公布的經濟數據</h3>\n'
+        '    <p class="sd-note">近 10 天美、中、台、日、歐、韓的中高影響數據。▲▼ 是公布值比預估高或低；'
+        '紅色是來源判斷對經濟偏正面、綠色偏負面（對股市不一定同方向，例如就業太強可能讓降息延後）。</p>\n'
+        '    <div class="mc-recent"></div>\n'
+        '    <h3 class="sd-h">接下來兩週的重要數據</h3>\n'
+        '    <div class="mc-next"></div>\n'
+        '    <p class="sd-note">資料：國發會（景氣指標、PMI）、中央銀行（貨幣總計數）、經濟部（外銷訂單）、'
+        'FRED（美國數據）、FXStreet（經濟日曆）。台灣的月資料大多在次月下旬公布。</p>\n'
         '  </div>',
         '  <div class="subpanel ov" data-sub="sectors" hidden>\n'
         '    <p class="ov-asof"></p>\n'

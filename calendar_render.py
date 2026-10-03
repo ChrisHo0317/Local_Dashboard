@@ -57,6 +57,35 @@ def stats(df: pd.DataFrame) -> dict:
     }
 
 
+def _num(text: str):
+    try:
+        return float(str(text).replace("%", "").replace(",", "").strip())
+    except ValueError:
+        return None
+
+
+def surprise(actual: str, forecast: str) -> int:
+    """公布值和預估比：1 高於、-1 低於、0 相同或無法比。"""
+    a, f = _num(actual), _num(forecast)
+    if a is None or f is None or a == f:
+        return 0
+    return 1 if a > f else -1
+
+
+def _actual(e) -> str:
+    """公布值：▲▼ 是和預估比的高低；顏色是來源判斷對經濟偏好（紅）或偏壞（綠）。"""
+    actual = str(e.get("actual", "") or "")
+    if not actual:
+        return ""
+    s = surprise(actual, e.get("forecast", ""))
+    better = str(e.get("better", "") or "")
+    cls = {"1": " cal-good", "0": " cal-bad"}.get(better, "")
+    arrow = {1: "▲", -1: "▼"}.get(s, "")
+    tip = {1: "高於預期", -1: "低於預期", 0: "符合預期" if e.get("forecast") else "沒有預估值"}[s]
+    tip += {"1": "（對經濟偏正面）", "0": "（對經濟偏負面）"}.get(better, "")
+    return f'<b class="cal-act{cls}" title="{tip}">{escape(actual)}{arrow}</b>'
+
+
 def panel_html(df: pd.DataFrame) -> str:
     """產生行事曆分頁的內容（不含 <section> 外框）。"""
     # 每個影響程度一顆，各自開關（不是互斥的「以上」級距）。
@@ -102,7 +131,7 @@ def panel_html(df: pd.DataFrame) -> str:
     for day, group in view.groupby(view["_ts"].dt.tz_convert(TAIPEI).dt.date, sort=True):
         label = f"{day.month}/{day.day:02d}（{WEEKDAYS[day.weekday()]}）"
         rows = [
-            f'      <tr class="cal-day-row"><th colspan="5" scope="rowgroup">{label}</th></tr>'
+            f'      <tr class="cal-day-row"><th colspan="6" scope="rowgroup">{label}</th></tr>'
         ]
         for _, e in group.iterrows():
             local = _local(e["_ts"])
@@ -128,6 +157,7 @@ def panel_html(df: pd.DataFrame) -> str:
                 f'          <div class="cal-title">{escape(zh)}</div>\n'
                 f'          <div class="cal-sub">{sub}</div>\n'
                 f'        </td>\n'
+                f'        <td class="cal-num">{_actual(e)}</td>\n'
                 f'        <td class="cal-num">{escape(e["forecast"])}</td>\n'
                 f'        <td class="cal-num">{escape(e["previous"])}</td>\n'
                 f'      </tr>'
@@ -142,7 +172,8 @@ def panel_html(df: pd.DataFrame) -> str:
         '  <table class="cal-table">\n'
         '    <thead>\n'
         '      <tr><th class="cal-time">時間</th><th class="cal-imp"><span class="sr">影響</span></th>'
-        '<th class="cal-ev">事件</th><th class="cal-num">預估</th><th class="cal-num">前值</th></tr>\n'
+        '<th class="cal-ev">事件</th><th class="cal-num">公布</th><th class="cal-num">預估</th>'
+        '<th class="cal-num">前值</th></tr>\n'
         '    </thead>\n'
         + "\n".join(bodies) + "\n  </table>"
     )

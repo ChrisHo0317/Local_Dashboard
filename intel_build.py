@@ -37,6 +37,7 @@ from stock_data import load as load_stock_list
 from watchlist import EDIT_URL, load_watchlist
 from xmarket_data import load_xmarket
 import global_market
+import macro_data
 
 DAYS = 260          # 個股頁的日資料約一年
 REV_MONTHS = 36
@@ -762,6 +763,7 @@ def build(out_dir: Path) -> dict:
     _strong_record(data_dir, panel, master)
     _dump(perf, data_dir / "perf.json")
     _dump(glob, data_dir / "global.json")
+    _dump(macro_data.build(), data_dir / "macro.json")
     _dump(quality, data_dir / "quality.json")
     return {"latest": latest.strftime("%Y-%m-%d"), "stocks": shards, "watch": len(watch),
             "quality": quality}

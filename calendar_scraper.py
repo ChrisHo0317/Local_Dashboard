@@ -11,7 +11,8 @@
 
 回傳 [{"dateUtc","countryCode","name","volatility","consensus","previous",...}]
 
-一次抓本月 1 日到下個月底，涵蓋頁面要顯示的「過去幾天 + 未來 45 天」。
+一次抓「本月 1 日與 10 天前取較早的」到下個月底，涵蓋頁面要顯示的「過去幾天 + 未來 45 天」；
+往前多抓幾天是為了補上剛公布的實際值（月底公布的數據，隔天跨月就抓不到了）。
 
 只留 HIGH 與 MEDIUM：LOW 一個月有七百多筆，多是次要國家的次要指標，
 全放進頁面只會讓真正該注意的事件被淹掉。
@@ -42,13 +43,14 @@ class ForexFactoryCalendarScraper:
         """
         取得本月與下個月的事件。
 
-        回傳: [{"event_time","country","title","impact","forecast","previous"}, ...]
+        回傳: [{"event_time","country","title","impact","forecast","previous","actual","better"}, ...]
+        better：來源判斷公布值對經濟是否優於預期（"1"／"0"，沒公布或不適用是空字串）
         失敗則回傳空串列，由呼叫端決定是否跳過更新。
         """
         today = date.today()
-        start = today.replace(day=1)
+        start = min(today.replace(day=1), today - timedelta(days=10))
         # 下個月的最後一天：跳到下下個月 1 號再退一天
-        after_next = (start + timedelta(days=62)).replace(day=1)
+        after_next = (today.replace(day=1) + timedelta(days=62)).replace(day=1)
         end = after_next - timedelta(days=1)
 
         url = f"{API}{start}T00:00:00Z/{end}T23:59:59Z"
@@ -93,6 +95,8 @@ class ForexFactoryCalendarScraper:
                 "impact": IMPACT.get(item.get("volatility"), "Low"),
                 "forecast": _text(item.get("consensus"), item.get("unit")),
                 "previous": _text(item.get("previous"), item.get("unit")),
+                "actual": _text(item.get("actual"), item.get("unit")),
+                "better": {True: "1", False: "0"}.get(item.get("isBetterThanExpected"), ""),
             })
 
         self.logger.info(f"行事曆：{start} ～ {end} 取得 {len(rows)} 筆（中／高影響）")

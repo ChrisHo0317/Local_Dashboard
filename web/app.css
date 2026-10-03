@@ -155,6 +155,10 @@
   .cal-table .cal-imp  { width:18px; }
   .cal-table .cal-num  { width:56px; text-align:right; font-size:11px; color:var(--muted);
                          font-variant-numeric:tabular-nums; word-break:break-all; }
+  .cal-act { font-weight:600; color:var(--fg); }
+  .cal-act.cal-good { color:var(--up); }
+  .cal-act.cal-bad { color:var(--down); }
+  @media (max-width:600px) { .cal-table .cal-num { width:46px; font-size:10px; } }
   .cal-table .cal-sess { width:78px; text-align:right; font-size:11px; color:var(--muted); }
   /* SpaceX：即將發射／進行中的小標籤 */
   .sx-tag { font-size:10px; font-weight:600; margin-left:6px; padding:1px 7px;
@@ -733,6 +737,24 @@
   .ck-gl-n { flex:1; min-width:0; }
   .ck-gl-d { min-width:64px; text-align:right; }
   @media (max-width:600px) { .gl-wide { display:none; } }
+  /* 總經 */
+  .mc-cards { display:grid; gap:8px; grid-template-columns:repeat(auto-fill, minmax(168px, 1fr)); }
+  .mc-card { display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left;
+             padding:10px 12px; border-radius:10px; border:1px solid var(--border);
+             background:var(--card); color:var(--fg); font:inherit; cursor:pointer; min-width:0;
+             -webkit-tap-highlight-color:transparent; }
+  .mc-card:hover { background:var(--hover); }
+  .mc-card.is-picked { border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+  .mc-name { font-size:12px; color:var(--muted); }
+  .mc-val { font-size:18px; font-weight:600; font-variant-numeric:tabular-nums; display:flex;
+            align-items:center; gap:6px; }
+  .mc-light { font-size:11px; font-weight:600; color:#fff; border-radius:999px; padding:0 7px; }
+  .mc-sub { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .mc-card .spark { margin-top:4px; width:100%; max-width:140px; }
+  .mc-high .ck-list li { display:block; }
+  .mc-tbl td:nth-child(2) { white-space:normal; text-align:left; min-width:160px; }
+  .mc-tbl th:nth-child(2) { text-align:left; }
+  .mc-tbl tr:not(.mc-high-imp) td { color:var(--muted); }
   .pf-verdict { font-size:12px; white-space:nowrap; color:var(--muted); }
   .pf-verdict.is-good { color:var(--up); font-weight:600; }
   .pf-verdict.is-bad { color:var(--down); font-weight:600; }

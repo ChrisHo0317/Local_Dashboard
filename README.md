@@ -41,7 +41,7 @@ repo 只留原始資料，不會再被每十分鐘一份的網頁撐大，本機
 
 | 分類 | 分頁 | 內容 |
 |------|------|------|
-| 財經 | 總覽 | 今日重點（市場數字、自選股異動、近期事件、選股條件命中數、重點新聞）／大盤（加權指數＋法人買賣超）／國際（美股指數與期貨、亞股、供應鏈龍頭、原物料、匯率、美債與 10−2 年利差，和台股的隔日／同日連動）／類股（產業熱力圖可點進產業與個股；產業或全市場的 1／5／10／20／60 日漲跌排行）／強勢股（強度 × 加速度散佈圖與軌跡、越來越強排行、前 10 名累積漲幅曲線）／法人籌碼（外資、投信排行＋期貨未平倉）|
+| 財經 | 總覽 | 今日重點（市場數字、自選股異動、近期事件、選股條件命中數、重點新聞）／大盤（加權指數＋法人買賣超）／國際（美股指數與期貨、亞股、供應鏈龍頭、原物料、匯率、美債與 10−2 年利差，和台股的隔日／同日連動）／總經（台灣景氣燈號、領先指標、PMI、M1B／M2、外銷訂單、出口；美國通膨、就業、利率、高收益債利差；經濟數據公布值 vs 預估）／類股（產業熱力圖可點進產業與個股；產業或全市場的 1／5／10／20／60 日漲跌排行）／強勢股（強度 × 加速度散佈圖與軌跡、越來越強排行、前 10 名累積漲幅曲線）／法人籌碼（外資、投信排行＋期貨未平倉）|
 | 財經 | 走勢圖 | DRAM／美債／黃金／BTC／美股（費半、那斯達克）／匯率（美元兌台幣）|
 | 財經 | 行事曆 | 月曆格＋事件清單：總經事件（FXStreet，中／高影響）＋台股事件（自選股除權息、營收公布截止日）|
 | 財經 | 新聞 | 第一個子分頁是**重點**（五個來源合併去重、依重要性排序的 30 則，提到自選股的加分）；其餘子分頁是各來源的完整清單 |
@@ -127,7 +127,7 @@ python -m pytest -q            # 測試
 | `gold_data.py` | 讀寫 `data/gold_prices.csv` |
 | `gold_scraper.py` | Yahoo Finance 金價爬蟲 |
 | `calendar_data.py` | 讀寫 `data/calendar_events.csv` |
-| `calendar_scraper.py` | FXStreet 行事曆爬蟲（可指定區間，抓本月與下月）|
+| `calendar_scraper.py` | FXStreet 行事曆爬蟲（可指定區間，抓 10 天前到下月底；含公布值）|
 | `calendar_i18n.py` | 事件名稱／國別／影響程度的中文化 |
 | `calendar_render.py` | 行事曆分頁的 HTML 產生 |
 | `f1_data.py` | 讀寫 `data/f1_schedule.csv` |
@@ -160,6 +160,7 @@ python -m pytest -q            # 測試
 | `intel_build.py` | 產生情報中心的網頁資料（`site/data/`）|
 | `overview_render.py` | 總覽分頁的 HTML 空殼 |
 | `global_market.py` | 總覽「國際」子分頁的資料（site/data/global.json）與摘要用的國際行情文字 |
+| `macro_data.py` | 總經數據（國發會、央行、經濟部、FRED；`update_data.py macro`）與總覽「總經」子分頁（site/data/macro.json）|
 | `tw_events.py` | 台股事件（除權息、營收公布截止）併入行事曆 |
 | `chart.py` | 走勢圖的圖表定義 |
 | `web/` | 靜態檔：`app.css`、`app.js`（主程式）、`intel.js`（情報中心）、圖示、`manifest.webmanifest` |
@@ -248,14 +249,15 @@ python -m pytest -q            # 測試
 
 | Workflow | 頻率（台北時間）| 做什麼 |
 |----------|----------------|--------|
-| `update.yml` | 09:00 | DRAM、美債、黃金、BTC、行事曆、F1、SpaceX＋下面全部 |
-| `update.yml` | 平日 17:30、21:40 | 全市場日資料、集保、期貨、跨市場指數、個股清單與基本面、自選股推播 |
+| `update.yml` | 平日 08:10 | 國際行情、美債、事件、強勢股新聞、盤前摘要、熱門新聞 |
+| `update.yml` | 09:00 | DRAM、美債、黃金、BTC、行事曆、F1、SpaceX、總經＋下面全部 |
+| `update.yml` | 平日 17:30、21:40 | 全市場日資料、集保、期貨、跨市場指數、個股清單與基本面、自選股推播（21:40 另更新行事曆公布值與總經）|
 | `news.yml` | 每 10 分鐘 | 只更新新聞 |
 | `deploy.yml` | 上面兩個有新資料時、或程式碼推上 main | 跑測試 → 建置 `site/` → deploy-pages 發布 |
 | `bark-test.yml` | 手動 | 送一則 Bark 測試通知 |
 
 全市場日資料每次都回頭檢查 7 天，**缺什麼補什麼**：公布得晚、上次失敗、遇到休市都會
-自己處理。可用的項目：`dram bonds gold btc calendar f1 f1standings spacex news market chips xmarket stock`。
+自己處理。可用的項目：`dram bonds gold btc calendar f1 f1standings spacex news market chips xmarket stock macro`（完整清單見 `update_data.py` 的 JOBS）。
 
 測試失敗就不發布，線上維持上一版。
 
@@ -323,7 +325,7 @@ python -m pytest -q            # 測試
 
 ## 版本
 
-目前 **v0.3.059**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
+目前 **v0.3.060**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
 
 格式 `vMAJOR.MINOR.PATCH`，PATCH 固定三位數。**一般改動一律只遞增 PATCH**；前兩組除非明確指示否則不變更。改 `version.py` 後重跑 `build_static.py` 即可（`app.css`、`app.js` 也用版本號避開快取）。
 

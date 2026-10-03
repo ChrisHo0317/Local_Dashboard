@@ -57,7 +57,9 @@ def tw_events() -> pd.DataFrame:
     df["event_time"] = df["_ts"].map(lambda t: t.isoformat())
     df["country"] = "TW"
     df["impact"] = "TW"
-    df["previous"] = ""
+    for col in COLUMNS:
+        if col not in df:
+            df[col] = ""
     return df[COLUMNS + ["_ts"]]
 
 

@@ -9,11 +9,14 @@
     impact      High / Medium / Low / Holiday
     forecast    市場預估值（可能為空）
     previous    前值（可能為空）
+    actual      公布值（公布後才有）
+    better      來源判斷公布值對經濟是否優於預期："1"／"0"／空
 
 以 (event_time, country, title) 為唯一鍵。
 
 來源只提供「本週」一個 feed，所以每天執行會逐週累積；已存在的事件不覆寫，
-但 forecast／previous 會在原本為空、後來有值時補上（公布前後常有變化）。
+但 forecast／previous／actual／better 會在原本為空、後來有值時補上（公布前後常有變化）。
+舊的 CSV 沒有 actual、better 欄位，讀的時候補空字串。
 """
 from datetime import timedelta, timezone
 from pathlib import Path
@@ -24,7 +27,8 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 CSV_PATH = DATA_DIR / "calendar_events.csv"
 
-COLUMNS = ["event_time", "country", "title", "impact", "forecast", "previous"]
+COLUMNS = ["event_time", "country", "title", "impact", "forecast", "previous", "actual", "better"]
+FILL = ["forecast", "previous", "actual", "better"]
 KEY = ["event_time", "country", "title"]
 
 
@@ -36,6 +40,7 @@ def load_events() -> pd.DataFrame:
     df = pd.read_csv(CSV_PATH, dtype=str).fillna("")
     if df.empty:
         return pd.DataFrame(columns=COLUMNS)
+    df = df.reindex(columns=COLUMNS, fill_value="")
 
     df["_ts"] = pd.to_datetime(df["event_time"], errors="coerce", utc=True)
     df = df.dropna(subset=["_ts"]).sort_values("_ts").reset_index(drop=True)
@@ -89,9 +94,9 @@ def merge_events(rows: list[dict]) -> int:
     """
     將爬蟲回傳的事件併入 CSV，回傳新增的筆數。
 
-    rows: [{"event_time","country","title","impact","forecast","previous"}, ...]
+    rows: [{"event_time","country","title","impact","forecast","previous","actual","better"}, ...]
 
-    已存在的事件不重複新增；但若原本 forecast／previous 是空的而新資料有值，
+    已存在的事件不重複新增；但若原本 forecast／previous／actual／better 是空的而新資料有值，
     會就地補上（這種情況不計入新增筆數）。
     """
     if not rows:
@@ -104,7 +109,7 @@ def merge_events(rows: list[dict]) -> int:
     incoming = incoming.drop_duplicates(subset=KEY, keep="last")
 
     if CSV_PATH.exists():
-        existing = pd.read_csv(CSV_PATH, dtype=str).fillna("")
+        existing = pd.read_csv(CSV_PATH, dtype=str).fillna("").reindex(columns=COLUMNS, fill_value="")
     else:
         existing = pd.DataFrame(columns=COLUMNS)
 
@@ -115,11 +120,11 @@ def merge_events(rows: list[dict]) -> int:
         filled = 0
     else:
         merged = existing.merge(
-            incoming[KEY + ["forecast", "previous"]],
+            incoming[KEY + FILL],
             on=KEY, how="left", suffixes=("", "_new"),
         )
         filled = 0
-        for col in ("forecast", "previous"):
+        for col in FILL:
             new_col = f"{col}_new"
             need = (merged[col] == "") & (merged[new_col].notna()) & (merged[new_col] != "")
             filled += int(need.sum())
