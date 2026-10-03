@@ -1397,8 +1397,277 @@
       });
     }
 
+    // ── 強勢紀錄：每天強勢股的上漲原因、是否族群連動、同族群個股 ────────────
+    // record/{日期}.json 的 rows 欄位
+    var R_CODE = 0, R_NAME = 1, R_RANK = 2, R_S = 4, R_R5 = 5, R_TAG = 7, R_WHY = 8,
+        R_METHOD = 10, R_GROUP = 11, R_LINKED = 12, R_MEMBERS = 13, R_KEY_T = 14, R_KEY_U = 15,
+        R_KEY_SRC = 16;
+    var rec = {index: null, date: null, theme: null, query: ''};
+
+    function recDay(d) { return getJSON('data/record/' + d + '.json'); }
+
+    function rgba(hex, a) {
+      var n = parseInt(hex.slice(1), 16);
+      return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+    }
+
+    function recStockLink(code, name, extra) {
+      var b = el('button', 'rec-stock', name + ' ' + code + (extra || ''));
+      b.type = 'button';
+      b.addEventListener('click', function (e) { e.stopPropagation(); openStock(code); });
+      return b;
+    }
+
+    function recKeyNews(row) {
+      if (!row[R_KEY_T]) return null;
+      var p = el('p', 'rec-key');
+      p.appendChild(el('span', 'mo-item-src', row[R_KEY_SRC] || '新聞'));
+      // 原因就是這則標題時（沒有 Claude 的關鍵字挑選）只留來源與原文連結，不重複一次
+      var same = row[R_KEY_T].slice(0, 30) === String(row[R_WHY] || '').slice(0, 30);
+      if (row[R_KEY_SRC] === '重大訊息') {
+        if (!same) p.appendChild(el('span', null, row[R_KEY_T]));
+      } else {
+        var a = el('a', null, same ? '原文 ↗' : row[R_KEY_T]);
+        a.href = row[R_KEY_U] || 'https://www.google.com/search?tbm=nws&q=' +
+                 encodeURIComponent('"' + row[R_KEY_T] + '"');
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        p.appendChild(a);
+      }
+      return p;
+    }
+
+    // 一檔強勢股：名稱、漲幅、原因、關鍵新聞
+    function recRow(row, showGroup) {
+      var box = el('div', 'rec-row');
+      var head = el('div', 'rec-row-head');
+      head.appendChild(recStockLink(row[R_CODE], row[R_NAME]));
+      head.appendChild(el('span', 'rec-num ' + dir(row[R_R5]), '近 5 日 ' + signed(row[R_R5], 1, '%')));
+      head.appendChild(el('span', 'rec-num', '20 日 ' + signed(row[R_S], 1, '%')));
+      if (row[R_RANK]) head.appendChild(el('span', 'rec-num', '第 ' + row[R_RANK] + ' 名'));
+      if (showGroup && row[R_GROUP]) {
+        head.appendChild(el('span', row[R_LINKED] ? 'rec-badge is-linked' : 'rec-badge',
+                            row[R_GROUP] + (row[R_LINKED] ? '・族群連動' : '・個股')));
+      }
+      box.appendChild(head);
+      var why = el('p', 'rec-why');
+      why.appendChild(el('b', 'mo-tag', row[R_TAG]));
+      why.appendChild(document.createTextNode(row[R_WHY] || '—'));
+      box.appendChild(why);
+      var key = recKeyNews(row);
+      if (key) box.appendChild(key);
+      return box;
+    }
+
+    // 同族群但不在強勢股名單的個股（新聞提到或股價同步）
+    var REC_CHIPS = 20;
+
+    function recMembers(members, skip) {
+      var wrap = el('div', 'rec-members');
+      var seen = {}, more = 0;
+      members.slice().sort(function (a, b) { return (b[5] - a[5]) || ((b[2] || 0) - (a[2] || 0)); })
+        .forEach(function (m) {
+        if (skip[m[0]] || seen[m[0]]) return;
+        seen[m[0]] = true;
+        if (Object.keys(seen).length > REC_CHIPS) { more++; return; }
+        var chip = recStockLink(m[0], m[1], ' ' + signed(m[2], 1, '%'));
+        chip.title = (m[3] == null ? '' : '近 20 日相關係數 ' + m[3]) + (m[5] ? '　新聞有提到' : '');
+        if (m[5]) chip.classList.add('is-named');
+        wrap.appendChild(chip);
+      });
+      if (more) wrap.appendChild(el('span', 'rec-more', '還有 ' + more + ' 檔'));
+      wrap.total = Object.keys(seen).length;
+      return wrap.childNodes.length ? wrap : null;
+    }
+
+    function recGroups(rows) {
+      var groups = {}, order = [];
+      rows.forEach(function (row) {
+        if (!row[R_LINKED] || !row[R_GROUP]) return;
+        var g = row[R_GROUP];
+        if (!groups[g]) { groups[g] = {name: g, rows: [], members: []}; order.push(g); }
+        groups[g].rows.push(row);
+        groups[g].members = groups[g].members.concat(row[R_MEMBERS] || []);
+      });
+      return order.map(function (g) { return groups[g]; })
+        .sort(function (a, b) { return b.rows.length - a.rows.length; });
+    }
+
+    function recShowDay(pane, day) {
+      var body = pane.querySelector('.rec-body');
+      body.textContent = '';
+      var rows = day.rows;
+      var groups = recGroups(rows);
+      var linked = rows.filter(function (r) { return r[R_LINKED]; }).length;
+      var rules = rows.length && rows.every(function (r) { return r[R_METHOD] !== 'claude'; });
+      pane.querySelector('.rec-sum').textContent = md(day.date) + '：強勢股 ' + rows.length + ' 檔，族群連動 ' +
+        linked + ' 檔、' + groups.length + ' 個族群' +
+        (rules ? '（尚未設定 Claude，族群暫以官方產業別＋股價相關判斷）' : '');
+      if (rec.theme) {
+        groups.sort(function (a, b) { return (b.name === rec.theme) - (a.name === rec.theme); });
+      }
+      if (groups.length) body.appendChild(el('h3', 'sd-h', '族群連動'));
+      groups.forEach(function (g) {
+        var card = el('section', 'ov-card rec-group' + (g.name === rec.theme ? ' is-picked' : ''));
+        var h = el('h3');
+        h.appendChild(document.createTextNode(g.name));
+        var skip = {};
+        g.rows.forEach(function (r) { skip[r[R_CODE]] = true; });
+        var others = recMembers(g.members, skip);
+        h.appendChild(el('span', 'rec-n', '強勢股 ' + g.rows.length + ' 檔' +
+                         (others ? '・同步上漲 ' + others.total + ' 檔' : '')));
+        card.appendChild(h);
+        g.rows.forEach(function (r) { card.appendChild(recRow(r, false)); });
+        if (others) {
+          card.appendChild(el('p', 'rec-label', '同族群也在漲（不在強勢股前 60 檔；粗體是新聞有提到的）'));
+          card.appendChild(others);
+        }
+        body.appendChild(card);
+      });
+      var solo = rows.filter(function (r) { return !r[R_LINKED]; });
+      if (solo.length) {
+        body.appendChild(el('h3', 'sd-h', '個股行情（' + solo.length + ' 檔）'));
+        body.appendChild(el('p', 'sd-note', '沒有判定為族群連動：主要是公司自己的消息，或同族群沒有其他股票同步上漲。'));
+        var list = el('div', 'rec-solo');
+        solo.forEach(function (r) { list.appendChild(recRow(r, true)); });
+        body.appendChild(list);
+      }
+      var picked = body.querySelector('.rec-group.is-picked');
+      if (picked) picked.scrollIntoView({block: 'nearest'});
+    }
+
+    // 查一檔股票：列出它每一次上榜的原因與族群（新到舊，最多 20 次）
+    function recSearch(pane) {
+      var body = pane.querySelector('.rec-body');
+      var ix = rec.index, q = rec.query.trim();
+      var hits = Object.keys(ix.stocks).filter(function (code) {
+        return code.indexOf(q) === 0 || ix.stocks[code][0].indexOf(q) >= 0;
+      }).slice(0, 5);
+      pane.querySelector('.rec-sum').textContent = hits.length
+        ? '「' + q + '」：' + hits.map(function (c) { return ix.stocks[c][0] + ' ' + c; }).join('、')
+        : '「' + q + '」沒有上過強勢股名單。';
+      body.textContent = '';
+      var want = {};
+      hits.forEach(function (code) {
+        ix.stocks[code][1].slice(-20).forEach(function (i) { want[ix.dates[i]] = true; });
+      });
+      var dates = Object.keys(want).sort().reverse();
+      return Promise.all(dates.map(recDay)).then(function (days) {
+        if (rec.query.trim() !== q) return;
+        body.textContent = '';
+        days.forEach(function (day) {
+          day.rows.forEach(function (row) {
+            if (hits.indexOf(row[R_CODE]) < 0) return;
+            var item = el('div', 'rec-hist');
+            item.appendChild(el('p', 'rec-date', md(day.date)));
+            item.appendChild(recRow(row, true));
+            var members = recMembers(row[R_MEMBERS] || [], {});
+            if (members) item.appendChild(members);
+            body.appendChild(item);
+          });
+        });
+      });
+    }
+
+    function recShow(pane) {
+      if (rec.query.trim()) return recSearch(pane);
+      return recDay(rec.date).then(function (day) { recShowDay(pane, day); });
+    }
+
+    function recHeat(pane) {
+      var ix = rec.index, c = palette();
+      var gd = document.getElementById('ov-record-heat');
+      var note = pane.querySelector('.rec-heat-note');
+      if (!ix.themes.length) {
+        gd.hidden = true;
+        note.textContent = '還沒有被判定為族群連動的紀錄。';
+        return;
+      }
+      gd.hidden = false;
+      note.textContent = '每一格是那天被判定為族群連動的強勢股檔數；點一格看那天那個族群。';
+      var x = ix.dates.map(function (d) { return d.slice(5).replace('-', '/'); });
+      var y = ix.themes.map(function (t) { return t[0]; });
+      var z = ix.themes.map(function (t) { return t[1].map(function (v) { return v || null; }); });
+      gd.style.height = (70 + 26 * y.length) + 'px';
+      var L = layout({
+        margin: {l: 10, r: 10, t: 6, b: 40},
+        xaxis: {type: 'category', tickangle: 0, nticks: COARSE ? 6 : 12, gridcolor: 'rgba(0,0,0,0)',
+                fixedrange: true},
+        yaxis: {type: 'category', autorange: 'reversed', automargin: true, fixedrange: true,
+                gridcolor: 'rgba(0,0,0,0)'},
+        hovermode: 'closest'
+      });
+      Plotly.react(gd, [{
+        type: 'heatmap', x: x, y: y, z: z, zmin: 1, xgap: 2, ygap: 2, showscale: false,
+        colorscale: [[0, rgba(c.up, 0.25)], [1, c.up]],
+        texttemplate: '%{z}', textfont: {size: 10, color: c.text},
+        hovertemplate: '%{y}　%{x}<br>族群連動 %{z} 檔<extra></extra>'
+      }], L, {displayModeBar: false, responsive: true});
+      if (!gd._recBound) {
+        gd._recBound = true;
+        gd.on('plotly_click', function (ev) {
+          var p = ev && ev.points && ev.points[0];
+          if (!p || p.z == null) return;
+          rec.date = rec.index.dates[p.pointIndex[1]];
+          rec.theme = p.y;
+          rec.query = '';
+          pane.querySelector('.rec-search').value = '';
+          pane.querySelector('.rec-date').value = rec.date;
+          recShow(pane);
+        });
+      }
+    }
+
+    function recControls(pane) {
+      var sel = pane.querySelector('.rec-date');
+      var ix = rec.index;
+      sel.textContent = '';
+      ix.dates.slice().reverse().forEach(function (d) {
+        var sm = ix.summary[ix.dates.indexOf(d)] || [0, 0, 0];
+        var o = el('option', null, md(d) + '　強勢股 ' + sm[0] + ' 檔・連動 ' + sm[1]);
+        o.value = d;
+        sel.appendChild(o);
+      });
+      sel.value = rec.date;
+      if (sel._bound) return;
+      sel._bound = true;
+      sel.addEventListener('change', function () {
+        rec.date = sel.value;
+        rec.theme = null;
+        rec.query = '';
+        pane.querySelector('.rec-search').value = '';
+        recShow(pane);
+      });
+      var input = pane.querySelector('.rec-search'), timer = null;
+      input.addEventListener('input', function () {
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+          rec.query = input.value;
+          rec.theme = null;
+          recShow(pane);
+        }, 250);
+      });
+    }
+
+    function record(pane) {
+      return getJSON('data/record/index.json').then(function (ix) {
+        rec.index = ix;
+        if (!ix.dates.length) {
+          pane.querySelector('.rec-sum').textContent = '還沒有紀錄：每天盤後整理強勢股新聞時會自動累積。';
+          document.getElementById('ov-record-heat').hidden = true;
+          return;
+        }
+        if (!rec.date || ix.dates.indexOf(rec.date) < 0) rec.date = ix.dates[ix.dates.length - 1];
+        pane.querySelector('.ov-asof').textContent = '紀錄 ' + md(ix.dates[0]) + ' ～ ' +
+          md(ix.dates[ix.dates.length - 1]) + '，共 ' + ix.dates.length + ' 個交易日';
+        recControls(pane);
+        recHeat(pane);
+        return recShow(pane);
+      });
+    }
+
     var RENDER = {today: today, market: market, sectors: sectors, momentum: momentum,
-                  flows: flows};
+                  record: record, flows: flows};
 
     function show(sub) {
       if (!sub || !RENDER[sub]) return;

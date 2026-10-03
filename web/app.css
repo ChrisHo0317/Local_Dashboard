@@ -616,6 +616,40 @@
   .mo-item-t { flex-basis:100%; color:var(--fg); }
   a.mo-item-t { text-decoration:none; }
   a.mo-item-t:hover { text-decoration:underline; }
-  .mo-news-foot { margin:0; font-size:11px; color:var(--muted); line-height:1.6; }   /* 播放中滑過去的數字對不上，先不給互動 */
+  .mo-news-foot { margin:0; font-size:11px; color:var(--muted); line-height:1.6; }
+
+  /* 強勢紀錄 */
+  #ov-record-heat { min-height:96px; }
+  .rec-search { flex:1; min-width:160px; }
+  .rec-group { margin:10px 0; }
+  .rec-group.is-picked { border-color:var(--accent); }
+  .rec-group h3 { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; }
+  .rec-n { font-size:12px; font-weight:400; color:var(--muted); }
+  .rec-row { padding:8px 0; border-top:1px solid var(--border); }
+  .rec-group h3 + .rec-row { border-top:0; }
+  .rec-row-head { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 10px; }
+  .rec-stock { border:0; background:none; padding:0; font:inherit; font-weight:600; color:var(--fg);
+               cursor:pointer; text-align:left; }
+  .rec-stock:hover { text-decoration:underline; }
+  .rec-num { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .rec-num.up { color:var(--up); font-weight:600; }
+  .rec-num.down { color:var(--down); font-weight:600; }
+  .rec-badge { font-size:11px; padding:0 6px; border-radius:6px; border:1px solid var(--border);
+               color:var(--muted); }
+  .rec-badge.is-linked { color:var(--accent); border-color:var(--accent); }
+  .rec-why { margin:4px 0 0; font-size:13px; line-height:1.6; }
+  .rec-key { margin:2px 0 0; font-size:12px; line-height:1.5; display:flex; gap:6px; align-items:baseline; }
+  .rec-key a { color:var(--fg); text-decoration:none; }
+  .rec-key a:hover { text-decoration:underline; }
+  .rec-label { margin:8px 0 4px; font-size:11px; color:var(--muted); }
+  .rec-members { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+  .rec-members .rec-stock { font-size:12px; font-weight:400; padding:3px 8px; border-radius:999px;
+                            background:var(--pill); }
+  .rec-members .rec-stock.is-named { font-weight:600; }
+  .rec-more { font-size:12px; color:var(--muted); align-self:center; }
+  .rec-solo .rec-row:first-child { border-top:0; }
+  .rec-hist { padding:6px 0 10px; border-top:1px solid var(--border); }
+  .rec-hist .rec-row { border-top:0; padding-top:2px; }
+  .rec-date { margin:0; font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }   /* 播放中滑過去的數字對不上，先不給互動 */
   .mo-date { flex:none; min-width:76px; text-align:right; font-size:13px;
              font-variant-numeric:tabular-nums; color:var(--fg); }

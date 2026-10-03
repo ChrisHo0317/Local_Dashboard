@@ -169,3 +169,107 @@ def test_prompt_lists_numbered_items_and_context():
     text = sn.build_prompt(job["target"], job["items"], job["revenue"])
     assert "[1]" in text and "[3]" in text and "外資 +100 張" in text
     assert "最新月營收" in text and "3624 光頡" in text
+
+
+# ── 族群與歷史 ──────────────────────────────────────────────
+def _group_market():
+    days = pd.bdate_range("2026-09-01", periods=25)
+    rows = []
+    for i, d in enumerate(days):
+        wave = [0, 2, -1, 3, 1][i % 5]
+        # 甲、乙、丙同步漲（同一個節奏），丁走自己的路
+        for code, base, k in (("1111", 100, 1.0), ("2222", 50, 1.1), ("3333", 80, 0.9)):
+            rows.append({"date": d, "code": code, "market": "twse",
+                         "close": base + i * k + wave * k, "turnover": 5e8,
+                         "foreign": 0.0, "trust": 0.0})
+        rows.append({"date": d, "code": "4444", "market": "twse",
+                     "close": 60 + (i % 3) - 0.5 * i, "turnover": 5e8, "foreign": 0.0, "trust": 0.0})
+    panel = pd.DataFrame(rows)
+    master = pd.DataFrame({"code": ["1111", "2222", "3333", "4444"],
+                           "name": ["光頡", "國巨", "華新科", "大立光"],
+                           "market": ["twse"] * 4, "industry": ["電子零組件業"] * 4})
+    return sn.Market(panel, master)
+
+
+def test_norm_theme_and_code_lookup():
+    assert sn.norm_theme(" 被動元件族群 ") == "被動元件"
+    assert sn.norm_theme("AI概念股") == "AI"
+    mkt = _group_market()
+    assert mkt.code_of("國巨") == "2222" and mkt.code_of("國巨(2222)") == "2222"
+    assert mkt.code_of("華新") == "3333"                     # 唯一的開頭相符
+    assert mkt.code_of("國巨2222") == "2222"                 # 中文緊接代號
+    assert mkt.code_of("台積電") is None
+    assert mkt.corr("1111", "2222") > 0.9 and mkt.corr("1111", "4444") < 0.6
+
+
+def _entry(method, theme="", news_linked=False, named=(), industry="電子零組件業"):
+    return {"name": "", "method": method, "theme": theme, "news_linked": news_linked,
+            "named": list(named), "industry": industry, "items": []}
+
+
+def test_attach_groups_with_claude_verifies_by_price():
+    mkt = _group_market()
+    stocks = {"1111": _entry("claude", "被動元件", True, ["國巨", "大立光"])}
+    sn.attach_groups(stocks, mkt)
+    s = stocks["1111"]
+    assert s["group"] == "被動元件" and s["linked"]
+    codes = [m[0] for m in s["members"]]
+    assert codes == ["2222"]                     # 大立光走勢不同步，不列入
+    assert s["members"][0][5] and not s["members"][0][4]   # 新聞有提到、不在強勢股名單
+
+    # 新聞沒說族群、只有兩檔強勢股同族群 → 不算連動；三檔以上才算
+    two = {"1111": _entry("claude", "被動元件"), "2222": _entry("claude", "被動元件")}
+    sn.attach_groups(two, mkt)
+    assert not two["1111"]["linked"] and two["1111"]["members"][0][0] == "2222"
+    three = {c: _entry("claude", "被動元件") for c in ("1111", "2222", "3333")}
+    sn.attach_groups(three, mkt)
+    assert all(s["linked"] for s in three.values())
+
+    solo = {"4444": _entry("claude", "", False)}
+    sn.attach_groups(solo, mkt)
+    assert solo["4444"]["group"] == "" and not solo["4444"]["linked"]
+
+
+def test_attach_groups_without_claude_uses_industry_and_correlation():
+    mkt = _group_market()
+    stocks = {"1111": _entry("rules")}
+    sn.attach_groups(stocks, mkt)
+    s = stocks["1111"]
+    assert s["group"] == "電子零組件業" and s["linked"]
+    assert sorted(m[0] for m in s["members"]) == ["2222", "3333"]
+
+
+def test_history_replaces_same_day(tmp_path):
+    path = tmp_path / "h.parquet"
+    day = {"1111": {"name": "光頡", "rank": 1, "watch": False, "s": 20.0, "r5": 10.0, "a": 5.0,
+                    "tag": "產品漲價", "why": "報價調漲", "conf": "中", "method": "claude",
+                    "group": "被動元件", "linked": True, "members": [["2222", "國巨", 8.0, 0.8, False, True]],
+                    "items": [{"t": "光頡漲價", "u": "https://x", "src": "鉅亨網", "key": True}]}}
+    sn.save_history(day, "2026-10-01", path)
+    sn.save_history({**day, "3333": {**day["1111"], "name": "華新科", "rank": 2}}, "2026-10-02", path)
+    sn.save_history(day, "2026-10-02", path)                 # 開盤前重跑同一天：整批取代
+    h = sn.load_history(path)
+    assert sorted(h["date"]) == ["2026-10-01", "2026-10-02"]
+    row = h.iloc[0]
+    assert row["key_t"] == "光頡漲價" and bool(row["linked"])
+    assert json.loads(row["members"])[0][0] == "2222"
+
+
+def test_record_pages(tmp_path, monkeypatch):
+    import intel_build as ib
+    path = tmp_path / "h.parquet"
+    base = {"name": "光頡", "rank": 1, "watch": False, "s": 20.0, "r5": 10.0, "a": 5.0,
+            "tag": "產品漲價", "why": "報價調漲", "conf": "中", "method": "claude",
+            "group": "被動元件", "linked": True, "members": [], "items": []}
+    sn.save_history({"1111": base, "4444": {**base, "name": "大立光", "rank": None,
+                                            "linked": False, "group": ""}}, "2026-10-01", path)
+    sn.save_history({"1111": base}, "2026-10-02", path)
+    monkeypatch.setattr(ib, "load_strong_history", lambda: sn.load_history(path))
+    ib._strong_record(tmp_path)
+    ix = json.loads((tmp_path / "record" / "index.json").read_text(encoding="utf-8"))
+    assert ix["dates"] == ["2026-10-01", "2026-10-02"]
+    assert ix["themes"] == [["被動元件", [1, 1]]]
+    assert ix["stocks"]["1111"] == ["光頡", [0, 1]] and ix["summary"][0] == [2, 1, 1]
+    day = json.loads((tmp_path / "record" / "2026-10-01.json").read_text(encoding="utf-8"))
+    by = {r[0]: r for r in day["rows"]}
+    assert by["4444"][2] is None and by["1111"][11] == "被動元件" and by["1111"][12] is True

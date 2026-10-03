@@ -21,6 +21,7 @@ SUBTABS = [
     ("market", "大盤", "大盤", "加權指數與法人買賣超（估算）"),
     ("sectors", "類股", "類股", "面積＝成交值，顏色＝所選區間的漲跌（紅漲綠跌）"),
     ("momentum", "強勢股", "強勢股", "哪些股票漲得越來越快：強度 × 加速度"),
+    ("record", "強勢紀錄", "強勢紀錄", "每天強勢股的上漲原因、是否族群連動與同族群個股"),
     ("flows", "法人籌碼", "法人籌碼", "外資、投信買賣超排行　·　期貨未平倉"),
 ]
 
@@ -144,6 +145,22 @@ def panel_html(data) -> str:
         '    <h3 class="sd-h">前 10 名的近 20 日累積漲幅</h3>\n'
         '    <p class="sd-note">以 20 個交易日前的收盤為 0%；灰色虛線是加權指數。曲線越往上翹，代表最近漲得越快。</p>\n'
         '    <div class="ichart ichart-sm" id="ov-mo-lines"></div>\n'
+        '  </div>',
+        '  <div class="subpanel ov" data-sub="record" hidden>\n'
+        '    <p class="ov-asof"></p>\n'
+        '    <p class="mo-explain">每天盤後（開盤前再用新的新聞補一次）記下強勢股（越來越強前 60 檔＋自選股）'
+        '最可能的上漲原因。<b>族群連動</b>：新聞說是族群行情、而且至少一檔同族群股票走勢同步'
+        '（近 5 日上漲、近 20 日每日漲跌相關係數 ≥ 0.6）；或同一天有 3 檔以上強勢股被歸到同一族群。</p>\n'
+        '    <h3 class="sd-h">族群輪動</h3>\n'
+        '    <p class="sd-note rec-heat-note"></p>\n'
+        '    <div class="ichart" id="ov-record-heat"></div>\n'
+        '    <div class="sec-bar">\n'
+        '      <select class="rec-date sec-pick" aria-label="日期"></select>\n'
+        '      <input class="rec-search sec-pick" type="search" placeholder="查股票代號或名稱"'
+        ' aria-label="查股票的上榜紀錄">\n'
+        '    </div>\n'
+        '    <p class="rec-sum sec-sum"></p>\n'
+        '    <div class="rec-body"></div>\n'
         '  </div>',
         '  <div class="subpanel ov" data-sub="flows" hidden>\n'
         '    <div class="ov-flow-tabs" role="group" aria-label="法人">\n'

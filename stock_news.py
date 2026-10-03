@@ -8,7 +8,11 @@
      重大訊息（fundamentals 存的歷史）。
   3. 請 Claude Sonnet 5.5 挑出真的相關的資料、整理重點、判斷最可能的上漲原因。
      沒有 ANTHROPIC_API_KEY 或呼叫失敗時，改用關鍵字規則挑一則最可能的。
-  4. 寫到 data/stock_news.json。同一檔的資料沒變就沿用上次的分析，不重複呼叫（省錢）。
+  4. 族群：Claude 從新聞說出族群名稱與一起漲的股票，再用股價驗證（近 5 日也在漲、
+     近 20 日每日漲跌相關係數 ≥ 0.6）；同一天被歸到同一族群的強勢股也算一群。
+     沒有 Claude 時改用同產業＋股價相關。
+  5. 寫到 data/stock_news.json，並把當天結果併進 data/strong_history.parquet（強勢紀錄分頁）。
+     同一檔的資料沒變就沿用上次的分析，不重複呼叫（省錢）。
 
 新聞內容只當成分析素材，存下來、放到網頁上的只有標題與連結。
 """
@@ -19,6 +23,7 @@ import os
 import re
 import time
 import xml.etree.ElementTree as ET
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
@@ -30,6 +35,8 @@ import pandas as pd
 
 BASE_DIR = Path(__file__).resolve().parent
 OUT_PATH = BASE_DIR / "data" / "stock_news.json"
+HISTORY_PATH = BASE_DIR / "data" / "strong_history.parquet"
+HISTORY_KEEP_DAYS = 400
 
 TAIPEI = timezone(timedelta(hours=8))
 
@@ -42,6 +49,9 @@ MAX_URL = 400               # Google 新聞的轉址連結有的很長；太長�
 SUMMARY_CHARS = 80          # 每則摘要截到幾個字（標題通常已經夠用）
 REQUEST_GAP = 0.6           # 同一站連續抓之間隔幾秒，避免被當成濫用
 WORKERS = 4                 # 同時幾個 Claude 請求
+SYNC_CORR = 0.6             # 近 20 日每日漲跌的相關係數達這個值才算「走勢同步」
+MAX_MEMBERS = 10            # 每檔最多列幾檔同族群
+SCHEMA_VERSION = 2          # 改了 Claude 要回答的欄位就加一，讓舊的分析重做
 
 MODEL = "claude-sonnet-5-5"
 MODEL_NAME = "Claude Sonnet 5.5"
@@ -66,7 +76,10 @@ SYSTEM = """你是台股研究助理。使用者會給你一檔股票近五個�
 - category：最符合 reason 的一類。
 - confidence：資料直接說明原因、而且時間與漲勢吻合為「高」；間接相關為「中」；推測為「低」。
 - key：最能支持 reason 的 1～3 則資料編號（必須在 relevant 裡）；沒有就給空陣列。
-- points：2～4 點，整理這五天跟這家公司有關的重要訊息，每點 30 字以內；沒有就給空陣列。"""
+- points：2～4 點，整理這五天跟這家公司有關的重要訊息，每點 30 字以內；沒有就給空陣列。
+- theme：這波上漲所屬的族群或題材，用台股常見的說法、越短越好，不要加「族群」「概念股」「類股」等字（例如：被動元件、CCL、光通訊、矽智財、散熱、重電、記憶體、生技新藥）。同一類寧可用較通用的名稱（用「被動元件」，不用「電阻」「電感」）。只是公司自己的消息、看不出屬於哪個族群就給空字串。
+- linked：資料顯示是同族群多檔一起漲（例如「被動元件族群齊漲」「XX 領軍、YY 跟漲」）為 true；主要是公司自己的消息為 false。
+- peers：資料裡提到、跟它一起漲的其他股票名稱（不含它自己，最多 8 檔），寫股票名稱即可；沒有就給空陣列。「同產業近 5 日漲最多」那一行只是背景，資料沒提到的不要列。"""
 
 SCHEMA = {
     "type": "object",
@@ -77,8 +90,12 @@ SCHEMA = {
         "confidence": {"type": "string", "enum": CONFIDENCE},
         "key": {"type": "array", "items": {"type": "integer"}},
         "points": {"type": "array", "items": {"type": "string"}},
+        "theme": {"type": "string"},
+        "linked": {"type": "boolean"},
+        "peers": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["relevant", "reason", "category", "confidence", "key", "points"],
+    "required": ["relevant", "reason", "category", "confidence", "key", "points",
+                 "theme", "linked", "peers"],
     "additionalProperties": False,
 }
 
@@ -102,28 +119,77 @@ def _pct(a, b):
     return (a / b - 1) * 100 if b and b == b and a == a else float("nan")
 
 
+class Market:
+    """近 21 個交易日的收盤、每日漲跌與強度；挑股票、給 Claude 的背景、族群驗證共用。"""
+
+    def __init__(self, panel: pd.DataFrame, master: pd.DataFrame,
+                 min_turnover: float = MIN_TURNOVER):
+        self.days = sorted(panel["date"].unique())
+        self.ok = len(self.days) >= 21
+        self.info = master.set_index("code")
+        self.names = {c: n for c, n in zip(master["code"], master["name"]) if n}
+        if not self.ok:
+            return
+        window = self.days[-21:]
+        part = panel[panel["date"].isin(window) & ~panel["code"].str.startswith("00")]
+        self.part = part
+        closes = part.pivot_table(index="date", columns="code", values="close")
+        self.closes = closes.reindex(window).ffill()
+        self.rets = self.closes.pct_change().iloc[1:]
+        last, d5, d10 = self.closes.iloc[-1], self.closes.iloc[-6], self.closes.iloc[-11]
+        stat = pd.DataFrame({
+            "s": (last / self.closes.iloc[0] - 1) * 100,
+            "r5": (last / d5 - 1) * 100,
+            "p5": (d5 / d10 - 1) * 100,
+        })
+        stat["a"] = stat["r5"] - stat["p5"]
+        stat["tv"] = part[part["date"].isin(self.days[-20:])].groupby("code")["turnover"].mean()
+        stat = stat.replace([float("inf"), float("-inf")], float("nan")).dropna(subset=["s", "a"])
+        stat["industry"] = [self._info("industry", c) or "其他" for c in stat.index]
+        self.stat = stat
+        self.liquid = stat[stat["tv"].fillna(0) >= min_turnover]
+
+    def _info(self, col: str, code: str) -> str:
+        return (self.info[col].get(code) if code in self.info.index else "") or ""
+
+    def name(self, code: str) -> str:
+        return self.names.get(code, "")
+
+    def r5(self, code: str):
+        return round(self.stat.at[code, "r5"], 1) if code in self.stat.index else None
+
+    def corr(self, a: str, b: str):
+        """近 20 日每日漲跌的相關係數（資料不足回傳 None）。"""
+        if a not in self.rets.columns or b not in self.rets.columns:
+            return None
+        v = self.rets[a].corr(self.rets[b])
+        return None if v != v else round(float(v), 2)
+
+    def code_of(self, text: str) -> str | None:
+        """新聞裡的股票稱呼 → 代號：先找代號，再比對完整名稱，最後是唯一的開頭相符。"""
+        text = (text or "").strip()
+        # 中文緊接數字（「國巨2327」）時 \b 不成立，改用前後不是數字判斷
+        m = re.search(r"(?<!\d)(\d{4,6}[A-Z]?)(?![\dA-Z])", text)
+        if m and m.group(1) in self.names:
+            return m.group(1)
+        name = re.sub(r"[（(].*?[）)]", "", text).strip()
+        if not name:
+            return None
+        exact = [c for c, n in self.names.items() if n == name]
+        if exact:
+            return exact[0]
+        starts = [c for c, n in self.names.items() if n.startswith(name) and len(name) >= 2]
+        return starts[0] if len(starts) == 1 else None
+
+
 def pick_targets(panel: pd.DataFrame, master: pd.DataFrame, watch_codes: set,
-                 top: int = TOP, min_turnover: float = MIN_TURNOVER) -> list[dict]:
+                 top: int = TOP, min_turnover: float = MIN_TURNOVER,
+                 mkt: "Market | None" = None) -> list[dict]:
     """越來越強的股票（依加速度排序的前 top 檔＋自選股），附上給 Claude 看的行情摘要。"""
-    days = sorted(panel["date"].unique())
-    if len(days) < 21:
+    mkt = mkt or Market(panel, master, min_turnover)
+    if not mkt.ok:
         return []
-    window = days[-21:]
-    part = panel[panel["date"].isin(window) & ~panel["code"].str.startswith("00")]
-    closes = part.pivot_table(index="date", columns="code", values="close").reindex(window).ffill()
-    last, d5, d10 = closes.iloc[-1], closes.iloc[-6], closes.iloc[-11]
-    stat = pd.DataFrame({
-        "s": (last / closes.iloc[0] - 1) * 100,
-        "r5": (last / d5 - 1) * 100,
-        "p5": (d5 / d10 - 1) * 100,
-    })
-    stat["a"] = stat["r5"] - stat["p5"]
-    stat["tv"] = part[part["date"].isin(days[-20:])].groupby("code")["turnover"].mean()
-    stat = stat.replace([float("inf"), float("-inf")], float("nan")).dropna(subset=["s", "a"])
-    info = master.set_index("code")
-    stat["industry"] = [(info["industry"].get(c) if c in info.index else "") or "其他"
-                        for c in stat.index]
-    liquid = stat[stat["tv"].fillna(0) >= min_turnover]
+    stat, liquid, closes, days = mkt.stat, mkt.liquid, mkt.closes, mkt.days
     ind_r5 = liquid.groupby("industry")["r5"].agg(["mean", "count"])
 
     strong = stat[(stat["s"] > 0) & (stat["a"] > 0)]
@@ -133,7 +199,7 @@ def pick_targets(panel: pd.DataFrame, master: pd.DataFrame, watch_codes: set,
                if c in watch_codes and c not in picked]
     rank = {c: i + 1 for i, c in enumerate(ranked.index)}
 
-    recent = part[part["date"].isin(days[-WINDOW_DAYS:])].set_index(["code", "date"])
+    recent = mkt.part[mkt.part["date"].isin(days[-WINDOW_DAYS:])].set_index(["code", "date"])
     out = []
     for code in picked:
         row = stat.loc[code]
@@ -149,11 +215,13 @@ def pick_targets(panel: pd.DataFrame, master: pd.DataFrame, watch_codes: set,
                 v = float("nan")
             flows[col] = None if v != v else int(round(v / 1000))
         ind = ind_r5.loc[row["industry"]] if row["industry"] in ind_r5.index else None
+        peers = liquid[(liquid["industry"] == row["industry"]) & (liquid.index != code)]
+        movers = [(mkt.name(p), round(v, 1))
+                  for p, v in peers["r5"].sort_values(ascending=False).head(6).items()]
         out.append({
             "code": code,
-            "name": (info["name"].get(code) if code in info.index else "") or "",
-            "market": "上市" if (info["market"].get(code) if code in info.index else "") == "twse"
-                      else "上櫃",
+            "name": mkt.name(code),
+            "market": "上市" if mkt._info("market", code) == "twse" else "上櫃",
             "industry": row["industry"],
             "rank": rank.get(code),
             "watch": code in watch_codes,
@@ -164,6 +232,7 @@ def pick_targets(panel: pd.DataFrame, master: pd.DataFrame, watch_codes: set,
             "foreign": flows["foreign"], "trust": flows["trust"],
             "ind_r5": None if ind is None else round(ind["mean"], 1),
             "ind_n": 0 if ind is None else int(ind["count"]),
+            "movers": movers,
         })
     return out
 
@@ -327,6 +396,8 @@ def build_prompt(t: dict, items: list[dict], revenue: str = "") -> str:
         lines.append("近 5 日法人買賣超：" + "、".join(flow))
     if t.get("ind_r5") is not None:
         lines.append(f"同產業近 5 日平均漲跌：{t['ind_r5']:+.1f}%（{t['ind_n']} 檔）")
+    if t.get("movers"):
+        lines.append("同產業近 5 日漲最多：" + "、".join(f"{n} {v:+.1f}%" for n, v in t["movers"] if n))
     if revenue:
         lines.append("最新月營收：" + revenue)
     lines.append("")
@@ -340,7 +411,7 @@ def build_prompt(t: dict, items: list[dict], revenue: str = "") -> str:
 
 def input_hash(t: dict, items: list[dict], revenue: str) -> str:
     """資料指紋：行情日期、強度與每則資料的標題都一樣，就沿用上次的分析。"""
-    raw = json.dumps([t["code"], t["s"], t["r5"], t["p5"], revenue,
+    raw = json.dumps([SCHEMA_VERSION, t["code"], t["s"], t["r5"], t["p5"], revenue,
                       [[it["kind"], it["title"], it["time"].isoformat()] for it in items]],
                      ensure_ascii=False)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
@@ -373,9 +444,11 @@ def analyze_rules(items: list[dict], name: str = "") -> dict:
     order = [i for _, i in sorted(scored, key=lambda x: (-x[0], x[1]))]
     if best is None:
         return {"relevant": order, "reason": "找不到明確消息，可能是族群或資金帶動",
-                "category": "原因不明", "confidence": "低", "key": [], "points": []}
+                "category": "原因不明", "confidence": "低", "key": [], "points": [],
+                "theme": "", "linked": False, "peers": []}
     return {"relevant": order, "reason": items[best]["title"][:60], "category": best_tag,
-            "confidence": "低", "key": [best], "points": []}
+            "confidence": "低", "key": [best], "points": [],
+            "theme": "", "linked": False, "peers": []}
 
 
 class ClaudeAnalyzer:
@@ -450,6 +523,9 @@ class ClaudeAnalyzer:
         data["key"] = [i for i in ok(data.get("key") or []) if i in data["relevant"]] or \
                       ok(data.get("key") or [])
         data["points"] = [p for p in (data.get("points") or []) if isinstance(p, str)][:4]
+        data["theme"] = norm_theme(data.get("theme"))
+        data["linked"] = bool(data.get("linked"))
+        data["peers"] = [p for p in (data.get("peers") or []) if isinstance(p, str)][:8]
         return data
 
     def cost(self) -> float:
@@ -467,6 +543,9 @@ def shape(t: dict, items: list[dict], result: dict, method: str, digest: str) ->
         "why": result.get("reason", ""), "tag": result.get("category", "原因不明"),
         "conf": result.get("confidence", "低"), "method": method,
         "points": result.get("points") or [],
+        "theme": result.get("theme") or "", "news_linked": bool(result.get("linked")),
+        "named": result.get("peers") or [],
+        "industry": t.get("industry", ""),
         "items": [{"d": items[i]["time"].strftime("%m/%d %H:%M"), "src": items[i]["source"],
                    "t": items[i]["title"],
                    "u": items[i]["url"] if len(items[i]["url"]) <= MAX_URL else "",
@@ -510,6 +589,115 @@ def analyze_all(jobs: list[dict], prev: dict, analyzer: ClaudeAnalyzer) -> dict:
     return out
 
 
+# ── 族群 ────────────────────────────────────────────────────
+THEME_SUFFIX = re.compile(r"(族群|概念股|概念|類股|相關股|供應鏈|題材|股)$")
+
+
+def norm_theme(text) -> str:
+    """「被動元件族群」「被動元件概念股」→「被動元件」，同一族群才歸得在一起。"""
+    t = re.sub(r"\s+", "", str(text or ""))
+    t = t.replace("／", "/")
+    prev = None
+    while prev != t:
+        prev, t = t, THEME_SUFFIX.sub("", t)
+    return t[:12]
+
+
+def attach_groups(stocks: dict, mkt: Market) -> None:
+    """
+    依當天的分析結果補上族群成員與是否族群連動（每次執行都重算，不吃快取）：
+
+    有 Claude：成員＝同一天被歸到同一族群的強勢股＋新聞提到、而且股價也同步的股票
+      （近 5 日上漲、近 20 日相關係數 ≥ SYNC_CORR）。
+      族群連動＝新聞說是族群行情、且至少一檔同步；或同一族群有 3 檔以上強勢股。
+    沒有 Claude：族群＝官方產業別，成員＝同產業、股價同步上漲的股票；至少兩檔才算連動。
+    """
+    by_theme = defaultdict(list)
+    for code, s in stocks.items():
+        if s.get("method") == "claude" and s.get("theme"):
+            by_theme[s["theme"]].append(code)
+    for code, s in stocks.items():
+        members = []
+
+        def add(c, strong, mentioned):
+            r5, corr = mkt.r5(c), mkt.corr(code, c)
+            synced = strong or (r5 is not None and r5 > 0 and corr is not None and corr >= SYNC_CORR)
+            if strong or synced:
+                members.append([c, mkt.name(c), r5, corr, strong, mentioned])
+
+        if s.get("method") == "claude":
+            group = s.get("theme") or ""
+            same = [c for c in by_theme.get(group, []) if c != code] if group else []
+            named = [mkt.code_of(n) for n in s.get("named") or []]
+            named = [c for c in dict.fromkeys(named) if c and c != code]
+            for c in same:
+                add(c, True, c in named)
+            for c in named:
+                if c not in same:
+                    add(c, False, True)
+            synced_named = sum(1 for m in members if m[5])
+            linked = bool(group) and ((s.get("news_linked") and (synced_named or same))
+                                      or len(same) + 1 >= 3)
+        else:
+            group = s.get("industry") or ""
+            if group and mkt.ok:
+                peers = mkt.liquid[(mkt.liquid["industry"] == group) & (mkt.liquid.index != code)
+                                   & (mkt.liquid["r5"] > 0)]
+                for c in peers.index:
+                    add(c, c in stocks, False)
+                members = [m for m in members if m[3] is not None and m[3] >= SYNC_CORR]
+            linked = len(members) >= 2
+        members.sort(key=lambda m: (not m[4], -(m[2] or 0)))
+        s["group"] = group
+        s["members"] = members[:MAX_MEMBERS]
+        s["linked"] = bool(linked)
+
+
+HISTORY_COLS = ["date", "code", "name", "rank", "watch", "s", "r5", "a", "tag", "why", "conf",
+                "method", "group", "linked", "members", "key_t", "key_u", "key_src"]
+
+
+def history_rows(stocks: dict, asof: str) -> pd.DataFrame:
+    rows = []
+    for code, s in stocks.items():
+        key = next((it for it in s.get("items") or [] if it.get("key")), None)
+        rows.append({
+            "date": asof, "code": code, "name": s.get("name", ""),
+            "rank": s.get("rank") if s.get("rank") is not None else -1,
+            "watch": bool(s.get("watch")), "s": s.get("s"), "r5": s.get("r5"), "a": s.get("a"),
+            "tag": s.get("tag", ""), "why": s.get("why", ""), "conf": s.get("conf", ""),
+            "method": s.get("method", ""), "group": s.get("group", ""),
+            "linked": bool(s.get("linked")),
+            "members": json.dumps(s.get("members") or [], ensure_ascii=False),
+            "key_t": key["t"] if key else "", "key_u": key["u"] if key else "",
+            "key_src": key["src"] if key else "",
+        })
+    return pd.DataFrame(rows, columns=HISTORY_COLS)
+
+
+def save_history(stocks: dict, asof: str, path: Path = HISTORY_PATH) -> None:
+    """當天的結果整批取代（開盤前那次會用新的新聞重寫同一個交易日）；太舊的刪掉。"""
+    new = history_rows(stocks, asof)
+    try:
+        old = pd.read_parquet(path)
+    except (OSError, ValueError):
+        old = pd.DataFrame(columns=HISTORY_COLS)
+    old = old.reindex(columns=HISTORY_COLS)
+    cutoff = (pd.Timestamp(asof) - pd.Timedelta(days=HISTORY_KEEP_DAYS)).strftime("%Y-%m-%d")
+    merged = pd.concat([old[(old["date"] != asof) & (old["date"] >= cutoff)], new],
+                       ignore_index=True)
+    merged = merged.sort_values(["date", "rank"], ascending=[False, True]).reset_index(drop=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    merged.to_parquet(path, index=False, compression="zstd")
+
+
+def load_history(path: Path = HISTORY_PATH) -> pd.DataFrame:
+    try:
+        return pd.read_parquet(path).reindex(columns=HISTORY_COLS)
+    except (OSError, ValueError):
+        return pd.DataFrame(columns=HISTORY_COLS)
+
+
 # ── 主流程 ──────────────────────────────────────────────────
 def load_previous(path: Path = OUT_PATH) -> dict:
     try:
@@ -519,7 +707,8 @@ def load_previous(path: Path = OUT_PATH) -> dict:
 
 
 def update(logger: logging.Logger | None = None, fetcher: NewsFetcher | None = None,
-           analyzer: ClaudeAnalyzer | None = None, path: Path = OUT_PATH) -> int:
+           analyzer: ClaudeAnalyzer | None = None, path: Path = OUT_PATH,
+           history_path: Path = HISTORY_PATH) -> int:
     """抓新聞、分析、寫檔；回傳內容有變動的檔數。"""
     import intel_data
     from fundamentals import load_announce, load_revenue
@@ -532,7 +721,8 @@ def update(logger: logging.Logger | None = None, fetcher: NewsFetcher | None = N
         return 0
     master = intel_data.stock_master()
     watch = {w["code"] for w in load_watchlist()}
-    targets = pick_targets(panel, master, watch)
+    mkt = Market(panel, master)
+    targets = pick_targets(panel, master, watch, mkt=mkt)
     if not targets:
         lg.warning("強勢股新聞：沒有越來越強的股票，略過")
         return 0
@@ -556,6 +746,9 @@ def update(logger: logging.Logger | None = None, fetcher: NewsFetcher | None = N
 
     prev = load_previous(path)
     stocks = analyze_all(jobs, prev.get("stocks") or {}, analyzer)
+    attach_groups(stocks, mkt)
+    asof = pd.Timestamp(days[-1]).strftime("%Y-%m-%d")
+    save_history(stocks, asof, history_path)
     by_claude = sum(1 for s in stocks.values() if s["method"] == "claude")
     if analyzer.calls:
         lg.info(f"強勢股新聞：呼叫 Claude {analyzer.calls} 次，輸入 {analyzer.tokens_in:,}、"
@@ -568,7 +761,7 @@ def update(logger: logging.Logger | None = None, fetcher: NewsFetcher | None = N
         return 0
     payload = {
         "generated": datetime.now(TAIPEI).strftime("%Y-%m-%d %H:%M"),
-        "asof": pd.Timestamp(days[-1]).strftime("%Y-%m-%d"),
+        "asof": asof,
         "since": start.strftime("%Y-%m-%d"),
         "model": MODEL_NAME if by_claude else "",
         "stocks": stocks,
@@ -576,5 +769,7 @@ def update(logger: logging.Logger | None = None, fetcher: NewsFetcher | None = N
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
                     encoding="utf-8")
-    lg.info(f"強勢股新聞：{len(stocks)} 檔（Claude 分析 {by_claude} 檔），{changed} 檔有變動")
+    linked = sum(1 for s in stocks.values() if s["linked"])
+    lg.info(f"強勢股新聞：{len(stocks)} 檔（Claude 分析 {by_claude} 檔，族群連動 {linked} 檔），"
+            f"{changed} 檔有變動")
     return changed

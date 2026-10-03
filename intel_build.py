@@ -7,6 +7,8 @@
                          大盤走勢、類股、法人排行、期貨未平倉
     screen.json          選股：每個條件的規則、狀態與命中清單
     stocknews.json       強勢股的近五日新聞與上漲原因（點進強勢股才下載）
+    record/index.json    強勢紀錄：日期、族群輪動（每天每個族群幾檔）、每檔出現過的日子
+    record/{日期}.json   那天每一檔強勢股的原因、族群與同族群個股
 
 數字在這裡就換好單位（張、億元），前端只負責畫。
 """
@@ -25,6 +27,7 @@ from fundamentals import load_announce, load_income, load_revenue
 from market_data import load_summary
 from news_data import load_all as load_news_all
 from news_digest import build as build_digest
+from stock_news import load_history as load_strong_history
 from stock_data import load as load_stock_list
 from watchlist import EDIT_URL, load_watchlist
 from xmarket_data import load_xmarket
@@ -36,6 +39,8 @@ PE_MONTHS = 60
 ANN_KEEP = 30
 TOP_FLOW = 20
 STOCK_NEWS = Path(__file__).resolve().parent / "data" / "stock_news.json"
+RECORD_DAYS = 120   # 強勢紀錄分頁放幾個交易日
+RECORD_THEMES = 20  # 族群輪動圖最多列幾個族群
 
 
 def _r(x, n=2):
@@ -397,6 +402,52 @@ def _stock_news() -> dict:
     return d
 
 
+def _strong_record(data_dir: Path) -> None:
+    """
+    強勢紀錄分頁（stock_news.py 每天存的歷史）：
+
+    record/index.json   dates、themes [[族群, [每天的族群連動檔數]]]（依總次數取前幾個）、
+                        stocks {代號: [名稱, [出現的日期序號]]}、summary [[強勢股數, 連動數, 族群數]]
+    record/{日期}.json  rows [[代號, 名稱, 名次, 自選, 強度, 近5日, 加速, 分類, 原因, 可信度,
+                        方法, 族群, 是否連動, 同族群 [[代號, 名稱, 近5日, 相關, 強勢股, 新聞提到]],
+                        關鍵新聞標題, 連結, 來源]]
+    """
+    out = data_dir / "record"
+    hist = load_strong_history()
+    if hist.empty:
+        _dump({"dates": [], "themes": [], "stocks": {}, "summary": []}, out / "index.json")
+        return
+    dates = sorted(hist["date"].unique())[-RECORD_DAYS:]
+    hist = hist[hist["date"].isin(dates)].copy()
+    hist["linked"] = hist["linked"].astype(bool)
+    pos = {d: i for i, d in enumerate(dates)}
+    linked = hist[hist["linked"] & (hist["group"].fillna("") != "")]
+    counts = linked.groupby(["group", "date"]).size()
+    top = linked.groupby("group").size().sort_values(ascending=False).head(RECORD_THEMES)
+    stocks = {code: [g["name"].iloc[0], sorted(pos[d] for d in g["date"])]
+              for code, g in hist.groupby("code")}
+    summary = []
+    for d in dates:
+        day = hist[hist["date"] == d]
+        summary.append([len(day), int(day["linked"].sum()),
+                        int(day.loc[day["linked"], "group"].nunique())])
+    _dump({"dates": dates,
+           "themes": [[g, [int(counts.get((g, d), 0)) for d in dates]] for g in top.index],
+           "stocks": stocks, "summary": summary}, out / "index.json")
+    for d, day in hist.groupby("date"):
+        rows = []
+        for r in day.itertuples(index=False):
+            try:
+                members = json.loads(r.members or "[]")
+            except ValueError:
+                members = []
+            rank = _r(r.rank, 0)
+            rows.append([r.code, r.name, None if rank is None or rank < 0 else rank, bool(r.watch),
+                         _r(r.s, 1), _r(r.r5, 1), _r(r.a, 1), r.tag, r.why, r.conf, r.method,
+                         r.group or "", bool(r.linked), members, r.key_t, r.key_u, r.key_src])
+        _dump({"date": d, "rows": rows}, out / f"{d}.json")
+
+
 def _flows(panel: pd.DataFrame, names: dict, latest) -> dict:
     day = panel[(panel["date"] == latest) & ~panel["code"].str.startswith("00")]
     out = {}
@@ -503,4 +554,5 @@ def build(out_dir: Path) -> dict:
     _dump(_sectors(panel, master, days), data_dir / "sectors.json")
     _dump(_momentum(panel, master, days, xm, watch_codes), data_dir / "momentum.json")
     _dump(_stock_news(), data_dir / "stocknews.json")
+    _strong_record(data_dir)
     return {"latest": latest.strftime("%Y-%m-%d"), "stocks": shards, "watch": len(watch)}
