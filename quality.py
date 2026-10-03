@@ -173,8 +173,7 @@ def main() -> int:
     strip = lambda t: json.dumps({k: v for k, v in json.loads(t).items() if k != "generated"},
                                  ensure_ascii=False) if t else ""
     if strip(old) != strip(text):
-        OUT_PATH.write_text(text, encoding="utf-8", newline="
-")
+        OUT_PATH.write_text(text, encoding="utf-8", newline="\n")
     for c in report["checks"]:
         log.info(f"[{c['level']}] {c['title']} {c['detail']}")
     notify(report)
