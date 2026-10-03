@@ -75,3 +75,17 @@ def test_trading_gap_skips_weekends_holidays_and_before_close():
     assert quality.trading_gap(fri, datetime(2026, 10, 5, 18, 0), set()) == 1
     assert quality.trading_gap(fri, datetime(2026, 10, 6, 18, 0), {"2026-10-05"}) == 1
     assert quality.trading_gap(fri, datetime(2026, 10, 7, 18, 0), set()) == 3
+
+
+def test_old_daily_files_without_new_columns(tmp_path, monkeypatch):
+    """加欄位以前存的日期檔：讀取時補空欄，判斷缺哪些資料組不能出錯。"""
+    import market_data as md
+    monkeypatch.setattr(md, "DAILY_DIR", tmp_path)
+    day = date(2026, 9, 1)
+    old = pd.DataFrame({"code": ["2330"], "market": ["twse"], "open": [1.0], "high": [1.0], "low": [1.0],
+                        "close": [1.0], "volume": [1.0], "turnover": [1.0]})
+    old.to_parquet(md._path(day), index=False)
+    df = md.load_day(day)
+    assert list(df.columns) == md.COLUMNS and df["ref"].isna().all()
+    got = md.present_groups(day)
+    assert "quotes" in got["twse"] and "lending" not in got["twse"]

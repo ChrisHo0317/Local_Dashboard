@@ -57,12 +57,12 @@ jobs:
             "10 0 * * 1-5")
               python update_data.py events stocknews digest ;;
             "0 1 * * *")
-              python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket stock events backfill ;;
+              python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket options stock events backfill ;;
             "30 9 * * 1-5")
-              python update_data.py market chips xmarket stock events signallog stocknews digest ;;
+              python update_data.py market chips xmarket options stock events signallog stocknews digest ;;
             "")
               # 手動執行：全部跑一次
-              python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket stock events signallog backfill stocknews ;;
+              python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket options stock events signallog backfill stocknews ;;
             *)
               python update_data.py market chips xmarket stock events signallog backfill ;;
           esac

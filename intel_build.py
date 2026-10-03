@@ -192,13 +192,23 @@ def write_stock_shards(out_dir: Path, panel: pd.DataFrame, master: pd.DataFrame,
                               for _, r in ex_by[code].iterrows()]
         if code in flags:
             shard["flag"] = flags[code]
+        lend = g.dropna(subset=["sbl_bal"]) if "sbl_bal" in g else g.iloc[0:0]
+        if len(lend):
+            bal = lend["sbl_bal"]
+            shard["lend"] = {"bal": _lots(bal.iloc[-1]),
+                             "chg": _lots(bal.iloc[-1] - bal.iloc[max(0, len(bal) - 21)]) if len(bal) > 1 else None,
+                             "date": lend["date"].iloc[-1].strftime("%Y-%m-%d")}
+        dtv = g.dropna(subset=["dt_vol"]) if "dt_vol" in g else g.iloc[0:0]
+        if len(dtv) and dtv["volume"].iloc[-1]:
+            shard["dt"] = {"pct": _r(dtv["dt_vol"].iloc[-1] / dtv["volume"].iloc[-1] * 100, 1),
+                           "date": dtv["date"].iloc[-1].strftime("%Y-%m-%d")}
         _dump(shard, stock_dir / f"{code}.json")
         count += 1
     return count
 
 
 # ── 總覽 ───────────────────────────────────────────────────
-def _kpis(summary: pd.DataFrame, xm: pd.DataFrame, latest: str) -> list[dict]:
+def _kpis(summary: pd.DataFrame, xm: pd.DataFrame, latest: str, extra: list | None = None) -> list[dict]:
     row = summary[summary["date"] == latest]
     s = row.iloc[0] if not row.empty else pd.Series(dtype=object)
 
@@ -249,7 +259,67 @@ def _kpis(summary: pd.DataFrame, xm: pd.DataFrame, latest: str) -> list[dict]:
                 series["price_date"].iloc[-1].strftime("%m/%d"))
         else:
             add(label, "—")
+    dt = [v for v in (val("twse_daytrade_pct"),) if v is not None]
+    add("當沖比（上市）", f"{dt[0]:.1f}%" if dt else "—", note="當沖成交股數占全市場")
+    for e in extra or []:
+        add(**e)
     return out
+
+
+def global_extras(panel: pd.DataFrame, xm: pd.DataFrame) -> list[dict]:
+    """
+    盤前要看的國際與夜盤：台積電 ADR 溢價（1 ADR＝5 股，用同一天的匯率與台股收盤）、
+    VIX、台指期夜盤（與加權指數收盤的差距）。回傳 _kpis 的 add() 參數。
+    """
+    out = []
+
+    def series(name):
+        return xm[xm["item"] == name].sort_values("price_date").set_index("price_date")["price"]
+
+    adr, fx = series("台積電ADR"), series("美元兌台幣")
+    tw = None
+    if "raw_close" in panel:
+        g = panel[panel["code"] == "2330"].set_index("date")["raw_close"].dropna()
+        tw = g if len(g) else None
+    if len(adr) and len(fx) and tw is not None:
+        d = adr.index[-1]
+        rate = fx[fx.index <= d]
+        local = tw[tw.index <= d]
+        if len(rate) and len(local):
+            prem = (adr.iloc[-1] * rate.iloc[-1] / 5 / local.iloc[-1] - 1) * 100
+            out.append({"label": "台積電 ADR 溢價", "value": f"{prem:+.1f}%",
+                        "delta": f"ADR {adr.iloc[-1]:,.2f} 美元", "direction": 1 if prem > 0 else -1,
+                        "note": d.strftime("%m/%d") + " 美股收盤"})
+    vix = series("VIX")
+    if len(vix) >= 2:
+        a, b = float(vix.iloc[-2]), float(vix.iloc[-1])
+        out.append({"label": "VIX 恐慌指數", "value": f"{b:,.2f}", "delta": f"{(b / a - 1) * 100:+.1f}%",
+                    "direction": -1 if b > a else 1 if b < a else 0,
+                    "note": vix.index[-1].strftime("%m/%d") + ("　偏高" if b >= 25 else "")})
+    # 期交所把夜盤記在「下一個交易日」：標 10/02 的夜盤是 10/01 下午到 10/02 清晨，
+    # 所以要和那天以前最後一次的現貨收盤比
+    night, twii = series("台指期夜盤"), series("加權指數")
+    if len(night) and len(twii):
+        before = twii[twii.index < night.index[-1]]
+        if len(before):
+            gap = float(night.iloc[-1]) - float(before.iloc[-1])
+            out.append({"label": "台指期夜盤", "value": f"{night.iloc[-1]:,.0f}",
+                        "delta": f"比 {before.index[-1]:%m/%d} 現貨 {gap:+,.0f} 點",
+                        "direction": 1 if gap > 0 else -1 if gap < 0 else 0,
+                        "note": f"{night.index[-1]:%m/%d} 清晨收"})
+    return out
+
+
+def _options() -> dict:
+    """臺指選擇權：Put/Call 比、三大法人買權賣權淨未平倉、大額交易人淨部位（近 60 天）。"""
+    import options_data
+    o = options_data.load().tail(60)
+    if o.empty:
+        return {}
+    col = lambda c: [_r(v, 2) for v in o[c]]
+    return {"t": list(o["date"]), "pc_oi": col("pc_oi"), "pc_vol": col("pc_vol"),
+            "fi_call": col("fi_call_oi"), "fi_put": col("fi_put_oi"),
+            "top10_call": col("top10_call"), "top10_put": col("top10_put")}
 
 
 def _watch_rows(panel: pd.DataFrame, names: dict, watch: list[dict], latest,
@@ -606,7 +676,7 @@ def build(out_dir: Path) -> dict:
     perf = signal_perf.build(panel, load_revenue(), master, load_strong_history(), names)
     overview = {
         "asof": latest.strftime("%Y-%m-%d"),
-        "kpi": _kpis(summary, xm, latest.strftime("%Y-%m-%d")),
+        "kpi": _kpis(summary, xm, latest.strftime("%Y-%m-%d"), global_extras(panel, xm)),
         "watch": _watch_rows(panel, names, watch, latest, flags),
         "edit_url": EDIT_URL,
         "events": _events(today, watch_codes, names, exdiv),
@@ -616,6 +686,7 @@ def build(out_dir: Path) -> dict:
         "market": _market_series(panel, xm),
         "flows": _flows(panel, names, latest),
         "futures": _futures(),
+        "options": _options(),
         # 決策首頁
         "temp": breadth.summary(panel),
         "groups": _top_groups(),

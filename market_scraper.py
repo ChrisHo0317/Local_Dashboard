@@ -283,6 +283,60 @@ def names_from_quotes(payload: dict, market: str) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["code", "name", "market"])
 
 
+# ── 借券賣出、當沖 ──────────────────────────────────────────
+def parse_twse_lending(payload: dict) -> pd.DataFrame | None:
+    """TWT93U：前 7 欄是融券，後 6 欄是借券賣出（前日餘額、當日賣出、還券、調整、當日餘額、限額）。"""
+    if not payload or payload.get("stat") != "OK" or not payload.get("data"):
+        return None
+    rows = []
+    for r in payload["data"]:
+        if len(r) < 13:
+            continue
+        rows.append({"code": _code(r[0]), "market": "twse", "sbl_sell": num(r[9]), "sbl_bal": num(r[12])})
+    return _frame(rows)
+
+
+def parse_twse_daytrade(payload: dict) -> tuple[pd.DataFrame | None, dict]:
+    """TWTB4U：第一個表是全市場當沖比重，第二個表是個股當沖成交股數。"""
+    if not payload or payload.get("stat") != "OK":
+        return None, {}
+    summary, rows = {}, []
+    for t in payload.get("tables") or []:
+        fields = t.get("fields") or []
+        data = t.get("data") or []
+        if fields and fields[0] == "當日沖銷交易總成交股數" and data:
+            summary["twse_daytrade_pct"] = num(data[0][1])
+        elif "證券代號" in fields and "當日沖銷交易成交股數" in fields:
+            i, k = fields.index("證券代號"), fields.index("當日沖銷交易成交股數")
+            rows += [{"code": _code(r[i]), "market": "twse", "dt_vol": num(r[k])} for r in data]
+    return _frame(rows), summary
+
+
+def parse_tpex_lending(payload: list) -> tuple[str | None, pd.DataFrame | None]:
+    """tpex_margin_sbl（只有最新一天）：借券賣出當日餘額、當日借券賣出。"""
+    rows, day = [], None
+    for r in payload or []:
+        keys = list(r)
+        bal = next((k for k in keys if k.startswith("SecuritiesBorrowing") and "Balance" in k
+                    and "Previous" not in k), None)
+        sell = next((k for k in keys if k.startswith("SecuritiesBorrowing") and k.endswith("Sale")), None)
+        day = day or _roc_date(r.get("Date"))
+        rows.append({"code": _code(r.get("SecuritiesCompanyCode")), "market": "tpex",
+                     "sbl_bal": num(r.get(bal)) if bal else None,
+                     "sbl_sell": num(r.get(sell)) if sell else None})
+    return day, _frame(rows)
+
+
+def parse_tpex_daytrade(payload: list) -> dict:
+    """tpex_intraday_trading_statistics：全市場當沖比重 {日期: %}。"""
+    out = {}
+    for r in payload or []:
+        day = _roc_date(r.get("Date"))
+        if day:
+            out[day] = num(str(r.get("DayTradingVolumeOfTheMarket", "")).rstrip("%"))
+    return out
+
+
 # ── 權值事件 ────────────────────────────────────────────────
 EVENT_COLUMNS = ["date", "code", "market", "kind", "before", "ref", "factor"]
 
@@ -448,6 +502,15 @@ class MarketScraper:
                 self._twse(f"afterTrading/BWIBBU_d?date={ymd}&selectType=ALL&response=json"))
             if df is not None:
                 out["frames"].append(df)
+        if "lending" in tw:
+            df = parse_twse_lending(self._twse(f"marginTrading/TWT93U?date={ymd}&response=json"))
+            if df is not None:
+                out["frames"].append(df)
+        if "daytrade" in tw:
+            df, summ = parse_twse_daytrade(self._twse(f"dayTrading/TWTB4U?date={ymd}&response=json"))
+            if df is not None:
+                out["frames"].append(df)
+                out["summary"].update(summ)
 
         tp = groups.get("tpex", set())
         if "quotes" in tp:
@@ -482,6 +545,12 @@ class MarketScraper:
         asked_quotes = ("quotes" in tw) + ("quotes" in tp)
         out["closed"] = asked_quotes == 2 and no_quotes == 2
         return out
+
+    def tpex_latest(self) -> dict:
+        """上櫃只給最新一天的：借券賣出（存到它回報的日期）、全市場當沖比重。"""
+        day, df = parse_tpex_lending(self._get(TPEX_OPENAPI + "tpex_margin_sbl", "tpex", TPEX_GAP))
+        dt = parse_tpex_daytrade(self._get(TPEX_OPENAPI + "tpex_intraday_trading_statistics", "tpex", TPEX_GAP))
+        return {"lending_day": day, "lending": df, "daytrade": dt}
 
     def quotes(self, day: date, market: str):
         """只抓一個市場一天的收盤行情（回補參考價、修正零價用）；失敗回傳 None。"""

@@ -74,7 +74,7 @@ def context(mode: str) -> dict:
     import alerts
     import breadth
     import intel_data
-    from intel_build import _events, _kpis
+    from intel_build import _events, _kpis, global_extras
     from market_data import load_summary
     from stock_data import load as load_stock_list
     from stock_news import load_history, load_previous
@@ -90,7 +90,7 @@ def context(mode: str) -> dict:
     codes = {w["code"] for w in watch}
     today = intel_data.today_taipei()
     xm = load_xmarket()
-    kpi = _kpis(load_summary(), xm, latest)
+    kpi = _kpis(load_summary(), xm, latest, global_extras(panel, xm))
     events = [e for e in _events(today, codes, names, load_stock_list("exdiv"))
               if e["date"] <= (today + timedelta(days=2)).isoformat()]
     sn = load_previous()
@@ -166,6 +166,43 @@ def claude_digest(ctx: dict) -> dict | None:
             "watch": clean(data.get("watch"), 3), "risks": clean(data.get("risks"), 2)}
 
 
+def rotation(hist: pd.DataFrame) -> dict | None:
+    """主流族群輪動：最新一天的前三名和前一個記錄日比，新進與退出的族群。"""
+    if hist.empty:
+        return None
+    dates = sorted(hist["date"].unique())
+    if len(dates) < 2:
+        return None
+    now = {g["group"] for g in top_groups(hist[hist["date"] == dates[-1]])}
+    before = {g["group"] for g in top_groups(hist[hist["date"] == dates[-2]])}
+    new, gone = sorted(now - before), sorted(before - now)
+    if not new and not gone:
+        return None
+    return {"date": dates[-1], "prev": dates[-2], "new": new, "gone": gone, "top": sorted(now)}
+
+
+def push_rotation(rot: dict) -> None:
+    import alerts
+    key = os.environ.get("BARK_KEY", "").strip()
+    if not rot or not key or not alerts.enabled():
+        return
+    sid = f"rotation|{rot['date']}"
+    sent = alerts.load_sent()
+    if sid in sent:
+        return
+    lines = []
+    if rot["new"]:
+        lines.append("新進前三：" + "、".join(rot["new"]))
+    if rot["gone"]:
+        lines.append("退出前三：" + "、".join(rot["gone"]))
+    lines.append("目前前三：" + "、".join(rot["top"]))
+    server = os.environ.get("BARK_SERVER", "").strip() or "https://api.day.app"
+    if alerts.send({"title": "台股情報：主流族群輪動", "body": "\n".join(lines), "level": "active",
+                    "url": alerts.SITE_URL}, key, server):
+        sent[sid] = rot["date"]
+        alerts.save_sent(sent, rot["date"])
+
+
 def push(entry: dict, mode: str) -> None:
     import alerts
     key = os.environ.get("BARK_KEY", "").strip()
@@ -211,4 +248,10 @@ def update(logger: logging.Logger | None = None, mode: str | None = None) -> int
     OUT_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8", newline="\n")
     lg.info(f"摘要（{mode}，{method}）：{entry['headline']}")
     push(entry, mode)
+    if mode == "post":
+        from stock_news import load_history
+        rot = rotation(load_history())
+        if rot:
+            lg.info(f"族群輪動：新進 {rot['new']}，退出 {rot['gone']}")
+            push_rotation(rot)
     return 1

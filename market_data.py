@@ -36,7 +36,12 @@ GROUPS = {
     "insti": ["foreign", "trust", "dealer"],
     "margin": ["margin_bal", "short_bal"],
     "valuation": ["per", "yield_pct", "pbr"],
+    "lending": ["sbl_bal", "sbl_sell"],      # 借券賣出餘額、當日借券賣出（股）
+    "daytrade": ["dt_vol"],                  # 當日沖銷成交股數
 }
+# 上櫃的借券只有 openapi（只給最新一天），存在它回報的那天；上櫃個股當沖量沒有公開端點
+LATEST_ONLY = {"twse": set(), "tpex": {"lending"}}
+UNAVAILABLE = {"twse": set(), "tpex": {"daytrade"}}
 VALUE_COLUMNS = [c for cols in GROUPS.values() for c in cols]
 COLUMNS = ["code", "market"] + VALUE_COLUMNS
 
@@ -51,6 +56,7 @@ SUMMARY_COLUMNS = [
     "twse_dealer_value", "tpex_dealer_value",
     "twse_margin_amount", "twse_margin_amount_prev",
     "tpex_margin_amount", "tpex_margin_amount_prev",
+    "twse_daytrade_pct", "tpex_daytrade_pct",   # 當沖占成交量比重（%）
 ]
 STOCK_COLUMNS = ["code", "name", "market", "industry"]
 
@@ -74,7 +80,8 @@ def load_day(day: date) -> pd.DataFrame:
     path = _path(day)
     if not path.exists():
         return pd.DataFrame(columns=COLUMNS)
-    return pd.read_parquet(path)
+    # 舊的日期檔沒有後來加的欄位（ref、借券、當沖），補成空值
+    return pd.read_parquet(path).reindex(columns=COLUMNS)
 
 
 def load_days(days: list[date]) -> pd.DataFrame:

@@ -23,7 +23,12 @@ SYMBOLS = [
     ("^SOX", "費城半導體"),
     ("^IXIC", "那斯達克"),
     ("TWD=X", "美元兌台幣"),
+    ("TSM", "台積電ADR"),          # 1 單位 ADR＝5 股台積電，算溢價用
+    ("^VIX", "VIX"),
+    ("DX-Y.NYB", "美元指數"),
 ]
+# 台指期夜盤（期交所，不在 Yahoo）
+NIGHT = "台指期夜盤"
 SYMBOL_ORDER = [name for _, name in SYMBOLS]
 
 

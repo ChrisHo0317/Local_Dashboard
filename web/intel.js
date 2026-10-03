@@ -783,11 +783,42 @@
       box.appendChild(t);
     }
 
+    function optionsChart(pane, o) {
+      var c = palette(), box = pane.querySelector('.ov-opt-latest');
+      if (!o.t || !o.t.length) {
+        failMsg(document.getElementById('ov-options'), '選擇權資料累積中。');
+        return;
+      }
+      plot('ov-options', [
+        {type: 'scatter', mode: 'lines+markers', x: o.t, y: o.pc_oi, name: 'P/C 比（未平倉）',
+         line: {color: c.orange, width: 2}, hovertemplate: '%{y:.1f}%<extra>未平倉 P/C</extra>'},
+        {type: 'scatter', mode: 'lines', x: o.t, y: o.pc_vol, name: 'P/C 比（成交量）',
+         line: {color: c.gray, width: 1, dash: 'dot'}, hovertemplate: '%{y:.1f}%<extra>成交量 P/C</extra>'}
+      ], layout({showlegend: true, legend: {orientation: 'h', x: 0, y: 1.14, font: {size: 11}},
+                 xaxis: {type: 'category', nticks: 6, automargin: true},
+                 yaxis: {ticksuffix: '%', gridcolor: c.grid, automargin: true},
+                 shapes: [{type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 100, y1: 100,
+                           line: {color: c.gray, width: 1, dash: 'dash'}}],
+                 margin: {l: 48, r: 14, t: 26, b: 34}}));
+      box.textContent = '';
+      var n = o.t.length - 1;
+      [['外資 買權淨未平倉', o.fi_call[n], '口'], ['外資 賣權淨未平倉', o.fi_put[n], '口'],
+       ['前十大交易人 買權淨部位', o.top10_call[n], '口'], ['前十大交易人 賣權淨部位', o.top10_put[n], '口']]
+        .forEach(function (x) {
+          var b = el('div', 'ck-tile');
+          b.appendChild(el('span', 'ck-tile-k', x[0]));
+          b.appendChild(el('b', dir(x[1]), x[1] == null ? '—' : signed(x[1], 0) + ' ' + x[2]));
+          b.appendChild(el('span', 'ck-tile-d', md(o.t[n])));
+          box.appendChild(b);
+        });
+    }
+
     function flows(pane, d) {
       var f = d.flows || {};
       Array.prototype.slice.call(pane.querySelectorAll('.ov-flow')).forEach(function (box) {
         flowTable(box, f[flowSide + '_' + box.dataset.side]);
       });
+      optionsChart(pane, d.options || {});
       var fu = d.futures || {};
       var c = palette();
       if (!fu.t || !fu.t.length) {
@@ -2789,6 +2820,12 @@
       st.appendChild(stat('本益比', s.val && s.val.per ? fmt(s.val.per, 2) : '—'));
       st.appendChild(stat('殖利率', s.val && s.val.yield != null ? fmt(s.val.yield, 2) + '%' : '—'));
       st.appendChild(stat('股價淨值比', s.val && s.val.pbr ? fmt(s.val.pbr, 2) : '—'));
+      if (s.lend) {
+        st.appendChild(stat('借券賣出餘額', fmt(s.lend.bal, 0) + ' 張' +
+                            (s.lend.chg == null ? '' : '（20 日 ' + signed(s.lend.chg, 0) + '）'),
+                            s.lend.chg > 0 ? 'down' : null));
+      }
+      if (s.dt) st.appendChild(stat('當沖比', fmt(s.dt.pct, 1) + '%'));
       if (s.flag) {
         st.appendChild(stat(s.flag[0] === '處置' ? '處置股' : '注意股',
                             s.flag[0] === '處置' ? md(s.flag[1]) + '～' + md(s.flag[2]) : md(s.flag[1]),

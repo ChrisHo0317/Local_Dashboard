@@ -299,7 +299,8 @@ def update_market(since: date | None = None) -> int:
             day += timedelta(days=1)
             continue
         present = md.present_groups(day)
-        need = {m: set(md.GROUPS) - present[m] for m in ("twse", "tpex")}
+        need = {m: set(md.GROUPS) - present[m] - md.LATEST_ONLY[m] - md.UNAVAILABLE[m]
+                for m in ("twse", "tpex")}
         if any(need.values()):
             out = scraper.fetch(day, need)
             if out["closed"]:
@@ -317,7 +318,21 @@ def update_market(since: date | None = None) -> int:
                     fm = fm or FinMindFallback(logger=log)
                     changed += _fallback(day, fm)
         day += timedelta(days=1)
+    changed += _tpex_latest(scraper)
     return changed
+
+
+def _tpex_latest(scraper) -> int:
+    """上櫃借券賣出與當沖比重只有最新一天，存到官方回報的那天（那天的日期檔要已經在）。"""
+    got = scraper.tpex_latest()
+    n = 0
+    day = got["lending_day"]
+    if day and got["lending"] is not None and md._path(date.fromisoformat(day)).exists():
+        n += md.save_day(date.fromisoformat(day), got["lending"])
+    for d, pct in (got["daytrade"] or {}).items():
+        if pct is not None:
+            n += md.merge_summary(date.fromisoformat(d), {"tpex_daytrade_pct": pct})
+    return n
 
 
 def repair_history() -> int:
@@ -483,9 +498,16 @@ def update_chips() -> int:
 
 
 def update_xmarket() -> int:
-    """加權指數、費半、那斯達克、美元兌台幣（Yahoo Finance）。"""
-    period = "1mo" if XMARKET_CSV.exists() else "5y"
-    rows = XMarketScraper(logger=log).fetch_prices(period)
+    """加權指數、費半、那斯達克、美元兌台幣、台積電 ADR、VIX、美元指數（Yahoo Finance）＋台指期夜盤。"""
+    from xmarket_data import SYMBOLS, load_xmarket
+    have = set(load_xmarket()["item"]) if XMARKET_CSV.exists() else set()
+    scraper = XMarketScraper(logger=log)
+    rows = []
+    for symbol, name in SYMBOLS:
+        # 新加的項目第一次抓 5 年，之後只抓近一個月
+        rows += scraper._fetch_one(symbol, name, "1mo" if name in have else "5y")
+    import options_data
+    rows += options_data.night_rows(logger=log)
     if not rows:
         log.warning("跨市場：未取得任何資料，本次不更新")
         return 0
@@ -512,6 +534,7 @@ JOBS = {
     "events": update_events,
     "backfill": backfill,
     "signallog": update_signal_log,
+    "options": lambda: __import__("options_data").update(log),
     # 盤前／盤後摘要（Claude 整理、Bark 推播；依台北時間決定是盤前還是盤後）
     "digest": lambda: __import__("market_digest").update(log),
     # 強勢股新聞與上漲原因（會呼叫 Claude，見 stock_news.py）
