@@ -43,7 +43,8 @@ def test_due_slot():
     done = {"2026-10-03": ["pre"]}
     assert hn.due_slot(datetime(2026, 10, 3, 9, 0), done) is None            # 盤前做過了
     assert hn.due_slot(datetime(2026, 10, 3, 14, 30), done)[0] == "mid"
-    assert hn.due_slot(datetime(2026, 10, 3, 17, 30), done) is None          # 超過 3 小時
+    assert hn.due_slot(datetime(2026, 10, 3, 17, 30), done)[0] == "mid"    # 4 小時內都算
+    assert hn.due_slot(datetime(2026, 10, 3, 18, 30), done) is None          # 超過 4 小時
     assert hn.due_slot(datetime(2026, 10, 3, 21, 5), {})[0] == "night"
     assert hn.due_slot(datetime(2026, 10, 3, 3, 0), {}) is None
 

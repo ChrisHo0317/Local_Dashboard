@@ -2,7 +2,7 @@
 國際與台灣熱門財經新聞分析（python update_data.py hotnews）
 
 一天三個時段各跑一次（台北時間 08:00 台股開盤前、14:00 台股收盤後、21:00 美股開盤前）。
-新聞排程每十分鐘會呼叫一次，這裡自己判斷時段到了沒、這個時段今天做過沒。
+新聞排程（每十分鐘）與行情排程都會呼叫，這裡自己判斷時段到了沒、這個時段今天做過沒。
 
     國際：Google 新聞美國商業頭條、CNBC、WSJ Markets、鉅亨網國際股熱門
     台灣：經濟日報瀏覽排行（依瀏覽量）、鉅亨網台股熱門、Google 新聞台灣商業頭條
@@ -29,9 +29,9 @@ TAIPEI = timezone(timedelta(hours=8))
 MODEL = "claude-sonnet-5-5"
 MODEL_NAME = "Claude Sonnet 5.5"
 
-# (時段, 開始的時, 說明)；開始後 3 小時內都算這個時段
+# (時段, 開始的時, 說明)；開始後 SLOT_HOURS 小時內都算這個時段
 SLOTS = [("pre", 8, "台股開盤前"), ("mid", 14, "台股收盤後"), ("night", 21, "美股開盤前")]
-SLOT_HOURS = 3
+SLOT_HOURS = 4          # 時段開始後幾小時內都算（GitHub 排程常延遲，行情排程 17:30 也能補到 14:00 那次）
 PUSH_KEEP_DAYS = 3
 SUMMARY_CHARS = 90
 
