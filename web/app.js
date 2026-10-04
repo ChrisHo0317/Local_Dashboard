@@ -2082,3 +2082,46 @@ if (MOBILE_Q.addEventListener) {
 } else if (MOBILE_Q.addListener) {
   MOBILE_Q.addListener(renderAll);   // 舊版 Safari
 }
+
+// ── 每頁開頭的說明：收成「這是什麼」────────────────────────
+// 第一次看到時展開一次（捲到畫面裡才算看過），之後預設收起，要看再點。
+(function () {
+  var KEY = 'dash-explain-seen';
+  var seen = {};
+  try { seen = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { seen = {}; }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(seen)); } catch (e) {} }
+  var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      seen[en.target.dataset.explain] = 1;
+      save();
+      io.unobserve(en.target);
+    });
+  }) : null;
+  Array.prototype.slice.call(document.querySelectorAll('.mo-explain')).forEach(function (p, i) {
+    var host = p.closest('[data-sub]');
+    var id = host ? host.dataset.sub : 'p' + i;
+    p.dataset.explain = id;
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'explain-toggle';
+    var mark = document.createElement('span');
+    mark.className = 'explain-i';
+    mark.textContent = 'i';
+    b.appendChild(mark);
+    b.appendChild(document.createTextNode('這是什麼'));
+    p.parentNode.insertBefore(b, p);
+    function set(open) {
+      p.hidden = !open;
+      b.setAttribute('aria-expanded', String(open));
+    }
+    set(!seen[id]);
+    if (!seen[id] && io) io.observe(p);
+    b.addEventListener('click', function () {
+      set(p.hidden);
+      seen[id] = 1;
+      save();
+      syncSticky();
+    });
+  });
+})();

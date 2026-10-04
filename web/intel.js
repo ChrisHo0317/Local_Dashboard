@@ -103,6 +103,8 @@
   }
 
   var CONFIG = {displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false};
+  // 窄螢幕的日期軸只放 4 個刻度：完整日期（2026-09-14）放 7 個會疊在一起
+  var TICKS = window.innerWidth < 600 ? 4 : 7;
   var COARSE = window.matchMedia('(pointer: coarse)').matches;
 
   function plot(id, traces, L, touchOpts) {
@@ -628,7 +630,7 @@
     }
 
     function today(pane, d) {
-      pane.querySelector('.ov-asof').textContent = '資料日期 ' + d.asof + '（盤後）';
+      pane.querySelector('.ov-asof').textContent = '資料日期 ' + md(d.asof) + ' 盤後';
       cockpit(pane, d);
       tdKpis(pane, d.kpi || []);
     }
@@ -658,7 +660,7 @@
       var w = windowFor(n, marketDays);
       var init = rescale(w.from, w.to);
       var L = layout({
-        xaxis: {type: 'category', gridcolor: c.grid, linecolor: c.grid, nticks: 7,
+        xaxis: {type: 'category', gridcolor: c.grid, linecolor: c.grid, nticks: TICKS,
                 tickangle: 0, automargin: true, showspikes: true, spikemode: 'across',
                 spikethickness: 1, spikedash: 'dot', spikecolor: c.gray,
                 range: [w.from - 0.5, w.to + 0.5]},
@@ -745,7 +747,7 @@
       var w = windowFor(n, gl.days);
       var init = rescale(w.from, w.to);
       var L = layout({
-        xaxis: {type: 'category', gridcolor: c.grid, linecolor: c.grid, nticks: 7, tickangle: 0,
+        xaxis: {type: 'category', gridcolor: c.grid, linecolor: c.grid, nticks: TICKS, tickangle: 0,
                 automargin: true, showspikes: true, spikemode: 'across', spikethickness: 1,
                 spikedash: 'dot', spikecolor: c.gray, range: [w.from - 0.5, w.to + 0.5]},
         yaxis: {gridcolor: c.grid, automargin: true, tickformat: ',.' + Math.min(dec, 2) + 'f',
@@ -820,7 +822,7 @@
     function globalMkt(pane) {
       return getJSON('data/global.json').then(function (d) {
         gl.data = d;
-        pane.querySelector('.ov-asof').textContent = d.asof ? '資料更新到 ' + d.asof : '';
+        pane.querySelector('.ov-asof').textContent = d.asof ? '資料更新到 ' + md(d.asof) : '';
         zoomHint(pane.querySelector('.zoom-hint'));
         if (!d.groups || !d.groups.length) {
           failMsg(pane.querySelector('.gl-groups'), '還沒有國際市場資料。');
@@ -2064,7 +2066,7 @@
       }
       plot('ov-mo-lines', traces, layout({
         showlegend: true, legend: {orientation: 'h', x: 0, y: -0.18, font: {size: 11}},
-        xaxis: {type: 'category', gridcolor: c.grid, nticks: 6, tickangle: 0, automargin: true},
+        xaxis: {type: 'category', gridcolor: c.grid, nticks: Math.min(6, TICKS), tickangle: 0, automargin: true},
         yaxis: {gridcolor: c.grid, ticksuffix: '%', zeroline: true, zerolinecolor: c.gray,
                 automargin: true},
         margin: {l: 52, r: 14, t: 10, b: 30}
@@ -2149,7 +2151,7 @@
       }, function () {});
       return getJSON('data/momentum.json').then(function (d) {
         mo.data = d;
-        pane.querySelector('.ov-asof').textContent = '資料日期 ' + d.asof + '（盤後）';
+        pane.querySelector('.ov-asof').textContent = '資料日期 ' + md(d.asof) + ' 盤後';
         var hint = pane.querySelector('.zoom-hint');
         hint.textContent = COARSE ? '點圓點看那一檔的數字。'
                                   : '點圓點打開個股頁；拖曳框選放大、雙擊還原（再雙擊看全部）。';
@@ -3360,7 +3362,7 @@
       var c = palette(), d = s.d;
       var up = d.c.map(function (v, i) { return i && d.c[i - 1] != null ? v >= d.c[i - 1] : true; });
       var L = layout({
-        xaxis: {type: 'category', gridcolor: c.grid, linecolor: c.grid, nticks: 6, tickangle: 0,
+        xaxis: {type: 'category', gridcolor: c.grid, linecolor: c.grid, nticks: Math.min(6, TICKS), tickangle: 0,
                 automargin: true, rangeslider: {visible: false}, showspikes: true,
                 spikemode: 'across', spikethickness: 1, spikedash: 'dot', spikecolor: c.gray},
         yaxis: {domain: [0.5, 1], gridcolor: c.grid, tickformat: ',.2~f', automargin: true},
@@ -3482,7 +3484,7 @@
                    line: {color: c.up, width: 2}, hovertemplate: '%{y:,.2f}<extra>股價</extra>'});
       plot('sd-pe', traces, layout({
         showlegend: true, legend: {orientation: 'h', x: 0, y: 1.14, font: {size: 10}},
-        xaxis: {type: 'category', gridcolor: c.grid, nticks: 7, tickangle: 0, automargin: true},
+        xaxis: {type: 'category', gridcolor: c.grid, nticks: TICKS, tickangle: 0, automargin: true},
         yaxis: {gridcolor: c.grid, tickformat: ',.0f', automargin: true},
         margin: {l: 52, r: 14, t: 30, b: 34}
       }));
@@ -3726,7 +3728,7 @@
       if (drawn || !shown(pane)) return Promise.resolve();
       return getJSON('data/screen.json').then(function (d) {
         body.textContent = '';
-        body.appendChild(el('p', 'ov-asof', '資料日期 ' + d.asof + '（盤後）'));
+        body.appendChild(el('p', 'ov-asof', '資料日期 ' + md(d.asof) + ' 盤後'));
         d.conditions.forEach(function (c) { body.appendChild(card(c)); });
         drawn = true;
         syncSticky();
