@@ -312,38 +312,7 @@
       box.appendChild(foot);
     }
 
-    function events(box, list) {
-      box.textContent = '';
-      if (!list || !list.length) { box.appendChild(el('p', 'ov-empty', '接下來一週沒有高影響事件。')); return; }
-      var ul = el('ul', 'ov-list');
-      list.forEach(function (e) {
-        var li = el('li');
-        li.appendChild(el('span', 'ov-when', md(e.date) + (e.time ? ' ' + e.time : '')));
-        li.appendChild(el('span', 'ov-kind' + (e.kind === '總經' ? '' : ' k-tw'), e.kind));
-        li.appendChild(document.createTextNode(e.text));
-        ul.appendChild(li);
-      });
-      box.appendChild(ul);
-    }
 
-    function sigs(box, list) {
-      box.textContent = '';
-      var ul = el('ul', 'ov-list');
-      (list || []).forEach(function (s) {
-        var li = el('li');
-        var row = el('div', 'ov-sig');
-        var a = el('a', null, s.name);
-        a.href = '#';
-        a.addEventListener('click', function (e) { e.preventDefault(); openScreen(s.id); });
-        row.appendChild(a);
-        row.appendChild(el('b', null, s.note ? '累積中' : s.total + ' 檔'));
-        li.appendChild(row);
-        if (s.note) li.appendChild(el('span', 'ov-news-s', s.note));
-        ul.appendChild(li);
-      });
-      box.appendChild(ul);
-      box.appendChild(el('p', 'ov-empty', '條件尚未回測，只能當觀察名單。'));
-    }
 
     function news(box, list) {
       box.textContent = '';
@@ -378,15 +347,32 @@
       box.appendChild(head);
       box.appendChild(el('h3', 'ck-headline', pick.headline));
       var ul = el('ul', 'ck-bullets');
-      pick.bullets.forEach(function (b) { ul.appendChild(el('li', null, b)); });
+      pick.bullets.slice(0, 3).forEach(function (b) { ul.appendChild(el('li', null, b)); });
       box.appendChild(ul);
+      var extra = el('div', 'ck-extra');
+      extra.hidden = true;
+      if (pick.bullets.length > 3) {
+        var ul2 = el('ul', 'ck-bullets');
+        pick.bullets.slice(3).forEach(function (b) { ul2.appendChild(el('li', null, b)); });
+        extra.appendChild(ul2);
+      }
       if (pick.watch && pick.watch.length) {
         var w = el('ul', 'ck-bullets ck-watch');
         pick.watch.forEach(function (b) { w.appendChild(el('li', null, b)); });
-        box.appendChild(el('p', 'ck-sub', '自選股'));
-        box.appendChild(w);
+        extra.appendChild(el('p', 'ck-sub', '自選股'));
+        extra.appendChild(w);
       }
-      (pick.risks || []).forEach(function (r) { box.appendChild(el('p', 'ck-risk', r)); });
+      (pick.risks || []).forEach(function (r) { extra.appendChild(el('p', 'ck-risk', r)); });
+      if (extra.childNodes.length) {
+        box.appendChild(extra);
+        var more = el('button', 'ck-more', '看完整摘要 ›');
+        more.type = 'button';
+        more.addEventListener('click', function () {
+          extra.hidden = !extra.hidden;
+          more.textContent = extra.hidden ? '看完整摘要 ›' : '收起 ›';
+        });
+        box.appendChild(more);
+      }
     }
 
     function ckTemp(pane, t) {
@@ -410,10 +396,10 @@
       big.appendChild(el('p', 'ck-scale', '0 偏空　35　中性　65　偏多 100'));
       var tiles = pane.querySelector('.ck-tiles');
       tiles.textContent = '';
-      [['上漲家數比', fmt(t.adv_ratio, 0) + '%', t.adv + ' 漲 / ' + t.dec + ' 跌'],
-       ['站上 20 日線', fmt(t.above20, 0) + '%', '60 日線 ' + fmt(t.above60, 0) + '%'],
-       ['52 週新高 / 新低', t.nh + ' / ' + t.nl, '家數'],
-       ['漲停 / 跌停', t.limit_up + ' / ' + t.limit_down, '漲跌 ≥ 9.5%']].forEach(function (x) {
+      [['上漲家數', fmt(t.adv_ratio, 0) + '%', t.adv + ' 漲 / ' + t.dec + ' 跌'],
+       ['站上 20 日', fmt(t.above20, 0) + '%', '60 日線 ' + fmt(t.above60, 0) + '%'],
+       ['新高／新低', t.nh + ' / ' + t.nl, '52 週，家數'],
+       ['漲停／跌停', t.limit_up + ' / ' + t.limit_down, '漲跌 ≥ 9.5%']].forEach(function (x) {
         var b = el('div', 'ck-tile');
         b.appendChild(el('span', 'ck-tile-k', x[0]));
         b.appendChild(el('b', null, x[1]));
@@ -421,6 +407,16 @@
         tiles.appendChild(b);
       });
       var gd = document.getElementById('ov-temp');
+      var tbtn = pane.querySelector('.ck-temp-more');
+      if (tbtn && !tbtn.dataset.bound) {
+        tbtn.dataset.bound = '1';
+        tbtn.addEventListener('click', function () {
+          gd.hidden = !gd.hidden;
+          tbtn.setAttribute('aria-expanded', String(!gd.hidden));
+          tbtn.textContent = gd.hidden ? '看近 60 日走勢 ›' : '收起走勢 ›';
+          if (!gd.hidden) Plotly.Plots.resize(gd);
+        });
+      }
       var s = t.series || {t: [], temp: []};
       Plotly.react(gd, [{
         type: 'scatter', mode: 'lines', x: s.t.map(function (d) { return d.slice(5).replace('-', '/'); }),
@@ -480,47 +476,7 @@
       box.appendChild(ul);
     }
 
-    function ckPerf(box, list) {
-      box.textContent = '';
-      if (!list || !list.length) {
-        box.appendChild(el('p', 'ov-empty', '還沒有資料。'));
-        return;
-      }
-      var ul = el('ul', 'ck-list');
-      list.slice().sort(function (a, b) { return (b[2] || -99) - (a[2] || -99); }).forEach(function (p) {
-        var li = el('li', 'ck-perf-row');
-        li.appendChild(el('span', null, p[1]));
-        li.appendChild(el('b', dir(p[2]), p[2] == null ? '—' : signed(p[2], 2, '%')));
-        li.appendChild(el('span', 'pf-verdict ' + pfVerdictClass(p[3]), p[3] || ''));
-        ul.appendChild(li);
-      });
-      box.appendChild(ul);
-      var more = el('button', 'ck-more', '看訊號績效 ›');
-      more.type = 'button';
-      more.addEventListener('click', function () {
-        goSub('perf');
-      });
-      box.appendChild(more);
-    }
 
-    function ckNext(box, list) {
-      box.textContent = '';
-      var now = new Date();
-      var limit = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3).toISOString().slice(0, 10);
-      var soon = (list || []).filter(function (e) { return e.date < limit; });
-      if (!soon.length) {
-        box.appendChild(el('p', 'ov-empty', '接下來兩天沒有重要事件。'));
-        return;
-      }
-      var ul = el('ul', 'ck-list');
-      soon.slice(0, 6).forEach(function (e) {
-        var li = el('li');
-        li.appendChild(el('span', 'ck-when', md(e.date) + (e.time ? ' ' + e.time : '')));
-        li.appendChild(el('span', null, e.kind + '　' + e.text));
-        ul.appendChild(li);
-      });
-      box.appendChild(ul);
-    }
 
     // 熱門新聞分析（國際、台灣各前三個事件），點了到新聞分頁
     function ckHot(box, h) {
@@ -571,15 +527,84 @@
       box.appendChild(more);
     }
 
+    // 今天要注意：自選股警示＋自選股今日異動＋接下來 7 天的事件（原本分在四張卡）
+    var EVENT_SHOW = 6;
+    function tdEvents(box, list) {
+      box.textContent = '';
+      var all = list || [];
+      if (!all.length) { box.appendChild(el('p', 'ov-empty', '接下來一週沒有高影響事件。')); return; }
+      var ul = el('ul', 'ck-list td-ev');
+      all.forEach(function (e, i) {
+        var li = el('li', i >= EVENT_SHOW ? 'is-extra' : null);
+        li.hidden = i >= EVENT_SHOW;
+        li.appendChild(el('span', 'ck-when', md(e.date).replace(/（.）/, '') + (e.time ? ' ' + e.time : '')));
+        var t = el('span', 'td-ev-t');
+        t.appendChild(el('span', 'ov-kind' + (e.kind === '總經' ? '' : ' k-tw'), e.kind));
+        t.appendChild(document.createTextNode(e.text));
+        li.appendChild(t);
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+      if (all.length > EVENT_SHOW) {
+        var more = el('button', 'ck-more', '再看 ' + (all.length - EVENT_SHOW) + ' 筆 ›');
+        more.type = 'button';
+        more.addEventListener('click', function () {
+          Array.prototype.slice.call(ul.querySelectorAll('.is-extra')).forEach(function (x) { x.hidden = false; });
+          more.remove();
+        });
+        box.appendChild(more);
+      }
+    }
+
+    // 市場數字：先放 6 個最常看的，其餘收在「更多」
+    var KPI_MAIN = ['加權指數', '成交值', '外資買賣超', '投信買賣超', '台指期夜盤', '融資維持率（估）'];
+    function tdKpis(pane, list) {
+      var main = [], rest = [];
+      (list || []).forEach(function (k) { (KPI_MAIN.indexOf(k.label) >= 0 ? main : rest).push(k); });
+      main.sort(function (a, b) { return KPI_MAIN.indexOf(a.label) - KPI_MAIN.indexOf(b.label); });
+      var box = pane.querySelector('.ov-kpis');
+      kpis(box, main.concat(rest));
+      var tiles = Array.prototype.slice.call(box.children);
+      var btn = pane.querySelector('.td-kpi-more');
+      function apply(open) {
+        tiles.forEach(function (t, i) { t.hidden = !open && i >= main.length; });
+        btn.textContent = open ? '收起 ›' : '更多 ' + rest.length + ' 項 ›';
+        btn.setAttribute('aria-expanded', String(open));
+      }
+      btn.hidden = !rest.length;
+      if (!btn.dataset.bound) {
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', function () { apply(btn.getAttribute('aria-expanded') !== 'true'); });
+      }
+      apply(btn.getAttribute('aria-expanded') === 'true');
+    }
+
+    function tdNews(pane, d) {
+      ckHot(pane.querySelector('.nw-hot'), d.hot);
+      news(pane.querySelector('.nw-digest'), d.news);
+      var hasHot = d.hot && ((d.hot.intl || []).length || (d.hot.tw || []).length);
+      var chips = Array.prototype.slice.call(pane.querySelectorAll('.td-seg .chip'));
+      function pick(which) {
+        chips.forEach(function (c) { c.setAttribute('aria-pressed', String(c.dataset.nw === which)); });
+        pane.querySelector('.nw-hot').hidden = which !== 'hot';
+        pane.querySelector('.nw-digest').hidden = which !== 'digest';
+      }
+      if (!pane.dataset.nwBound) {
+        pane.dataset.nwBound = '1';
+        chips.forEach(function (c) { c.addEventListener('click', function () { pick(c.dataset.nw); }); });
+        pick(hasHot ? 'hot' : 'digest');
+      }
+    }
+
     function cockpit(pane, d) {
       ckDigest(pane.querySelector('.ck-digest'), d.digest);
       ckTemp(pane, d.temp);
       ckGroups(pane.querySelector('.ck-groups .ov-body'), d.groups);
-      ckAlerts(pane.querySelector('.ck-alerts .ov-body'), d.alerts);
-      ckPerf(pane.querySelector('.ck-perf .ov-body'), d.perf);
-      ckNext(pane.querySelector('.ck-next .ov-body'), d.events);
-      ckHot(pane.querySelector('.ck-hot .ov-body'), d.hot);
+      ckAlerts(pane.querySelector('.td-alerts'), d.alerts);
+      watch(pane.querySelector('.td-watch'), d);
+      tdEvents(pane.querySelector('.td-events'), d.events);
       ckGlobal(pane.querySelector('.ck-global .ov-body'), d.global);
+      tdNews(pane, d);
       var q = d.quality || {};
       var qa = pane.querySelector('.ck-quality');
       qa.textContent = !q.status ? '' : q.status === 'ok'
@@ -591,11 +616,7 @@
     function today(pane, d) {
       pane.querySelector('.ov-asof').textContent = '資料日期 ' + d.asof + '（盤後）';
       cockpit(pane, d);
-      kpis(pane.querySelector('.ov-kpis'), d.kpi || []);
-      watch(pane.querySelector('.ov-watch .ov-body'), d);
-      events(pane.querySelector('.ov-events .ov-body'), d.events);
-      sigs(pane.querySelector('.ov-signals .ov-body'), d.signals);
-      news(pane.querySelector('.ov-news .ov-body'), d.news);
+      tdKpis(pane, d.kpi || []);
     }
 
     var marketDays = 130;

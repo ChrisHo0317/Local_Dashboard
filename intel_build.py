@@ -575,7 +575,12 @@ def _hot_summary() -> dict:
     h = hot_news.load()
     if not h:
         return {}
-    pick = lambda r: [[t["title"], t["impact"], t["importance"]] for t in (h.get(r) or {}).get("topics", [])[:3]]
+    def pick(r):
+        part = h.get(r) or {}
+        if part.get("topics"):
+            return [[t["title"], t["impact"], t["importance"]] for t in part["topics"][:3]]
+        # 沒有 Claude 歸納（只有流量排行）時，列排行前三則
+        return [[t["title"], "", 0] for t in (part.get("items") or [])[:3]]
     return {"generated": h.get("generated", ""), "label": h.get("label", ""), "method": h.get("method", ""),
             "headline": h.get("headline", ""), "intl": pick("intl"), "tw": pick("tw")}
 

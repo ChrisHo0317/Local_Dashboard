@@ -669,7 +669,46 @@
   .ck-sub { margin:4px 0 0; font-size:12px; color:var(--muted); }
   .ck-risk { margin:0; font-size:13px; color:var(--danger); }
   .ck-risk::before { content:"⚠ "; }
-  .ck-temp { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1.3fr); gap:10px 16px; align-items:center; }
+  .ck-temp { display:grid; grid-template-columns:minmax(0, 1fr); gap:10px; align-items:center; }
+  .ck-temp .ck-tiles { grid-template-columns:repeat(4, minmax(0, 1fr)); gap:6px; }
+  .ck-temp .ck-tile { padding:6px 8px; }
+  .ck-temp .ck-tile b { font-size:16px; }
+  .ck-temp-more { justify-self:start; }
+  /* 今日頁：手機一欄；900px 以上兩欄、1200px 以上三欄 */
+  .td-grid { display:grid; gap:12px; grid-template-columns:minmax(0, 1fr);
+             grid-template-areas:"a" "b" "c" "d" "e" "f" "g"; align-items:start; margin:6px 0 10px; }
+  .td-a { grid-area:a; } .td-b { grid-area:b; } .td-c { grid-area:c; } .td-d { grid-area:d; }
+  .td-e { grid-area:e; } .td-f { grid-area:f; } .td-g { grid-area:g; }
+  @media (min-width:900px) {
+    .td-grid { grid-template-columns:minmax(0, 1.2fr) minmax(0, 1fr);
+               grid-template-areas:"a b" "c e" "c d" "g f"; }
+  }
+  @media (min-width:1200px) {
+    .td-grid { grid-template-columns:minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, .95fr);
+               grid-template-areas:"a b f" "c e g" "c d g"; }
+  }
+  .td-sub { font-size:12px; color:var(--muted); font-weight:600; margin:10px 0 2px; }
+  .td-watch .ov-table-wrap { margin-top:6px; }
+  .td-watch > .ov-empty:last-child { font-size:11px; }
+  .td-ev li { display:grid; grid-template-columns:6.4em minmax(0, 1fr); gap:6px; }
+  .td-kpi .ov-kpis { grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); margin-bottom:4px; }
+  .td-news-h { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .td-seg { display:flex; gap:4px; }
+  .td-seg .chip { font-size:12px; padding:2px 10px; }
+  /* 今日頁的長文字一行就好：點進去才看全文 */
+  .td-d .ck-group-why, .td-g .ck-hot-t, .td-g .ov-news-t { display:block; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .td-g .ck-list li { align-items:center; }
+  .td-g .ov-news-s { display:none; }
+  .td-f .ck-gl { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:14px; }
+  .td-f .ck-gl li:nth-child(2) { border-top:0; }
+  .td-f .ck-gl .num:not(.ck-gl-d) { display:none; }
+  @media (max-width:600px) {
+    .td-kpi .kpi-n { display:none; }
+    .ck-temp .ck-tile-d { display:none; }
+    .ck-temp .ck-tile-k { font-size:11px; }
+    .td-kpi .ov-kpis { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  }
   .ck-temp-top { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; }
   .ck-temp-k { font-size:12px; color:var(--muted); }
   .ck-temp-v { font-size:34px; line-height:1; font-variant-numeric:tabular-nums; }
@@ -713,7 +752,7 @@
   .ck-hot-t { flex:1; min-width:0; }
   .ck-quality.is-warn { color:var(--warn); }
   .ck-quality.is-error { color:var(--danger); }
-  @media (max-width:600px) { .ck-temp { grid-template-columns:1fr; } }
+
 
   /* 持股風控 */
   .hd-summary { grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); margin:8px 0; }
