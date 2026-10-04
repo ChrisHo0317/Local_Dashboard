@@ -125,6 +125,7 @@ def _query_html() -> str:
         '        <div>\n'
         '          <div class="sq-name"></div>\n'
         '          <div class="sd-sub"></div>\n'
+        '          <div class="sd-tags"></div>\n'
         '        </div>\n'
         '        <a class="sd-edit" target="_blank" rel="noopener">編輯自選清單 ↗</a>\n'
         '      </div>\n'

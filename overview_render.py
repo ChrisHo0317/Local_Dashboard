@@ -180,6 +180,10 @@ def panes(data) -> list[str]:
         '  </div>',
         '  <div class="subpanel ov" data-sub="sectors" hidden>\n'
         '    <p class="ov-asof"></p>\n'
+        '    <div class="sec-bar"><div class="sec-mode sec-period" role="group" aria-label="分類方式">'
+        '<button type="button" class="chip" data-mode="official" aria-pressed="true">官方產業</button>'
+        '<button type="button" class="chip" data-mode="fine" aria-pressed="false">細產業</button></div>'
+        '<span class="sd-note sec-mode-note"></span></div>\n'
         '    <div class="ichart ichart-lg" id="ov-sectors"></div>\n'
         '    <div class="sec-bar">\n'
         '      <div class="sec-period" role="group" aria-label="漲跌區間">\n'

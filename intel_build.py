@@ -39,6 +39,7 @@ from xmarket_data import load_xmarket
 import earnings_calls
 import global_market
 import index_events
+import industry_chain
 import macro_data
 import qfii_data
 
@@ -456,7 +457,8 @@ QFII_MIN_TURNOVER = 5e7       # 外資持股變化排行：近 20 日均成交�
 PERIODS = [1, 5, 10, 20, 60]       # 漲跌幅排行可選的區間（交易日）
 
 
-def _sectors(panel: pd.DataFrame, master: pd.DataFrame, days: list) -> dict:
+def _sectors(panel: pd.DataFrame, master: pd.DataFrame, days: list, fine: dict | None = None,
+             fine_chain: dict | None = None) -> dict:
     """
     類股：每個產業的加權漲跌、家數、成交值，以及「每一檔」的漲跌與成交值
     （熱力圖點進產業、清單依成交值或漲跌排序都要用到全部股票）。
@@ -466,6 +468,8 @@ def _sectors(panel: pd.DataFrame, master: pd.DataFrame, days: list) -> dict:
 
     stocks：[[代號, 名稱, 產業序號, 收盤, 成交值億, 1日%, 5日%, 10日%, 20日%, 60日%]]
     industries：每個產業 {industry, turnover, n, chg:[各區間], up:[…], down:[…]}
+    fine：細產業版本（每檔用主要細產業，沒有細產業的用官方產業）
+          {industries:[同上＋chain], idx:[每一檔（stocks 的順序）的細產業序號]}
     """
     empty = {"asof": "", "periods": PERIODS, "industries": [], "stocks": []}
     if len(days) < 2:
@@ -490,24 +494,37 @@ def _sectors(panel: pd.DataFrame, master: pd.DataFrame, days: list) -> dict:
     last = last.assign(industry=ind.reindex(last.index).fillna("其他").replace("", "其他"),
                        name=master.set_index("code")["name"].reindex(last.index).fillna(""))
 
-    industries = []
-    for industry, g in last.groupby("industry"):
-        info = {"industry": industry, "turnover": _yi(g["turnover"].sum(), 1), "n": int(len(g)),
-                "chg": [], "up": [], "down": []}
-        for col in cols:
-            v = g.dropna(subset=[col])
-            w = v["turnover"].sum()
-            info["chg"].append(_r((v[col] * v["turnover"]).sum() / w) if w else None)
-            info["up"].append(int((v[col] > 0).sum()))
-            info["down"].append(int((v[col] < 0).sum()))
-        industries.append(info)
-    industries.sort(key=lambda s: s["turnover"] or 0, reverse=True)
+    def groups(col):
+        out = []
+        for name, g in last.groupby(col):
+            info = {"industry": name, "turnover": _yi(g["turnover"].sum(), 1), "n": int(len(g)),
+                    "chg": [], "up": [], "down": []}
+            for c in cols:
+                v = g.dropna(subset=[c])
+                w = v["turnover"].sum()
+                info["chg"].append(_r((v[c] * v["turnover"]).sum() / w) if w else None)
+                info["up"].append(int((v[c] > 0).sum()))
+                info["down"].append(int((v[c] < 0).sum()))
+            out.append(info)
+        out.sort(key=lambda s: s["turnover"] or 0, reverse=True)
+        return out
+
+    industries = groups("industry")
     index = {s["industry"]: i for i, s in enumerate(industries)}
+    last = last.sort_values("turnover", ascending=False)
     stocks = [[code, r["name"], index[r["industry"]], _r(r["close"]), _yi(r["turnover"], 2)]
               + [_r(r[c]) for c in cols]
-              for code, r in last.sort_values("turnover", ascending=False).iterrows()]
-    return {"asof": pd.Timestamp(days[-1]).strftime("%Y-%m-%d"), "periods": PERIODS,
-            "industries": industries, "stocks": stocks}
+              for code, r in last.iterrows()]
+    out = {"asof": pd.Timestamp(days[-1]).strftime("%Y-%m-%d"), "periods": PERIODS,
+           "industries": industries, "stocks": stocks}
+    if fine:
+        last = last.assign(fine=[fine.get(c) or r for c, r in zip(last.index, last["industry"])])
+        fi = groups("fine")
+        for s in fi:
+            s["chain"] = (fine_chain or {}).get(s["industry"], "官方產業")
+        f_index = {s["industry"]: i for i, s in enumerate(fi)}
+        out["fine"] = {"industries": fi, "idx": [f_index[v] for v in last["fine"]]}
+    return out
 
 
 MOMENTUM_DAYS = 41           # 20 日強度＋往回畫 5 天軌跡＋前 5 日比較，留一點餘裕
@@ -790,6 +807,13 @@ def build(out_dir: Path) -> dict:
 
     flags = active_flags(today)
     _dump(flags, data_dir / "flags.json")
+
+    # 細產業：櫃買中心產業價值鏈＋手動補充表；主要細產業依股價相關決定
+    chain_tags = industry_chain.tags()
+    chain_primary = industry_chain.primary(chain_tags, industry_chain.daily_returns(panel)) \
+        if not chain_tags.empty else {}
+    chain_of_tag = dict(zip(chain_tags["tag"], chain_tags["chain"])) if not chain_tags.empty else {}
+    _dump(industry_chain.site_json(chain_tags, chain_primary, in_panel), data_dir / "chains.json")
     shards = write_stock_shards(data_dir, panel, master, pe, tdcc, exdiv, flags)
 
     results = signals.run(panel, load_revenue(), pe, tdcc, master)
@@ -830,7 +854,7 @@ def build(out_dir: Path) -> dict:
     }
     _dump(overview, data_dir / "overview.json")
     # 類股、強勢股的資料比較大，點進子分頁才下載
-    _dump(_sectors(panel, master, days), data_dir / "sectors.json")
+    _dump(_sectors(panel, master, days, chain_primary, chain_of_tag), data_dir / "sectors.json")
     _dump(_momentum(panel, master, days, xm, watch_codes), data_dir / "momentum.json")
     _dump(_stock_news(), data_dir / "stocknews.json")
     _strong_record(data_dir, panel, master)

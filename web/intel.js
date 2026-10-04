@@ -19,6 +19,35 @@
     return cache[path];
   }
 
+  // 細產業（data/chains.json）：tags=[[名稱, 產業鏈, 上中下游, 手動, 檔數]]、codes={代號: [標籤序號（主要的排第一）]}
+  var CHAINS = {tags: [], codes: {}};
+  function loadChains() {
+    return getJSON('data/chains.json').then(function (c) { CHAINS = c || CHAINS; }, function () {});
+  }
+  function chainTags(code) { return (CHAINS.codes[code] || []).map(function (i) { return CHAINS.tags[i]; }); }
+  function inTag(code, i) { return (CHAINS.codes[code] || []).indexOf(i) >= 0; }
+  // 細產業的下拉選項：依產業鏈分組，只列 counts 裡有的（counts：標籤序號 → 檔數）
+  function tagOptions(sel, counts, prefix) {
+    var byChain = {};
+    Object.keys(counts).forEach(function (i) {
+      var t = CHAINS.tags[i];
+      if (!t) return;
+      (byChain[t[1]] = byChain[t[1]] || []).push(Number(i));
+    });
+    Object.keys(byChain).sort(function (a, b) {
+      return (a === '手動補充' ? -1 : b === '手動補充' ? 1 : a.localeCompare(b, 'zh-Hant'));
+    }).forEach(function (chain) {
+      var g = document.createElement('optgroup');
+      g.label = '細產業：' + chain;
+      byChain[chain].sort(function (a, b) { return counts[b] - counts[a]; }).forEach(function (i) {
+        var o = el('option', null, CHAINS.tags[i][0] + '（' + counts[i] + ' 檔）');
+        o.value = prefix + i;
+        g.appendChild(o);
+      });
+      sel.appendChild(g);
+    });
+  }
+
   // 注意股、處置股（data/flags.json）：{代號: [注意|處置, 起, 迄, 說明]}
   var FLAGS = {};
   function loadFlags() {
@@ -1061,7 +1090,19 @@
     var SEC_PAGE = 30;        // 清單一次列幾檔
     var PERIOD_LABEL = ['1 日', '5 日', '10 日', '20 日', '60 日'];
     var PERIOD_SCALE = [5, 10, 15, 20, 30];     // 熱力圖顏色到底的漲跌幅（%）
-    var sec = {data: null, pick: -1, sort: 'turnover', shown: SEC_PAGE, period: 0};
+    var sec = {data: null, raw: null, mode: 'official', pick: -1, tag: null, sort: 'turnover', shown: SEC_PAGE, period: 0};
+    var FINE_TREEMAP = 40;    // 細產業模式的熱力圖只畫成交值前 40 個細產業（清單與選單是全部）
+
+    // 細產業模式：產業清單換成細產業，每一檔的產業序號換成主要細產業
+    function secApplyMode() {
+      var d = sec.raw;
+      if (sec.mode === 'fine' && d.fine) {
+        sec.data = {asof: d.asof, periods: d.periods, industries: d.fine.industries,
+                    stocks: d.stocks.map(function (x, k) { var y = x.slice(); y[2] = d.fine.idx[k]; return y; })};
+      } else {
+        sec.data = d;
+      }
+    }
 
     function ret(x) { return x[5 + sec.period]; }
 
@@ -1071,6 +1112,7 @@
           custom = [[0, '']];
       var total = 0, wsum = 0;
       d.industries.forEach(function (s, i) {
+        if (sec.mode === 'fine' && i >= FINE_TREEMAP && i !== sec.pick) return;
         var leaves = d.stocks.filter(function (x) { return x[2] === i; }).slice(0, LEAF);
         var v = leaves.reduce(function (a, x) { return a + (x[4] || 0); }, 0);
         if (!v) return;
@@ -1118,6 +1160,7 @@
           }
           var next = String(ev.nextLevel || 'all');
           sec.pick = next.charAt(0) === 'I' ? Number(next.slice(1)) : -1;
+          sec.tag = null;
           pane.querySelector('.sec-pick').value = String(sec.pick);
           sec.shown = SEC_PAGE;
           secList(pane);
@@ -1125,19 +1168,48 @@
       }
     }
 
-    function secPicker(pane) {
+    function secOptions(pane) {
       var sel = pane.querySelector('.sec-pick');
-      if (sel.options.length) return;
-      var all = el('option', null, '全部產業（全市場排行）');
+      sel.textContent = '';
+      var all = el('option', null, sec.mode === 'fine' ? '全部細產業（全市場排行）' : '全部產業（全市場排行）');
       all.value = '-1';
       sel.appendChild(all);
-      sec.data.industries.forEach(function (s, i) {
-        var o = el('option', null, s.industry + '（' + s.n + ' 檔）');
-        o.value = String(i);
-        sel.appendChild(o);
+      if (sec.mode === 'fine') {
+        // 依產業鏈分組
+        var groups = {};
+        sec.data.industries.forEach(function (s, i) { (groups[s.chain] = groups[s.chain] || []).push(i); });
+        Object.keys(groups).sort(function (a, b) { return a.localeCompare(b, 'zh-Hant'); }).forEach(function (ch) {
+          var g = document.createElement('optgroup');
+          g.label = ch;
+          groups[ch].forEach(function (i) {
+            var s = sec.data.industries[i];
+            var o = el('option', null, s.industry + '（' + s.n + ' 檔）');
+            o.value = String(i);
+            g.appendChild(o);
+          });
+          sel.appendChild(g);
+        });
+      } else {
+        sec.data.industries.forEach(function (s, i) {
+          var o = el('option', null, s.industry + '（' + s.n + ' 檔）');
+          o.value = String(i);
+          sel.appendChild(o);
+        });
+      }
+      sel.value = String(sec.pick);
+    }
+
+    function secPicker(pane) {
+      var sel = pane.querySelector('.sec-pick');
+      secOptions(pane);
+      if (sel._bound) return;
+      sel._bound = true;
+      bindChips(pane.querySelector('.sec-mode'), function (chip) {
+        secSetMode(pane, chip.dataset.mode, null);
       });
       sel.addEventListener('change', function () {
         sec.pick = Number(sel.value);
+        sec.tag = null;
         sec.shown = SEC_PAGE;
         var gd = document.getElementById('ov-sectors');
         if (gd && gd.data) Plotly.restyle(gd, {level: sec.pick >= 0 ? 'I' + sec.pick : 'all'});
@@ -1158,7 +1230,10 @@
 
     function secList(pane) {
       var d = sec.data, p = sec.period, label = PERIOD_LABEL[p];
-      var rows = d.stocks.filter(function (x) { return sec.pick < 0 || x[2] === sec.pick; });
+      // 從個股頁的細產業標籤點過來：列出所有歸在這一類的公司（不只主要分類在這類的）
+      var rows = d.stocks.filter(function (x) {
+        return sec.tag != null ? inTag(x[0], sec.tag) : (sec.pick < 0 || x[2] === sec.pick);
+      });
       // 上市不到 N 天、算不出 N 日漲跌的排到最後
       function cmp(sign) {
         return function (a, b) {
@@ -1172,7 +1247,14 @@
       else if (sec.sort === 'down') rows = rows.slice().sort(cmp(-1));
       var sum = pane.querySelector('.sec-sum');
       sum.textContent = '';
-      if (sec.pick >= 0) {
+      if (sec.tag != null) {
+        sum.appendChild(document.createTextNode('細產業「' + CHAINS.tags[sec.tag][0] + '」的所有公司 ' + rows.length +
+                                                ' 檔（含主要分類在別類的）　'));
+        var clr = el('button', 'chip', '看全部');
+        clr.type = 'button';
+        clr.addEventListener('click', function () { sec.tag = null; sec.shown = SEC_PAGE; secList(pane); });
+        sum.appendChild(clr);
+      } else if (sec.pick >= 0) {
         var s = d.industries[sec.pick];
         sum.appendChild(document.createTextNode(s.industry + '　' + label + '加權漲跌 '));
         sum.appendChild(el('b', dir(s.chg[p]), signed(s.chg[p], 2, '%')));
@@ -1219,9 +1301,41 @@
       }
     }
 
+    // 切換官方產業／細產業；pickName 給了就直接選那個細產業（個股頁的標籤點過來）
+    function secSetMode(pane, mode, pickName) {
+      sec.mode = mode;
+      Array.prototype.slice.call(pane.querySelectorAll('.sec-mode .chip')).forEach(function (c) {
+        c.setAttribute('aria-pressed', String(c.dataset.mode === mode));
+      });
+      secApplyMode();
+      sec.pick = -1;
+      sec.tag = null;
+      if (pickName) {
+        sec.data.industries.forEach(function (s, i) { if (s.industry === pickName) sec.pick = i; });
+        CHAINS.tags.forEach(function (t, i) { if (t[0] === pickName) sec.tag = i; });
+      }
+      sec.shown = SEC_PAGE;
+      pane.querySelector('.sec-mode-note').textContent = mode === 'fine'
+        ? '細產業：櫃買中心產業價值鏈＋手動補充表；一檔屬於好幾類時放在股價走勢最接近的那一類'
+          + '（熱力圖只畫成交值前 ' + FINE_TREEMAP + ' 類）' : '';
+      secOptions(pane);
+      secTreemap(pane);
+      secList(pane);
+    }
+
+    window.openFineSector = function (name) {
+      goSub('sectors');
+      var pane = document.querySelector('.subpanel[data-sub="sectors"]');
+      Promise.all([getJSON('data/sectors.json'), loadChains()]).then(function () {
+        setTimeout(function () { if (sec.raw) secSetMode(pane, 'fine', name); }, 50);
+      });
+    };
+
     function sectors(pane) {
       return getJSON('data/sectors.json').then(function (d) {
-        sec.data = d;
+        sec.raw = d;
+        secApplyMode();
+        if (!d.fine) pane.querySelector('.sec-mode').hidden = true;
         pane.querySelector('.ov-asof').textContent = '資料日期 ' + d.asof + '（盤後）　·　' +
           '點產業放大，點最上方的標題回到上一層，點個股看深度頁';
         secPicker(pane);
@@ -1406,7 +1520,9 @@
     function moRows() {
       var d = mo.data, last = d.dates.length - 1;
       return d.stocks.filter(function (x) {
-        return (mo.ind < 0 || x[2] === mo.ind) && (x[3] || 0) >= mo.min;
+        var okInd = typeof mo.ind === 'string' ? inTag(x[0], Number(mo.ind.slice(1)))
+                                               : (mo.ind < 0 || x[2] === mo.ind);
+        return okInd && (x[3] || 0) >= mo.min;
       }).map(function (x) {
         var m = moAt(x[4], last);
         return {code: x[0], name: x[1], ind: x[2], tv: x[3], c: x[4],
@@ -2012,7 +2128,8 @@
         c0.appendChild(el('span', 'ov-name', (i + 1) + '.'));
         c0.appendChild(el('span', 'ov-code', ' ' + r.code));
         c0.appendChild(el('span', 'ov-name', r.name));
-        c0.appendChild(el('span', 'scr-reason', mo.data.industries[r.ind] + '　·　均量 ' + fmt(r.tv, 1) + ' 億'));
+        var ft = chainTags(r.code)[0];
+        c0.appendChild(el('span', 'scr-reason', (ft ? ft[0] : mo.data.industries[r.ind]) + '　·　均量 ' + fmt(r.tv, 1) + ' 億'));
         var fb = flagBadge(r.code);
         if (fb) c0.insertBefore(fb, c0.querySelector('.scr-reason'));
         var why = moWhy(r.code);
@@ -2113,8 +2230,14 @@
         o.value = String(i);
         sel.appendChild(o);
       });
+      var counts = {};
+      mo.data.stocks.forEach(function (x) {
+        (CHAINS.codes[x[0]] || []).forEach(function (i) { counts[i] = (counts[i] || 0) + 1; });
+      });
+      Object.keys(counts).forEach(function (i) { if (counts[i] < 2) delete counts[i]; });
+      tagOptions(sel, counts, 'f');
       sel.addEventListener('change', function () {
-        mo.ind = Number(sel.value);
+        mo.ind = sel.value.charAt(0) === 'f' ? sel.value : Number(sel.value);
         mo.shown = MO_PAGE;
         moDraw(pane);
       });
@@ -2149,7 +2272,8 @@
         moNewsMeta(pane);
         if (mo.data) moTable(pane, mo.strong);
       }, function () {});
-      return getJSON('data/momentum.json').then(function (d) {
+      return Promise.all([getJSON('data/momentum.json'), loadChains()]).then(function (res) {
+        var d = res[0];
         mo.data = d;
         pane.querySelector('.ov-asof').textContent = '資料日期 ' + md(d.asof) + ' 盤後';
         var hint = pane.querySelector('.zoom-hint');
@@ -3334,6 +3458,25 @@
       };
     }
 
+    // 細產業標籤：主要的排第一（實心），點了到類股頁看同一類
+    function sdTags(box, code) {
+      box.textContent = '';
+      loadChains().then(function () {
+        var ts = chainTags(code);
+        if (!ts.length) return;
+        ts.slice(0, 12).forEach(function (t, i) {
+          var b = el('button', 'sd-tag' + (i === 0 ? ' is-main' : ''), t[0] + (t[3] ? '（手動）' : ''));
+          b.type = 'button';
+          b.title = t[1] + (t[2] ? ' › ' + t[2] : '') + '　·　' + t[4] + ' 檔' + (i === 0 ? '　·　主要細產業' : '');
+          b.addEventListener('click', function () {
+            if (typeof window.openFineSector === 'function') window.openFineSector(t[0]);
+          });
+          box.appendChild(b);
+        });
+        if (ts.length > 12) box.appendChild(el('span', 'sd-tag-more', '還有 ' + (ts.length - 12) + ' 類'));
+      });
+    }
+
     function stat(label, value, cls) {
       var b = el('div', 'sq-stat');
       b.appendChild(el('span', 'sq-stat-l', label));
@@ -3548,6 +3691,7 @@
       pane.querySelector('.sd-sub').textContent =
         (s.market === 'tpex' ? '上櫃' : '上市') + (s.industry ? '　·　' + s.industry : '') +
         '　·　資料日期 ' + s.asof;
+      sdTags(pane.querySelector('.sd-tags'), s.code);
       pane.querySelector('.sd-edit').href = EDIT_URL;
       zoomHint(pane.querySelector('.zoom-hint'));
       var st = pane.querySelector('.sq-stats');
@@ -3724,14 +3868,61 @@
       return sec;
     }
 
+    // 產業篩選：官方產業或細產業（只影響列出的股票，不改條件本身）
+    function filterBar(d, onPick) {
+      var sel = el('select', 'sec-pick scr-filter');
+      sel.setAttribute('aria-label', '產業篩選');
+      var all = el('option', null, '全部產業');
+      all.value = '';
+      sel.appendChild(all);
+      var inds = {}, counts = {};
+      d.conditions.forEach(function (c) {
+        (c.hits || []).forEach(function (h) {
+          if (h.industry) inds[h.industry] = (inds[h.industry] || 0) + 1;
+          (CHAINS.codes[h.code] || []).forEach(function (i) { counts[i] = (counts[i] || 0) + 1; });
+        });
+      });
+      var g = document.createElement('optgroup');
+      g.label = '官方產業';
+      Object.keys(inds).sort(function (a, b) { return inds[b] - inds[a]; }).forEach(function (n) {
+        var o = el('option', null, n + '（' + inds[n] + '）');
+        o.value = 'i:' + n;
+        g.appendChild(o);
+      });
+      sel.appendChild(g);
+      Object.keys(counts).forEach(function (i) { if (counts[i] < 2) delete counts[i]; });
+      tagOptions(sel, counts, 'f:');
+      sel.addEventListener('change', function () { onPick(sel.value); });
+      var bar = el('div', 'sec-bar');
+      bar.appendChild(sel);
+      return bar;
+    }
+
+    function draw(d, pick) {
+      Array.prototype.slice.call(body.querySelectorAll('.scr-card')).forEach(function (x) { x.remove(); });
+      d.conditions.forEach(function (c) {
+        var keep = function (h) {
+          if (!pick) return true;
+          if (pick.indexOf('i:') === 0) return h.industry === pick.slice(2);
+          return inTag(h.code, Number(pick.slice(2)));
+        };
+        var hits = (c.hits || []).filter(keep);
+        var cc = Object.assign({}, c, {hits: hits});
+        if (pick) cc.total = hits.length;
+        body.appendChild(card(cc));
+      });
+      syncSticky();
+    }
+
     function show() {
       if (drawn || !shown(pane)) return Promise.resolve();
-      return getJSON('data/screen.json').then(function (d) {
+      return Promise.all([getJSON('data/screen.json'), loadChains()]).then(function (res) {
+        var d = res[0];
         body.textContent = '';
         body.appendChild(el('p', 'ov-asof', '資料日期 ' + md(d.asof) + ' 盤後'));
-        d.conditions.forEach(function (c) { body.appendChild(card(c)); });
+        body.appendChild(filterBar(d, function (v) { draw(d, v); }));
+        draw(d, '');
         drawn = true;
-        syncSticky();
       }).catch(function () { failMsg(body); });
     }
 

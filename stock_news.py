@@ -603,6 +603,21 @@ def norm_theme(text) -> str:
     return t[:12]
 
 
+def _chain_maps():
+    """細產業：代號 → 標籤清單、標籤 → 檔數、標籤 → 成員。讀不到就全部空的（退回官方產業）。"""
+    try:
+        import industry_chain
+        tg = industry_chain.tags()
+    except Exception:
+        return {}, {}, {}
+    if tg.empty:
+        return {}, {}, {}
+    tag_of = tg.groupby("code")["tag"].apply(list).to_dict()
+    members = tg.groupby("tag")["code"].apply(set).to_dict()
+    size = {t: len(v) for t, v in members.items()}
+    return tag_of, size, members
+
+
 def attach_groups(stocks: dict, mkt: Market) -> None:
     """
     依當天的分析結果補上族群成員與是否族群連動（每次執行都重算，不吃快取）：
@@ -610,8 +625,15 @@ def attach_groups(stocks: dict, mkt: Market) -> None:
     有 Claude：成員＝同一天被歸到同一族群的強勢股＋新聞提到、而且股價也同步的股票
       （近 5 日上漲、近 20 日相關係數 ≥ SYNC_CORR）。
       族群連動＝新聞說是族群行情、且至少一檔同步；或同一族群有 3 檔以上強勢股。
-    沒有 Claude：族群＝官方產業別，成員＝同產業、股價同步上漲的股票；至少兩檔才算連動。
+    沒有 Claude：族群＝細產業（櫃買中心產業價值鏈＋手動補充表），一檔有好幾個細產業時，
+      取當天同一細產業強勢股最多的那個（一樣多取比較小、比較具體的類別）；成員＝同細產業、
+      股價同步上漲的股票；至少兩檔才算連動。沒有細產業的退回官方產業別。
     """
+    tag_of, size, peers_of = _chain_maps()
+    strong_tag = defaultdict(int)
+    for code in stocks:
+        for t in tag_of.get(code, []):
+            strong_tag[t] += 1
     by_theme = defaultdict(list)
     for code, s in stocks.items():
         if s.get("method") == "claude" and s.get("theme"):
@@ -639,10 +661,16 @@ def attach_groups(stocks: dict, mkt: Market) -> None:
             linked = bool(group) and ((s.get("news_linked") and (synced_named or same))
                                       or len(same) + 1 >= 3)
         else:
-            group = s.get("industry") or ""
-            if group and mkt.ok:
-                peers = mkt.liquid[(mkt.liquid["industry"] == group) & (mkt.liquid.index != code)
-                                   & (mkt.liquid["r5"] > 0)]
+            mine = tag_of.get(code, [])
+            if mine:
+                group = max(mine, key=lambda t: (strong_tag[t], -size.get(t, 999), t))
+                pool = peers_of.get(group, set())
+                liq = mkt.liquid[mkt.liquid.index.isin(pool)] if mkt.ok else None
+            else:
+                group = s.get("industry") or ""
+                liq = mkt.liquid[mkt.liquid["industry"] == group] if mkt.ok and group else None
+            if group and liq is not None:
+                peers = liq[(liq.index != code) & (liq["r5"] > 0)]
                 for c in peers.index:
                     add(c, c in stocks, False)
                 members = [m for m in members if m[3] is not None and m[3] >= SYNC_CORR]
