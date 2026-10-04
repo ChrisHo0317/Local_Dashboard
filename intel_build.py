@@ -36,8 +36,11 @@ from stock_news import load_history as load_strong_history
 from stock_data import load as load_stock_list
 from watchlist import EDIT_URL, load_watchlist
 from xmarket_data import load_xmarket
+import earnings_calls
 import global_market
+import index_events
 import macro_data
+import qfii_data
 
 DAYS = 260          # 個股頁的日資料約一年
 REV_MONTHS = 36
@@ -146,7 +149,11 @@ def write_stock_shards(out_dir: Path, panel: pd.DataFrame, master: pd.DataFrame,
     ann = load_announce()
     ann_by = {c: g for c, g in ann.groupby("code")} if not ann.empty else {}
     ex_by = {c: g for c, g in exdiv.groupby("code")} if not exdiv.empty else {}
+    calls = earnings_calls.load()
+    calls_by = {c: g.sort_values("date") for c, g in calls.groupby("code")} if not calls.empty else {}
+    qm = qfii_data.matrix(QFII_DAYS)
     info = master.set_index("code")
+    today_iso = intel_data.today_taipei().isoformat()
 
     stock_dir = out_dir / "stock"
     count = 0
@@ -194,6 +201,16 @@ def write_stock_shards(out_dir: Path, panel: pd.DataFrame, master: pd.DataFrame,
                               for _, r in ex_by[code].iterrows()]
         if code in flags:
             shard["flag"] = flags[code]
+        if code in calls_by:
+            c = calls_by[code]
+            c = pd.concat([c[c["date"] < today_iso].tail(3), c[c["date"] >= today_iso].head(2)])
+            shard["calls"] = [[r["date"], str(r["time"])[:5], r["summary"][:160]] for _, r in c.iterrows()]
+        if code in qm.columns:
+            q = qm[code].dropna()
+            if len(q):
+                shard["qfii"] = {"pct": _r(q.iloc[-1]), "date": q.index[-1],
+                                 "chg": _r(q.iloc[-1] - q.iloc[max(0, len(q) - 21)]) if len(q) > 1 else None,
+                                 "t": list(q.index), "v": [_r(v) for v in q]}
         lend = g.dropna(subset=["sbl_bal"]) if "sbl_bal" in g else g.iloc[0:0]
         if len(lend):
             bal = lend["sbl_bal"]
@@ -372,6 +389,13 @@ def _events(today, watch_codes: set, names: dict, exdiv: pd.DataFrame) -> list[d
                 cash = f"，現金 {float(r['cash']):g} 元" if _r(r["cash"]) else ""
                 out.append({"date": d, "time": "", "kind": "除權息",
                             "text": f"{r['code']} {names.get(r['code'], r['name'])} 除{r['kind'].replace('除', '')}{cash}"})
+    calls = earnings_calls.upcoming(watch_codes, today.isoformat(), 30)
+    for _, r in calls.iterrows():
+        out.append({"date": r["date"], "time": str(r["time"])[:5], "kind": "法說會",
+                    "text": f"{r['code']} {names.get(r['code'], r['name'])} 法說會"})
+    for e in index_events.events(today, today + timedelta(days=14)):
+        out.append({"date": e["date"].isoformat(), "time": "", "kind": "指數調整",
+                    "text": e["title"] + "（預估）"})
     for months in (0, 1):
         y, m = today.year, today.month + months
         if m > 12:
@@ -383,17 +407,51 @@ def _events(today, watch_codes: set, names: dict, exdiv: pd.DataFrame) -> list[d
     return sorted(out, key=lambda e: (e["date"], e["time"]))[:20]
 
 
-def _market_series(panel: pd.DataFrame, xm: pd.DataFrame) -> dict:
+def margin_ratio(panel: pd.DataFrame, summary: pd.DataFrame) -> pd.Series:
+    """
+    大盤融資維持率（估）＝Σ（個股融資餘額張數 × 收盤）÷ 上市＋上櫃融資金額（仟元）× 100。
+    只算兩個市場的融資金額都有的日子（2026-09 起累積；更早的個股融資餘額涵蓋的股票較少，算了會偏低）。
+    """
+    if summary.empty or "margin_bal" not in panel:
+        return pd.Series(dtype=float)
+    px = panel["raw_close"] if "raw_close" in panel else panel["close"]
+    mv = (panel["margin_bal"] * px).groupby(panel["date"]).sum(min_count=1)
+    mv.index = pd.to_datetime(mv.index).strftime("%Y-%m-%d")
+    amt = summary.assign(date=summary["date"].astype(str)).set_index("date")[
+        ["twse_margin_amount", "tpex_margin_amount"]].astype(float).sum(axis=1, min_count=2)
+    r = (mv / amt * 100).dropna()
+    return r[(r > 50) & (r < 400)]
+
+
+def _market_series(panel: pd.DataFrame, xm: pd.DataFrame, summary: pd.DataFrame | None = None) -> dict:
     px = panel["raw_close"] if "raw_close" in panel else panel["close"]   # 金額用當時的實際股價
     p = panel.assign(fv=panel["foreign"] * px, tv=panel["trust"] * px)
     daily = p.groupby("date").agg(fv=("fv", "sum"), tv=("tv", "sum"), turnover=("turnover", "sum"))
     taiex = xm[xm["item"] == "加權指數"].set_index("price_date")["price"]
     taiex = taiex.reindex(daily.index)
-    return {"t": [d.strftime("%Y-%m-%d") for d in daily.index],
+    t = [d.strftime("%Y-%m-%d") for d in daily.index]
+    mr = margin_ratio(panel, summary if summary is not None else pd.DataFrame())
+    return {"t": t,
             "taiex": [_r(v) for v in taiex],
             "fi": [_yi(v, 1) for v in daily["fv"]], "tr": [_yi(v, 1) for v in daily["tv"]],
-            "turnover": [_yi(v, 0) for v in daily["turnover"]]}
+            "turnover": [_yi(v, 0) for v in daily["turnover"]],
+            "mr": [_r(mr.get(d), 1) for d in t]}
 
+
+def margin_kpi(panel: pd.DataFrame, summary: pd.DataFrame) -> list[dict]:
+    r = margin_ratio(panel, summary)
+    if r.empty:
+        return []
+    last = float(r.iloc[-1])
+    delta = f"{last - float(r.iloc[-2]):+.1f} 個百分點" if len(r) >= 2 else None
+    note = "低於 140% 易有追繳賣壓" if last < 145 else "低於 160% 要留意" if last < 165 else "上市＋上櫃估算"
+    return [{"label": "融資維持率（估）", "value": f"{last:.1f}%", "delta": delta,
+             "direction": 0 if delta is None else (1 if len(r) < 2 or last >= float(r.iloc[-2]) else -1),
+             "note": note}]
+
+
+QFII_DAYS = 120               # 個股頁外資持股比率畫幾天
+QFII_MIN_TURNOVER = 5e7       # 外資持股變化排行：近 20 日均成交值 0.5 億以上
 
 PERIODS = [1, 5, 10, 20, 60]       # 漲跌幅排行可選的區間（交易日）
 
@@ -649,6 +707,13 @@ def _flows(panel: pd.DataFrame, names: dict, latest) -> dict:
     return out
 
 
+def _liquid(panel: pd.DataFrame, min_turnover: float) -> set:
+    """近 20 個交易日平均成交值達門檻的股票。"""
+    days = sorted(panel["date"].unique())[-20:]
+    t = panel[panel["date"].isin(days)].groupby("code")["turnover"].mean()
+    return set(t[t >= min_turnover].index)
+
+
 def _futures() -> dict:
     f = load_futures()
     if f.empty:
@@ -731,15 +796,18 @@ def build(out_dir: Path) -> dict:
     glob = global_market.build()
     overview = {
         "asof": latest.strftime("%Y-%m-%d"),
-        "kpi": _kpis(summary, xm, latest.strftime("%Y-%m-%d"), global_extras(panel, xm)),
+        "kpi": _kpis(summary, xm, latest.strftime("%Y-%m-%d"),
+                     global_extras(panel, xm) + margin_kpi(panel, summary)),
         "watch": _watch_rows(panel, names, watch, latest, flags),
         "edit_url": EDIT_URL,
         "events": _events(today, watch_codes, names, exdiv),
         "signals": [{"id": c["id"], "name": c["name"], "total": results[c["id"]]["total"],
                      "note": results[c["id"]]["note"]} for c in signals.CONDITIONS],
         "news": _news(watch_terms),
-        "market": _market_series(panel, xm),
+        "market": _market_series(panel, xm, summary),
         "flows": _flows(panel, names, latest),
+        "qfii": qfii_data.changes(names, dict(zip(master["code"], master["industry"])),
+                                  _liquid(panel, QFII_MIN_TURNOVER)),
         "futures": _futures(),
         "options": _options(),
         # 決策首頁

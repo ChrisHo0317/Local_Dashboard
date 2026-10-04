@@ -602,8 +602,14 @@
         if (a) up['yaxis.range'] = a;
         var b = span([m.fi, m.tr], from, to, true);
         if (b) up['yaxis2.range'] = b;
+        if (hasMr) {
+          // 下緣固定留到 135%，看得出離 160%／140% 警戒線還有多遠
+          var r = span([m.mr], from, to);
+          if (r) up['yaxis3.range'] = [Math.min(r[0], 135), Math.max(r[1], 165)];
+        }
         return up;
       }
+      var hasMr = (m.mr || []).some(function (v) { return v != null; });
       var w = windowFor(n, marketDays);
       var init = rescale(w.from, w.to);
       var L = layout({
@@ -611,17 +617,25 @@
                 tickangle: 0, automargin: true, showspikes: true, spikemode: 'across',
                 spikethickness: 1, spikedash: 'dot', spikecolor: c.gray,
                 range: [w.from - 0.5, w.to + 0.5]},
-        yaxis: {domain: [0.42, 1], gridcolor: c.grid, tickformat: ',.0f', automargin: true,
+        yaxis: {domain: hasMr ? [0.5, 1] : [0.42, 1], gridcolor: c.grid, tickformat: ',.0f', automargin: true,
                 title: {text: ''}, range: init['yaxis.range']},
-        yaxis2: {domain: [0, 0.34], gridcolor: c.grid, zeroline: true, zerolinecolor: c.grid,
+        yaxis2: {domain: hasMr ? [0.24, 0.43] : [0, 0.34], gridcolor: c.grid, zeroline: true, zerolinecolor: c.grid,
                  automargin: true, tickformat: ',.0f', range: init['yaxis2.range']},
+        yaxis3: hasMr ? {domain: [0, 0.17], gridcolor: c.grid, automargin: true, ticksuffix: '%',
+                         tickformat: '.0f', range: init['yaxis3.range']} : undefined,
         barmode: 'group',
         annotations: [
           {text: '加權指數', xref: 'paper', yref: 'paper', x: 0, y: 1, xanchor: 'left',
            yanchor: 'bottom', showarrow: false, font: {size: 11, color: c.fg}},
-          {text: '法人買賣超（億元，估算）', xref: 'paper', yref: 'paper', x: 0, y: 0.35,
+          {text: '法人買賣超（億元，估算）', xref: 'paper', yref: 'paper', x: 0, y: hasMr ? 0.44 : 0.35,
            xanchor: 'left', yanchor: 'bottom', showarrow: false, font: {size: 11, color: c.fg}}
-        ],
+        ].concat(hasMr ? [{text: '融資維持率（估，%）', xref: 'paper', yref: 'paper', x: 0, y: 0.18,
+                           xanchor: 'left', yanchor: 'bottom', showarrow: false,
+                           font: {size: 11, color: c.fg}}] : []),
+        shapes: hasMr ? [140, 160].map(function (v) {
+          return {type: 'line', xref: 'paper', yref: 'y3', x0: 0, x1: 1, y0: v, y1: v,
+                  line: {color: v === 140 ? c.down : c.gray, width: 1, dash: 'dot'}};
+        }) : [],
         margin: {l: 56, r: 14, t: 20, b: 34}
       });
       plotZoom('ov-market', [
@@ -631,7 +645,10 @@
          hovertemplate: '%{y:+,.1f} 億<extra>外資</extra>'},
         {type: 'bar', x: m.t, y: m.tr, name: '投信', yaxis: 'y2', marker: {color: c.purple},
          hovertemplate: '%{y:+,.1f} 億<extra>投信</extra>'}
-      ], L, n, rescale);
+      ].concat(hasMr ? [{type: 'scatter', mode: 'lines+markers', x: m.t, y: m.mr, name: '融資維持率',
+                         yaxis: 'y3', connectgaps: false, line: {color: c.blue, width: 2},
+                         marker: {size: 4}, hovertemplate: '%{y:.1f}%<extra>融資維持率（估）</extra>'}] : []),
+      L, n, rescale);
     }
 
     // ── 國際：美股、期貨、亞股、供應鏈龍頭、原物料、匯率、美債（data/global.json）──
@@ -1156,7 +1173,42 @@
         });
     }
 
+    function qfiiTables(pane, q) {
+      var note = pane.querySelector('.qf-note');
+      if (!q || !q.asof) {
+        note.textContent = '外資持股資料累積中。';
+        Array.prototype.slice.call(pane.querySelectorAll('.qf-tbl')).forEach(function (b) { b.textContent = ''; });
+        return;
+      }
+      note.textContent = '近 ' + q.window + ' 個交易日（' + md(q.from) + ' → ' + md(q.asof) + '）外資及陸資持股比率的變化，'
+        + '單位是百分點；只列近 20 日平均成交值 0.5 億以上的股票。持股比率持續增加代表外資在累積部位。';
+      Array.prototype.slice.call(pane.querySelectorAll('.qf-tbl')).forEach(function (box) {
+        var rows = q[box.dataset.side] || [];
+        box.textContent = '';
+        if (!rows.length) { box.appendChild(el('p', 'ov-empty', '沒有資料。')); return; }
+        var t = el('table', 'ov-table');
+        var h = el('tr');
+        ['股票', '持股比率', '變化'].forEach(function (x) { h.appendChild(el('th', null, x)); });
+        var thead = el('thead'); thead.appendChild(h); t.appendChild(thead);
+        var tb = el('tbody');
+        rows.forEach(function (r) {
+          var tr = el('tr', 'go');
+          var c0 = el('td');
+          c0.appendChild(el('span', 'ov-code', r[0]));
+          c0.appendChild(el('span', 'ov-name', r[1]));
+          tr.appendChild(c0);
+          tr.appendChild(el('td', null, fmt(r[3], 2) + '%'));
+          tr.appendChild(el('td', dir(r[4]), signed(r[4], 2)));
+          tr.addEventListener('click', function () { openStock(r[0]); });
+          tb.appendChild(tr);
+        });
+        t.appendChild(tb);
+        box.appendChild(t);
+      });
+    }
+
     function flows(pane, d) {
+      qfiiTables(pane, d.qfii);
       var f = d.flows || {};
       Array.prototype.slice.call(pane.querySelectorAll('.ov-flow')).forEach(function (box) {
         flowTable(box, f[flowSide + '_' + box.dataset.side]);
@@ -3241,12 +3293,22 @@
         items.push({when: x[0], text: '除' + String(x[1]).replace('除', '') +
                     (x[2] && Number(x[2]) > 0 ? '　現金 ' + Number(x[2]) + ' 元' : '') + '（預告）'});
       });
+      (s.calls || []).forEach(function (x) {
+        items.push({when: x[0] + (x[1] ? ' ' + x[1] : ''), text: '法說會' + (x[2] ? '：' + x[2] : '')});
+      });
       (s.ann || []).forEach(function (a) {
         var t = String(a[1] || '');
         while (t.length < 6) t = '0' + t;
         items.push({when: a[0] + ' ' + t.slice(0, 2) + ':' + t.slice(2, 4), text: a[2]});
       });
       if (!section('sd-ann', items.length)) return;
+      // 還沒到的（除權息預告、法說會）排前面，其餘新的在上
+      var now = new Date().toISOString().slice(0, 10);
+      var future = items.filter(function (it) { return it.when.slice(0, 10) >= now; })
+        .sort(function (a, b) { return a.when < b.when ? -1 : 1; });
+      var past = items.filter(function (it) { return it.when.slice(0, 10) < now; })
+        .sort(function (a, b) { return a.when < b.when ? 1 : -1; });
+      items = future.concat(past);
       items.forEach(function (it) {
         var li = el('li');
         li.appendChild(el('span', 'ov-when', it.when));
@@ -3282,6 +3344,11 @@
                             s.lend.chg > 0 ? 'down' : null));
       }
       if (s.dt) st.appendChild(stat('當沖比', fmt(s.dt.pct, 1) + '%'));
+      if (s.qfii) {
+        st.appendChild(stat('外資持股', fmt(s.qfii.pct, 2) + '%' +
+                            (s.qfii.chg == null ? '' : '（20 日 ' + signed(s.qfii.chg, 2) + '）'),
+                            dir(s.qfii.chg)));
+      }
       if (s.flag) {
         st.appendChild(stat(s.flag[0] === '處置' ? '處置股' : '注意股',
                             s.flag[0] === '處置' ? md(s.flag[1]) + '～' + md(s.flag[2]) : md(s.flag[1]),

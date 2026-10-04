@@ -9,6 +9,12 @@
     經濟部 外銷訂單（data.gov.tw 6845）：金額（百萬美元）
 美國：FRED 的 fredgraph.csv（不用金鑰）——CPI、核心 CPI、核心 PCE、非農就業、失業率、
     初領失業金、聯邦基金利率、實質 GDP、零售銷售、工業生產、高收益債利差、密大消費者信心
+半導體與科技景氣：
+    台灣產業月營收年增率（半導體、電子零組件、電腦週邊、通信網路；用已經在抓的公開資訊觀測站
+        月營收加總，只比兩年同月都有申報的公司，當月申報家數不到上個月的八成就先不算）
+    台積電月營收年增率、經濟部電子產品外銷訂單（data.gov.tw 16362）、
+    FRED 的韓國出口年增率（OECD，約落後 3 個月）與美國半導體工業生產
+    全球半導體銷售（WSTS／SIA）沒有開放資料；韓國關稅廳的 1～20 日出口要申請金鑰，都沒有納入
 
 原始值存 data/macro.csv（series, date, value；月資料的 date 是當月 1 日），
 每次整段重抓、成功的序列整段取代（官方會修正前值）；抓失敗的保留舊資料。
@@ -36,7 +42,12 @@ CBC_M = "https://www.cbc.gov.tw/public/data/OpenData/經研處/EF15M01.csv"
 FRED = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={id}&cosd={start}"
 
 FRED_SERIES = ["CPIAUCSL", "CPILFESL", "PCEPILFE", "PAYEMS", "UNRATE", "ICSA", "DFF",
-               "A191RL1Q225SBEA", "RSAFS", "INDPRO", "BAMLH0A0HYM2", "UMCSENT"]
+               "A191RL1Q225SBEA", "RSAFS", "INDPRO", "BAMLH0A0HYM2", "UMCSENT",
+               "XTEXVA01KRM659S", "IPG3344S"]
+# 產業月營收年增率（由月營收算，不存 macro.csv）：(序列代號, 產業別)
+REV_INDUSTRIES = [("rev_semi", "半導體業"), ("rev_comp", "電子零組件業"),
+                  ("rev_pc", "電腦及週邊設備業"), ("rev_net", "通信網路業")]
+REV_COVERAGE = 0.8
 
 # 國發會 zip 裡要的欄位：(檔名, 欄名開頭, 序列代號)
 NDC_COLUMNS = [
@@ -82,6 +93,18 @@ CARDS = [
     ("us_hy", "us", "高收益債利差", "BAMLH0A0HYM2", "level", "%", 2, -1,
      "垃圾債和公債的利差；急升代表信用風險升高、市場避險"),
     ("us_umich", "us", "密大消費者信心", "UMCSENT", "level", "", 1, 1, ""),
+    ("rev_semi", "chip", "半導體業營收年增率", "rev_semi", "level", "%", 1, 1,
+     "上市櫃半導體業月營收加總（兩年同月都有申報的公司）；每月 10 日前公布"),
+    ("rev_tsmc", "chip", "台積電營收年增率", "rev_tsmc", "level", "%", 1, 1, ""),
+    ("rev_comp", "chip", "電子零組件業營收年增率", "rev_comp", "level", "%", 1, 1, ""),
+    ("rev_pc", "chip", "電腦及週邊設備業營收年增率", "rev_pc", "level", "%", 1, 1, "含 AI 伺服器組裝"),
+    ("rev_net", "chip", "通信網路業營收年增率", "rev_net", "level", "%", 1, 1, ""),
+    ("tw_orders_elec", "chip", "電子產品外銷訂單年增率", "tw_orders_elec", "yoy", "%", 1, 1,
+     "經濟部，美元計價；含半導體、IC 設計等"),
+    ("kr_export", "chip", "韓國出口年增率", "XTEXVA01KRM659S", "level", "%", 1, 1,
+     "OECD 資料，約落後 3 個月；韓國出口以半導體為大宗，是全球科技景氣的指標"),
+    ("us_semi_ip", "chip", "美國半導體工業生產年增率", "IPG3344S", "yoy", "%", 1, 1,
+     "半導體與其他電子零組件"),
 ]
 # 月資料畫 10 年；日／週資料只畫 3 年，檔案才不會太大
 CHART_YEARS = {"DFF": 3, "BAMLH0A0HYM2": 3, "ICSA": 3}
@@ -212,6 +235,50 @@ def parse_orders(text: str) -> list[tuple]:
     return out
 
 
+def parse_orders_elec(text: str) -> list[tuple]:
+    """電子產品外銷訂單：統計項目,貨品別,資料期(民國年),統計值(金額),計量單位"""
+    out = []
+    for r in csv.reader(io.StringIO(text)):
+        if len(r) >= 4 and r[0].strip() == "外銷訂單金額_美元":
+            d, v = _ym(r[2]), _num(r[3])
+            if d and v is not None:
+                out.append(("tw_orders_elec", d, v))
+    return out
+
+
+def revenue_rows(rev: pd.DataFrame | None = None, master: pd.DataFrame | None = None) -> list[tuple]:
+    """產業月營收年增率與台積電營收年增率（%）。"""
+    if rev is None:
+        from fundamentals import load_revenue
+        rev = load_revenue()
+    if master is None:
+        import intel_data
+        master = intel_data.stock_master()
+    if rev.empty:
+        return []
+    rev = rev.dropna(subset=["revenue"])
+    rev = rev[rev["revenue"] > 0]
+    ind = dict(zip(master["code"], master["industry"]))
+    prev = rev.assign(year=rev["year"] + 1).rename(columns={"revenue": "prev"})
+    both = rev.merge(prev, on=["code", "year", "month"], how="inner")
+    both["industry"] = both["code"].map(ind)
+    both["date"] = [f"{y:04d}-{m:02d}-01" for y, m in zip(both["year"], both["month"])]
+    out = []
+    for sid, name in REV_INDUSTRIES:
+        g = both[both["industry"] == name].groupby("date").agg(n=("code", "size"), now=("revenue", "sum"),
+                                                               before=("prev", "sum")).sort_index()
+        if g.empty:
+            continue
+        # 最近一個月還在陸續申報：家數不到上個月的八成就先不算
+        if len(g) >= 2 and g["n"].iloc[-1] < g["n"].iloc[-2] * REV_COVERAGE:
+            g = g.iloc[:-1]
+        for d, r in g.iterrows():
+            out.append((sid, d, (r["now"] / r["before"] - 1) * 100))
+    t = both[both["code"] == "2330"].sort_values("date")
+    out += [("rev_tsmc", d, (a / b - 1) * 100) for d, a, b in zip(t["date"], t["revenue"], t["prev"])]
+    return out
+
+
 def _dataset_url(s, nid: int, fmt: str | None = None) -> str | None:
     r = s.get(DATASET_API + str(nid), timeout=60)
     dist = (r.json().get("result") or {}).get("distribution") or []
@@ -246,6 +313,8 @@ def fetch_all(logger: logging.Logger | None = None) -> dict[str, list[tuple]]:
     run("國發會 PMI", lambda: parse_pmi(_decode(s.get(_dataset_url(s, 6100), timeout=60).content)))
     run("央行貨幣總計數", lambda: parse_cbc_money(_decode(s.get(CBC_M, timeout=60).content)))
     run("經濟部外銷訂單", lambda: parse_orders(_decode(s.get(_dataset_url(s, 6845), timeout=60).content)))
+    run("經濟部電子產品外銷訂單",
+        lambda: parse_orders_elec(_decode(s.get(_dataset_url(s, 16362), timeout=60).content)))
     return got
 
 
@@ -419,6 +488,11 @@ def highlights(cs: list[dict]) -> list[str]:
     c = by.get("tw_orders")
     if c:
         out.append(f"外銷訂單年增 {c['last']:+.1f}%（{c['period']}）")
+    c = by.get("rev_semi")
+    if c:
+        t = by.get("rev_tsmc")
+        out.append(f"半導體業營收年增 {c['last']:+.1f}%（{c['period']}）"
+                   + (f"，台積電 {t['last']:+.1f}%（{t['period']}）" if t else ""))
     for cid, fmt in (("us_core_pce", "美國核心 PCE 年增 {last}%（{period}）"),
                      ("us_cpi", "美國 CPI 年增 {last}%（{period}）"),
                      ("us_nfp", "美國非農就業增加 {last:,.0f} 千人（{period}）"),
@@ -461,6 +535,11 @@ def calendar_rows(now: datetime | None = None, past: int = 10, future: int = 14)
 
 def build() -> dict:
     df = load()
+    try:
+        extra = pd.DataFrame(revenue_rows(), columns=COLUMNS)
+        df = pd.concat([df, extra], ignore_index=True)
+    except Exception as e:                              # 月營收有問題不影響其他卡片
+        log.warning(f"總經：產業營收年增率失敗 {e}")
     cs = cards(df)
     return {"generated": datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M"),
             "cards": cs, "highlights": highlights(cs), "calendar": calendar_rows()}

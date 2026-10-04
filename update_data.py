@@ -537,6 +537,10 @@ JOBS = {
     "options": lambda: __import__("options_data").update(log),
     # 總經：國發會、央行、經濟部、FRED（每天早上與晚上各一次，官方數據大多是月資料）
     "macro": lambda: __import__("macro_data").update(log),
+    # 外資持股比率（上市＋上櫃，每日；上櫃 www 被擋時下次再補）
+    "qfii": lambda: __import__("qfii_data").update(log),
+    # 法說會（公開資訊觀測站，上個月～下個月）
+    "calls": lambda: __import__("earnings_calls").update(log),
     # 國際／台灣熱門新聞分析：新聞排程每 10 分鐘呼叫，08:00、14:00、21:00 三個時段各做一次
     "hotnews": lambda: __import__("hot_news").update(log),
     # 盤前／盤後摘要（Claude 整理、Bark 推播；依台北時間決定是盤前還是盤後）

@@ -138,7 +138,7 @@ def _query_html() -> str:
         '      <p class="sd-note zoom-hint"></p>\n'
         f'{blocks}'
         '      <section class="sd-sec" data-sec="sd-ann">\n'
-        '        <h3 class="sd-h">重大訊息</h3>\n'
+        '        <h3 class="sd-h">重大訊息與法說會</h3>\n'
         '        <ul class="sd-ann"></ul>\n'
         '      </section>\n'
         '    </div>\n'
