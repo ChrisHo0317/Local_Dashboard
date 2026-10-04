@@ -963,6 +963,7 @@ function initMonthGrid(panel, table) {
   function jumpTo(iso) {
     var target = table.querySelector('.cal-day[data-date="' + iso + '"]');
     if (!target) return;
+    if (target.hidden && table._reveal) table._reveal(iso);
     var top = target.getBoundingClientRect().top + window.pageYOffset
               - (pageHeader.offsetHeight + 12);
     window.scrollTo({top: top, behavior: 'smooth'});
@@ -1056,6 +1057,28 @@ function initCalendarTable(table) {
   });
   var byImpact = chips.some(function (c) { return c.dataset.impact != null; });
   var nowRow = null;
+  // 行事曆：預設只列到今天起 horizon 天（過去幾天照列），按「再看 7 天」往後延
+  var horizon = Number(table.dataset.horizon) || 0;
+  var moreBtn = null;
+  if (horizon) {
+    moreBtn = document.createElement('button');
+    moreBtn.type = 'button';
+    moreBtn.className = 'scr-more cal-more';
+    moreBtn.textContent = '再看 7 天';
+    moreBtn.addEventListener('click', function () { horizon += 7; refresh(); });
+    table.parentNode.insertBefore(moreBtn, table.nextSibling);
+  }
+  function cutoff() {
+    var t = taipei();
+    t.setDate(t.getDate() + horizon);
+    return t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
+  }
+  // 月曆格點到還沒列出的日子：先把範圍延到那天
+  table._reveal = function (iso) {
+    if (!horizon) return;
+    while (cutoff() < iso) horizon += 7;
+    refresh();
+  };
 
   // 台北時間（UTC+8）：不論使用者裝置在哪個時區，顯示都與表格一致
   function taipei() {
@@ -1138,6 +1161,8 @@ function initCalendarTable(table) {
   function applyFilter() {
     // 清單模式（F1）看的是大獎賽標題，就算場次全被篩掉也要留著那一列
     var listMode = table.classList.contains('list-mode');
+    var until = horizon ? cutoff() : null;
+    var later = 0;
     days.forEach(function (d) {
       var shown = 0;
       Array.prototype.slice.call(d.querySelectorAll('.cal-row')).forEach(function (row) {
@@ -1146,8 +1171,14 @@ function initCalendarTable(table) {
         row.hidden = !on;
         if (on) shown++;
       });
-      d.hidden = d.dataset.off === '1' || (!listMode && shown === 0);
+      var beyond = until && d.dataset.date > until;
+      if (beyond && shown) later++;
+      d.hidden = d.dataset.off === '1' || (!listMode && shown === 0) || beyond;
     });
+    if (moreBtn) {
+      moreBtn.hidden = !later;
+      moreBtn.textContent = '再看 7 天（之後還有 ' + later + ' 天有事件）';
+    }
   }
 
   function refresh() {
@@ -1240,6 +1271,18 @@ function initCalendarTable(table) {
 
 Array.prototype.slice.call(document.querySelectorAll('.cal-table'))
   .forEach(initCalendarTable);
+
+// 行事曆的「月曆」鈕：月曆格預設收起，點了才展開
+Array.prototype.slice.call(document.querySelectorAll('.cal-month-toggle')).forEach(function (b) {
+  var host = b.closest('.panel') || document;
+  var month = host.querySelector('.cal-month');
+  if (!month) return;
+  b.addEventListener('click', function () {
+    month.hidden = !month.hidden;
+    b.setAttribute('aria-pressed', String(!month.hidden));
+    syncSticky();
+  });
+});
 
 // ── 二階／三階分頁（目前只有 F1 用）─────────────────────────
 // 圖表在隱藏的分頁裡量不到寬度，所以顯示的當下才繪製或重新丈量。

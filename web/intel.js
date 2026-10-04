@@ -971,6 +971,7 @@
     function mcCal(box, rows, withActual) {
       box.textContent = '';
       if (!rows || !rows.length) { box.appendChild(el('p', 'ov-empty', '沒有資料。')); return; }
+      var MC_FIRST = 8;
       var t = el('table', 'ov-table scr-table mc-tbl');
       var h = el('tr');
       (withActual ? ['時間', '事件', '公布', '預估', '前值'] : ['時間', '事件', '預估', '前值']).forEach(function (x) {
@@ -978,8 +979,9 @@
       });
       var thead = el('thead'); thead.appendChild(h); t.appendChild(thead);
       var tb = el('tbody');
-      rows.forEach(function (e) {
+      rows.forEach(function (e, k) {
         var tr = el('tr', e.impact === 'High' ? 'mc-high-imp' : null);
+        tr.hidden = k >= MC_FIRST;
         tr.appendChild(el('td', 'ov-when', e.when));
         var ev = el('td');
         ev.appendChild(el('span', 'ov-kind', e.country));
@@ -1002,6 +1004,7 @@
       var wrap = el('div', 'ov-table-wrap');
       wrap.appendChild(t);
       box.appendChild(wrap);
+      moreRows(box, tb);
     }
 
     function macro(pane) {
@@ -1206,6 +1209,30 @@
       });
     }
 
+    // 長表格先列 FIRST_ROWS 筆，底下一顆「再看 N 筆」
+    var FIRST_ROWS = 10;
+    function moreRows(box, tbody) {
+      var hidden = Array.prototype.slice.call(tbody.children).filter(function (r) { return r.hidden; });
+      if (!hidden.length) return;
+      var b = el('button', 'scr-more', '再看 ' + hidden.length + ' 筆');
+      b.type = 'button';
+      b.addEventListener('click', function () {
+        hidden.forEach(function (r) { r.hidden = false; });
+        b.remove();
+      });
+      box.appendChild(b);
+    }
+
+    // 手機上兩張表改成切換（買超／賣超、增加／減少）；電腦版兩張並排，切換鈕不顯示
+    function bindSideSegs(pane) {
+      Array.prototype.slice.call(pane.querySelectorAll('.side-seg')).forEach(function (seg) {
+        if (seg._bound) return;
+        seg._bound = true;
+        var grid = seg.nextElementSibling;
+        bindChips(seg, function (chip) { grid.classList.toggle('show-b', chip.dataset.side === '1'); });
+      });
+    }
+
     function flowTable(box, rows) {
       box.textContent = '';
       if (!rows || !rows.length) { box.appendChild(el('p', 'ov-empty', '沒有資料。')); return; }
@@ -1214,8 +1241,9 @@
       ['股票', '張數', '金額（億）'].forEach(function (x) { h.appendChild(el('th', null, x)); });
       var thead = el('thead'); thead.appendChild(h); t.appendChild(thead);
       var tb = el('tbody');
-      rows.forEach(function (r) {
+      rows.forEach(function (r, i) {
         var tr = el('tr', 'go');
+        tr.hidden = i >= FIRST_ROWS;
         var c0 = el('td');
         c0.appendChild(el('span', 'ov-code', r[0]));
         c0.appendChild(el('span', 'ov-name', r[1]));
@@ -1227,6 +1255,7 @@
       });
       t.appendChild(tb);
       box.appendChild(t);
+      moreRows(box, tb);
     }
 
     function optionsChart(pane, o) {
@@ -1286,14 +1315,17 @@
           tr.appendChild(el('td', null, fmt(r[3], 2) + '%'));
           tr.appendChild(el('td', dir(r[4]), signed(r[4], 2)));
           tr.addEventListener('click', function () { openStock(r[0]); });
+          tr.hidden = tb.children.length >= FIRST_ROWS;
           tb.appendChild(tr);
         });
         t.appendChild(tb);
         box.appendChild(t);
+        moreRows(box, tb);
       });
     }
 
     function flows(pane, d) {
+      bindSideSegs(pane);
       qfiiTables(pane, d.qfii);
       var f = d.flows || {};
       Array.prototype.slice.call(pane.querySelectorAll('.ov-flow')).forEach(function (box) {
@@ -2206,47 +2238,91 @@
         .sort(function (a, b) { return b.rows.length - a.rows.length; });
     }
 
+    // 一檔一行：排名、名稱、族群、原因（一行）、20 日漲幅；點一下展開原因、關鍵新聞與同族群
+    var REC_PAGE = 15;
+    rec.shown = REC_PAGE;
+
+    function recLine(row, skip) {
+      var item = el('div', 'rec-item');
+      var line = el('button', 'rec-line');
+      line.type = 'button';
+      line.setAttribute('aria-expanded', 'false');
+      line.appendChild(el('span', 'rec-rk num', row[R_RANK] ? String(row[R_RANK]) : '自選'));
+      var nm = el('span', 'rec-nm');
+      var top = el('span', 'rec-top');
+      top.appendChild(el('b', null, row[R_CODE] + ' ' + row[R_NAME]));
+      if (row[R_LINKED] && row[R_GROUP]) top.appendChild(el('span', 'rec-tag', row[R_GROUP]));
+      var fb = flagBadge(row[R_CODE]);
+      if (fb) top.appendChild(fb);
+      nm.appendChild(top);
+      nm.appendChild(el('span', 'rec-why1', (row[R_TAG] ? row[R_TAG] + '：' : '') + (row[R_WHY] || '—')));
+      line.appendChild(nm);
+      line.appendChild(el('span', 'rec-r20 num ' + dir(row[R_S]), signed(row[R_S], 1, '%')));
+      item.appendChild(line);
+      var detail = el('div', 'rec-detail');
+      detail.hidden = true;
+      line.addEventListener('click', function () {
+        if (!detail.childNodes.length) {
+          detail.appendChild(recRow(row, true));
+          var others = recMembers(row[R_MEMBERS] || [], skip);
+          if (others) {
+            detail.appendChild(el('p', 'rec-label', '同族群也在漲（不在強勢股名單；粗體是新聞有提到的）'));
+            detail.appendChild(others);
+          }
+        }
+        detail.hidden = !detail.hidden;
+        line.setAttribute('aria-expanded', String(!detail.hidden));
+      });
+      item.appendChild(detail);
+      return item;
+    }
+
     function recShowDay(pane, day) {
       var body = pane.querySelector('.rec-body');
       body.textContent = '';
-      var rows = day.rows;
+      var rows = day.rows.slice().sort(function (a, b) { return (a[R_RANK] || 999) - (b[R_RANK] || 999); });
       var groups = recGroups(rows);
       var linked = rows.filter(function (r) { return r[R_LINKED]; }).length;
+      var solo = rows.length - linked;
       var rules = rows.length && rows.every(function (r) { return r[R_METHOD] !== 'claude'; });
       pane.querySelector('.rec-sum').textContent = md(day.date) + '：強勢股 ' + rows.length + ' 檔，族群連動 ' +
         linked + ' 檔、' + groups.length + ' 個族群' +
         (rules ? '（尚未設定 Claude，族群暫以官方產業別＋股價相關判斷）' : '');
-      if (rec.theme) {
-        groups.sort(function (a, b) { return (b.name === rec.theme) - (a.name === rec.theme); });
-      }
-      if (groups.length) body.appendChild(el('h3', 'sd-h', '族群連動'));
-      groups.forEach(function (g) {
-        var card = el('section', 'ov-card rec-group' + (g.name === rec.theme ? ' is-picked' : ''));
-        var h = el('h3');
-        h.appendChild(document.createTextNode(g.name));
-        var skip = {};
-        g.rows.forEach(function (r) { skip[r[R_CODE]] = true; });
-        var others = recMembers(g.members, skip);
-        h.appendChild(el('span', 'rec-n', '強勢股 ' + g.rows.length + ' 檔' +
-                         (others ? '・同步上漲 ' + others.total + ' 檔' : '')));
-        card.appendChild(h);
-        g.rows.forEach(function (r) { card.appendChild(recRow(r, false)); });
-        if (others) {
-          card.appendChild(el('p', 'rec-label', '同族群也在漲（不在強勢股前 60 檔；粗體是新聞有提到的）'));
-          card.appendChild(others);
-        }
-        body.appendChild(card);
+      // 族群篩選：全部／各族群／個股行情
+      var bar = el('div', 'rec-filter');
+      var opts = [[null, '全部', rows.length]].concat(groups.map(function (g) { return [g.name, g.name, g.rows.length]; }));
+      if (solo) opts.push(['__solo', '個股行情', solo]);
+      if (rec.theme && !opts.some(function (o) { return o[0] === rec.theme; })) rec.theme = null;
+      opts.forEach(function (o) {
+        var c = el('button', 'chip');
+        c.type = 'button';
+        c.setAttribute('aria-pressed', String(rec.theme === o[0]));
+        c.appendChild(document.createTextNode(o[1] + ' '));
+        c.appendChild(el('b', null, String(o[2])));
+        c.addEventListener('click', function () {
+          rec.theme = o[0];
+          rec.shown = REC_PAGE;
+          recShowDay(pane, day);
+        });
+        bar.appendChild(c);
       });
-      var solo = rows.filter(function (r) { return !r[R_LINKED]; });
-      if (solo.length) {
-        body.appendChild(el('h3', 'sd-h', '個股行情（' + solo.length + ' 檔）'));
-        body.appendChild(el('p', 'sd-note', '沒有判定為族群連動：主要是公司自己的消息，或同族群沒有其他股票同步上漲。'));
-        var list = el('div', 'rec-solo');
-        solo.forEach(function (r) { list.appendChild(recRow(r, true)); });
-        body.appendChild(list);
+      body.appendChild(bar);
+      var list = rows.filter(function (r) {
+        if (!rec.theme) return true;
+        if (rec.theme === '__solo') return !r[R_LINKED];
+        return r[R_LINKED] && r[R_GROUP] === rec.theme;
+      });
+      var skip = {};
+      rows.forEach(function (r) { skip[r[R_CODE]] = true; });
+      var box = el('div', 'rec-list ov-card');
+      list.slice(0, rec.shown).forEach(function (r) { box.appendChild(recLine(r, skip)); });
+      body.appendChild(box);
+      if (list.length > rec.shown) {
+        var more = el('button', 'scr-more', '再看 ' + Math.min(REC_PAGE, list.length - rec.shown) + ' 檔（共 ' + list.length + ' 檔）');
+        more.type = 'button';
+        more.addEventListener('click', function () { rec.shown += REC_PAGE; recShowDay(pane, day); });
+        body.appendChild(more);
       }
-      var picked = body.querySelector('.rec-group.is-picked');
-      if (picked) picked.scrollIntoView({block: 'nearest'});
     }
 
     // 查一檔股票：列出它每一次上榜的原因與族群（新到舊，最多 20 次）
@@ -2353,7 +2429,7 @@
           rec.query = r[0];
           rec.theme = null;
           recShow(pane);
-          pane.querySelector('.rec-sum').scrollIntoView({block: 'start', behavior: 'smooth'});
+          pane.querySelector('.rec-sum').scrollIntoView({block: 'center', behavior: 'smooth'});
         });
         tb.appendChild(tr);
       });
@@ -2436,9 +2512,12 @@
           rec.date = rec.index.dates[p.pointIndex[1]];
           rec.theme = p.y;
           rec.query = '';
+          rec.shown = REC_PAGE;
           pane.querySelector('.rec-search').value = '';
           pane.querySelector('.rec-date').value = rec.date;
-          recShow(pane);
+          recShow(pane).then(function () {
+            pane.querySelector('.rec-sum').scrollIntoView({block: 'center', behavior: 'smooth'});
+          });
         });
       }
     }
@@ -2474,6 +2553,20 @@
       });
     }
 
+    function recToggles(pane) {
+      Array.prototype.slice.call(pane.querySelectorAll('.sec-toggle')).forEach(function (b) {
+        if (b._bound) return;
+        b._bound = true;
+        b.addEventListener('click', function () {
+          var box = pane.querySelector('.' + b.dataset.box);
+          box.hidden = !box.hidden;
+          b.setAttribute('aria-expanded', String(!box.hidden));
+          if (box.hidden) return;
+          if (b.dataset.box === 'rec-heat-box') recHeat(pane); else recFreq(pane);
+        });
+      });
+    }
+
     function record(pane) {
       return loadFlags().then(function () { return getJSON('data/record/index.json'); }).then(function (ix) {
         rec.index = ix;
@@ -2486,8 +2579,9 @@
         pane.querySelector('.ov-asof').textContent = '紀錄 ' + md(ix.dates[0]) + ' ～ ' +
           md(ix.dates[ix.dates.length - 1]) + '，共 ' + ix.dates.length + ' 個交易日';
         recControls(pane);
-        recHeat(pane);
-        recFreq(pane);
+        recToggles(pane);
+        if (!pane.querySelector('.rec-heat-box').hidden) recHeat(pane);
+        if (!pane.querySelector('.rec-freq-sec').hidden) recFreq(pane);
         return recShow(pane);
       });
     }

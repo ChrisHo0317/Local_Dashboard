@@ -93,9 +93,11 @@ def panel_html(df: pd.DataFrame) -> str:
     present = {IMPACT_ORDER.get(v, 1) for v in window(df)["impact"]} if not df.empty else set()
     levels = [(3, "高", "i-high"), (2, "中", "i-mid"),
               (1, "低", "i-low"), (0, "假日", "i-hol"), (4, "台股", "i-tw")]
+    # 預設只開「高」與「台股」：中影響一個月四百多筆，全開手機要捲幾十個畫面
+    on = {3, 4}
     chips = "".join(
         f'      <button type="button" class="chip chip-tick" data-impact="{rank}"'
-        f' aria-pressed="true"><span class="dot {cls}"></span>{label}</button>\n'
+        f' aria-pressed="{"true" if rank in on else "false"}"><span class="dot {cls}"></span>{label}</button>\n'
         for rank, label, cls in levels if rank in present
     )
     head = (
@@ -103,6 +105,7 @@ def panel_html(df: pd.DataFrame) -> str:
         '    <div class="cal-filter" role="group" aria-label="影響程度篩選">\n'
         + chips +
         '    </div>\n'
+        '    <button type="button" class="chip cal-month-toggle" aria-pressed="false">月曆</button>\n'
         '    <div class="cal-clock" id="cal-clock" aria-live="off">—</div>\n'
         '  </div>'
     )
@@ -110,7 +113,7 @@ def panel_html(df: pd.DataFrame) -> str:
     # 月曆格狀圖：完全由前端 JS 產生（今天是哪一天、月份怎麼排都是瀏覽器端算的），
     # 這裡只留容器殼，理由與「現在時間標示線」相同——頁面會被 CDN 快取。
     month_grid = (
-        '  <div class="cal-month" id="cal-month">\n'
+        '  <div class="cal-month" id="cal-month" hidden>\n'
         '    <div class="cal-month-head">\n'
         '      <button type="button" class="iconbtn cal-month-prev" aria-label="上個月">&#8249;</button>\n'
         '      <span class="cal-month-label">—</span>\n'
@@ -169,7 +172,7 @@ def panel_html(df: pd.DataFrame) -> str:
         )
 
     table = (
-        '  <table class="cal-table">\n'
+        '  <table class="cal-table" data-horizon="7">\n'
         '    <thead>\n'
         '      <tr><th class="cal-time">時間</th><th class="cal-imp"><span class="sr">影響</span></th>'
         '<th class="cal-ev">事件</th><th class="cal-num">公布</th><th class="cal-num">預估</th>'

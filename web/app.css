@@ -799,7 +799,21 @@
   .tr-chart .chart { height:520px; }
   @media (max-width:820px) { .tr-chart .chart { height:460px; } }
   /* 總經 */
-  .mc-cards { display:grid; gap:8px; grid-template-columns:repeat(auto-fill, minmax(168px, 1fr)); }
+  .mc-cards { display:grid; gap:8px; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
+  @media (max-width:600px) {
+    .mc-cards { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .mc-card { padding:8px 10px; }
+    .mc-val { font-size:16px; }
+    .mc-card .spark { height:18px; }
+  }
+  /* 籌碼：手機上兩張表改成切換 */
+  .side-seg { display:none; gap:6px; margin:4px 0 8px; }
+  @media (max-width:820px) {
+    .side-seg { display:flex; }
+    .side-grid > .ov-card:nth-child(2) { display:none; }
+    .side-grid.show-b > .ov-card:nth-child(1) { display:none; }
+    .side-grid.show-b > .ov-card:nth-child(2) { display:block; }
+  }
   .mc-card { display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left;
              padding:10px 12px; border-radius:10px; border:1px solid var(--border);
              background:var(--card); color:var(--fg); font:inherit; cursor:pointer; min-width:0;
@@ -829,6 +843,35 @@
   /* 強勢紀錄 */
   #ov-record-heat { min-height:96px; }
   .rec-search { flex:1; min-width:160px; }
+  /* 強勢紀錄：一檔一行，點開看細節 */
+  .rec-filter { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 10px; }
+  .rec-filter .chip { font-size:12px; padding:3px 10px; }
+  .rec-list { padding:2px 12px; }
+  .rec-item + .rec-item { border-top:1px solid var(--border); }
+  .rec-line { display:grid; grid-template-columns:2.2em minmax(0, 1fr) auto; gap:8px; align-items:center;
+              width:100%; text-align:left; border:0; background:none; padding:9px 0; font:inherit; color:var(--fg);
+              cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .rec-line:hover .rec-top b { text-decoration:underline; }
+  .rec-rk { color:var(--muted); font-size:12px; text-align:center; }
+  .rec-nm { display:flex; flex-direction:column; min-width:0; gap:1px; }
+  .rec-top { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 6px; font-size:14px; }
+  .rec-tag { font-size:11px; padding:0 6px; border-radius:999px; color:var(--accent); background:var(--pill); }
+  .rec-why1 { font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rec-r20 { font-weight:700; font-size:14px; }
+  .rec-line[aria-expanded="true"] .rec-why1 { visibility:hidden; height:0; }
+  @media (max-width:820px) {
+    /* 族群篩選一列左右滑，不要疊成好幾行 */
+    .rec-filter { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; }
+    .rec-filter::-webkit-scrollbar { display:none; }
+    .rec-filter .chip { flex:none; }
+  }
+  .rec-detail { padding:0 0 10px 2.6em; }
+  .rec-detail .rec-row { border-top:0; padding-top:0; }
+  .sec-toggle { display:flex; width:100%; justify-content:space-between; align-items:center; margin-top:14px;
+                padding:10px 12px; border-radius:10px; font-size:14px; font-weight:600; background:var(--card); }
+  .sec-toggle::after { content:"›"; color:var(--muted); transition:transform .15s; }
+  .sec-toggle[aria-expanded="true"]::after { transform:rotate(90deg); }
+  .rec-heat-box, .rec-freq-sec { margin-top:8px; }
   .rec-group { margin:10px 0; }
   .rec-group.is-picked { border-color:var(--accent); }
   .rec-group h3 { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; }
