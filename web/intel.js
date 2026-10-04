@@ -41,6 +41,20 @@
     return e;
   }
 
+  // 手機上寬表格改成卡片：每一格依表頭加 data-label，窄螢幕時 CSS 用它當小標（.tbl-stack）
+  function stackTable(t) {
+    t.classList.add('tbl-stack');
+    var heads = Array.prototype.slice.call(t.querySelectorAll('thead th')).map(function (th) {
+      return th.textContent.replace(/[▲▼↑↓⇅]/g, '').trim();
+    });
+    Array.prototype.slice.call(t.querySelectorAll('tbody tr')).forEach(function (tr) {
+      Array.prototype.slice.call(tr.children).forEach(function (td, i) {
+        if (heads[i]) td.dataset.label = heads[i];
+      });
+    });
+    return t;
+  }
+
   function fmt(v, d) {
     if (v == null || v !== v) return '—';
     return Number(v).toLocaleString('zh-TW', {minimumFractionDigits: d || 0,
@@ -796,7 +810,7 @@
           });
           tb.appendChild(tr);
         });
-        t.appendChild(tb);
+        t.appendChild(tb); stackTable(t);
         var wrap = el('div', 'ov-table-wrap');
         wrap.appendChild(t);
         box.appendChild(wrap);
@@ -971,7 +985,7 @@
     function mcCal(box, rows, withActual) {
       box.textContent = '';
       if (!rows || !rows.length) { box.appendChild(el('p', 'ov-empty', '沒有資料。')); return; }
-      var MC_FIRST = 8;
+      var MC_FIRST = window.innerWidth < 820 ? 5 : 8;
       var t = el('table', 'ov-table scr-table mc-tbl');
       var h = el('tr');
       (withActual ? ['時間', '事件', '公布', '預估', '前值'] : ['時間', '事件', '預估', '前值']).forEach(function (x) {
@@ -1000,7 +1014,7 @@
         tr.appendChild(el('td', null, e.previous || '—'));
         tb.appendChild(tr);
       });
-      t.appendChild(tb);
+      t.appendChild(tb); stackTable(t);
       var wrap = el('div', 'ov-table-wrap');
       wrap.appendChild(t);
       box.appendChild(wrap);
@@ -1015,8 +1029,13 @@
         hb.textContent = '';
         if (d.highlights && d.highlights.length) {
           var ul = el('ul', 'ck-list');
-          d.highlights.forEach(function (x) { ul.appendChild(el('li', null, x)); });
+          d.highlights.forEach(function (x, i) {
+            var li = el('li', null, x);
+            li.hidden = i >= 5;
+            ul.appendChild(li);
+          });
           hb.appendChild(ul);
+          moreRows(hb, ul);
         } else {
           hb.appendChild(el('p', 'ov-empty', '還沒有總經資料。'));
         }
@@ -1367,7 +1386,7 @@
     // momentum.json 的 stocks：[代號, 名稱, 產業序號, 20 日均成交值億, [近 41 日收盤]]
     var MO_TOP = 10;          // 畫軌跡、畫累積漲幅曲線的檔數
     var MO_TAIL = 5;          // 軌跡往回畫幾天
-    var MO_PAGE = 30;
+    var MO_PAGE = window.innerWidth < 820 ? 15 : 30;
     var MO_COLORS = ['#e03131', '#1c7ed6', '#f08c00', '#7048e8', '#2f9e44',
                      '#d6336c', '#0c8599', '#5c940d', '#ae3ec9', '#495057'];
     var mo = {data: null, ind: -1, min: 1, sort: 'a', desc: true, shown: MO_PAGE,
@@ -2015,7 +2034,7 @@
         });
         tb.appendChild(tr);
       });
-      t.appendChild(tb);
+      t.appendChild(tb); stackTable(t);
       var wrap = el('div', 'ov-table-wrap');
       wrap.appendChild(t);
       box.appendChild(wrap);
@@ -2360,7 +2379,7 @@
 
     // 上榜次數排行：依收盤重算的每日名單（近 20／60／120 個交易日）
     // rows：[代號, 名稱, 產業, 20日次數, 60日次數, 120日次數, 連續天數, 最後上榜序號, 族群連動次數, 常見族群]
-    var REC_FREQ_PAGE = 30;
+    var REC_FREQ_PAGE = window.innerWidth < 820 ? 15 : 30;
     rec.win = 1;                 // 預設看近 60 日
     rec.freqShown = REC_FREQ_PAGE;
 
@@ -2433,7 +2452,7 @@
         });
         tb.appendChild(tr);
       });
-      t.appendChild(tb);
+      t.appendChild(tb); stackTable(t);
       var wrap = el('div', 'ov-table-wrap');
       wrap.appendChild(t);
       box.appendChild(wrap);
@@ -2651,7 +2670,7 @@
         tr.addEventListener('click', function () { pf.pick = s.id; perfTable(pane); perfRecent(pane); });
         tb.appendChild(tr);
       });
-      t.appendChild(tb);
+      t.appendChild(tb); stackTable(t);
       var wrap = el('div', 'ov-table-wrap');
       wrap.appendChild(t);
       box.appendChild(wrap);
@@ -2695,8 +2714,9 @@
       ['日期', '股票', '5 日', '10 日', '20 日'].forEach(function (x) { h.appendChild(el('th', null, x)); });
       var thead = el('thead'); thead.appendChild(h); t.appendChild(thead);
       var tb = el('tbody');
-      s.recent.forEach(function (r) {
+      s.recent.forEach(function (r, i) {
         var tr = el('tr', 'go');
+        tr.hidden = i >= FIRST_ROWS;
         tr.appendChild(el('td', null, md(r[0])));
         var c1 = el('td');
         c1.appendChild(el('span', 'ov-code', r[1]));
@@ -2712,13 +2732,23 @@
       var wrap = el('div', 'ov-table-wrap');
       wrap.appendChild(t);
       box.appendChild(wrap);
+      moreRows(box, tb);
       box.appendChild(el('p', 'sd-note', '報酬已扣來回成本；「未到期」是持有天數還沒滿。'));
     }
 
     function perfDraw(pane) {
       perfBars(pane);
       perfTable(pane);
-      perfMonthly(pane);
+      var mbox = pane.querySelector('.pf-monthly-box'), mbtn = pane.querySelector('.pf-monthly-toggle');
+      if (mbtn && !mbtn._bound) {
+        mbtn._bound = true;
+        mbtn.addEventListener('click', function () {
+          mbox.hidden = !mbox.hidden;
+          mbtn.setAttribute('aria-expanded', String(!mbox.hidden));
+          if (!mbox.hidden) perfMonthly(pane);
+        });
+      }
+      if (!mbox || !mbox.hidden) perfMonthly(pane);
       perfRecent(pane);
     }
 
@@ -2910,7 +2940,7 @@
         tr.appendChild(act);
         tb.appendChild(tr);
       });
-      t.appendChild(tb);
+      t.appendChild(tb); stackTable(t);
       var wrap = el('div', 'ov-table-wrap');
       wrap.appendChild(t);
       box.appendChild(wrap);
@@ -3604,7 +3634,7 @@
     if (!pane) return;
     var body = pane.querySelector('.scr-body');
     var drawn = false;
-    var SHOW = 15;
+    var SHOW = window.innerWidth < 820 ? 5 : 15;
 
     function card(c) {
       var sec = el('section', 'scr-card');
@@ -3681,7 +3711,7 @@
         if (more) more.hidden = state.all || c.hits.length <= SHOW;
       }
 
-      t.appendChild(tb); wrap.appendChild(t); sec.appendChild(wrap);
+      t.appendChild(tb); stackTable(t); wrap.appendChild(t); sec.appendChild(wrap);
       if (c.hits.length > SHOW) {
         more = el('button', 'scr-more', '顯示全部 ' + c.hits.length + ' 檔');
         more.type = 'button';
