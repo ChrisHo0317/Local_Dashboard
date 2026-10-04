@@ -12,9 +12,12 @@
 
 沒有伺服器端 callback，由前端 Plotly.react 繪製；hover、縮放、時間軸縮圖都保留。
 版面由底部懸浮式標籤列切換，分頁分三種（PANELS 的 kind）：
-  chartgroup  多張走勢圖合併成一個分頁，子分頁切換
+  chartgroup  多張走勢圖合併成一個分頁，子分頁切換（原本的「走勢圖」分頁，已搬進總覽，目前沒有用到）
   calendar    在這裡直接產生 HTML（各 *_render.py 負責），名稱沿用最早的行事曆分頁
   chart       單張走勢圖（目前沒有用到，保留給之後）
+
+走勢圖（TREND_CHARTS：DRAM、美債、黃金、BTC、美股、匯率）放在總覽的「走勢」子分頁：
+上方是 trend_cards.py 產生的精簡卡片（data/trend.json），點卡片展開原本的完整圖（data/charts/{key}.json）。
 
 要新增分頁：在 PANELS 加一筆即可，標籤列、分頁、圖例、設定頁的資料卡片都會跟著生成。
 
@@ -30,6 +33,7 @@ from pathlib import Path
 import plotly.io as pio
 
 import intel_build
+import trend_cards
 from bond_data import CSV_PATH as BOND_CSV, latest_date as bond_latest, load_bonds
 from btc_data import CSV_PATH as BTC_CSV, latest_date as btc_latest, load_btc
 from calendar_data import CSV_PATH as CAL_CSV, load_events
@@ -64,8 +68,8 @@ NEWS_DIR = SITE_DIR / "news"
 STOCK_DIR = SITE_DIR / "stock"
 CHART_DIR = SITE_DIR / "data" / "charts"
 
-# 走勢圖：合併在同一個分頁裡的子分頁（避免底部標籤列一個個排開）。
-# 各項目沿用原本各自的欄位定義，只是不再各自佔一個頂層分頁。
+# 走勢圖：總覽「走勢」子分頁裡的完整圖（原本是底部的「走勢圖」分頁）。
+# 各項目沿用原本各自的欄位定義。
 TREND_CHARTS = [
     {
         "id": "dram",
@@ -168,19 +172,6 @@ PANELS = [
                 '<line x1="12" y1="16.5" x2="15.6" y2="11.4"/>'
                 '<circle cx="12" cy="16.5" r="1.3" fill="currentColor" stroke="none"/>'
                 '<line x1="4" y1="20" x2="20" y2="20"/>',
-    },
-    {
-        "id": "trend",
-        "group": "finance",
-        "kind": "chartgroup",
-        "tab": "走勢圖",
-        "title": TREND_CHARTS[0]["title"],
-        "meta": TREND_CHARTS[0]["meta"],
-        "members": TREND_CHARTS,
-        # 折線圖圖示
-        "icon": '<path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21"/>'
-                '<path d="M7 15l3.5-4 3 2.5L20 7"/>'
-                '<circle cx="20" cy="7" r="1.4" fill="currentColor" stroke="none"/>',
     },
     {
         "id": "calendar",
@@ -432,8 +423,9 @@ def _stats(p: dict) -> dict:
     }
 
 
-def _trend_settings_card(p: dict, stats: dict) -> str:
-    """走勢圖分頁的資料卡片：一張卡彙整底下每個子分頁的來源與更新日。"""
+def _trend_settings_card(p: dict, stats: dict, switch: bool = True) -> str:
+    """走勢圖的資料卡片：一張卡彙整底下每個項目的來源與更新日。
+    switch=False：沒有自己的頂層分頁（嵌在總覽裡），不放顯示開關。"""
     rows = []
     for m in p["members"]:
         s = stats[m["id"]]
@@ -443,19 +435,24 @@ def _trend_settings_card(p: dict, stats: dict) -> str:
             f'<a href="{m["source_url"]}" target="_blank" rel="noopener">{m["source_name"]}</a></div>'
         )
     body = "\n".join(rows)
+    toggle = (f'''
+        <button class="switch sw-sm" type="button" role="switch" data-panel="{p["id"]}"
+                aria-checked="true" aria-label="顯示{p["tab"]}分頁"><span class="knob"></span></button>'''
+              if switch else "")
     return f'''    <div class="card fold" data-card="{p["id"]}">
       <div class="card-h">
         <button type="button" class="card-t" aria-expanded="false"
                 aria-controls="cardbody-{p["id"]}">
           <span class="card-chev">&#9656;</span><span>{p["tab"]}　資料</span>
-        </button>
-        <button class="switch sw-sm" type="button" role="switch" data-panel="{p["id"]}"
-                aria-checked="true" aria-label="顯示{p["tab"]}分頁"><span class="knob"></span></button>
+        </button>{toggle}
       </div>
       <div class="card-body" id="cardbody-{p["id"]}">
 {body}
       </div>
     </div>'''
+
+
+TREND_CARD = {"id": "trend", "tab": "總覽 › 走勢", "members": TREND_CHARTS}
 
 
 def _settings_cards(stats: dict) -> str:
@@ -464,6 +461,9 @@ def _settings_cards(stats: dict) -> str:
         if p.get("kind") == "chartgroup":
             cards.append(_trend_settings_card(p, stats))
             continue
+        if p["id"] == "overview":
+            # 走勢圖嵌在總覽裡，資料卡片接在總覽後面
+            cards.append(_trend_settings_card(TREND_CARD, stats, switch=False))
         s = stats[p["id"]]
         if s.get("local"):
             # 筆記存在讀者自己的瀏覽器，建置時沒有任何數字可寫；
@@ -740,6 +740,25 @@ def build() -> Path:
             build_points_figure(part, dark=True, showlegend=False),
             extra["item_label"],
         )
+
+    # 總覽「走勢」子分頁：完整圖＋精簡卡片
+    frames = {}
+    for m in TREND_CHARTS:
+        df = m["load"]()
+        frames[m["id"]] = df
+        charts[m["id"]] = _chart_entry(m["id"], m["figure"](df, dark=False, showlegend=False),
+                                       m["figure"](df, dark=True, showlegend=False), m["item_label"])
+        stats[m["id"]] = _stats(m)
+        head[m["id"]] = {"title": m["title"],
+                         "meta": f'{m["meta"]}<br>最後更新日：{stats[m["id"]]["latest"]}'}
+    (SITE_DIR / "data").mkdir(parents=True, exist_ok=True)
+    (SITE_DIR / "data" / "trend.json").write_text(
+        json.dumps(trend_cards.build(TREND_CHARTS, frames), ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8")
+    if isinstance(panel_data.get("overview"), dict):
+        panel_data["overview"]["trend"] = [
+            {"id": m["id"], "tab": m["tab"], "title": head[m["id"]]["title"], "meta": head[m["id"]]["meta"]}
+            for m in TREND_CHARTS]
 
     head["settings"] = {"title": "設定", "meta": "外觀、資料集資訊與版本"}
 

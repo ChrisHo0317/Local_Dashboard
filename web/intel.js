@@ -800,6 +800,61 @@
       });
     }
 
+    // ── 走勢：DRAM、美債、黃金、BTC、美股、匯率（原本底部的「走勢圖」分頁）──
+    // 卡片用 data/trend.json；完整圖是 app.js 的 CHARTS（data/charts/{key}.json），用 activateCharts 畫
+    var tr = {pick: null};
+
+    function trShow(pane) {
+      Array.prototype.slice.call(pane.querySelectorAll('.tr-card')).forEach(function (b) {
+        b.classList.toggle('is-picked', b.dataset.key === tr.pick);
+      });
+      var box = null;
+      Array.prototype.slice.call(pane.querySelectorAll('.tr-chart')).forEach(function (x) {
+        x.hidden = x.dataset.key !== tr.pick;
+        if (!x.hidden) box = x;
+      });
+      pane.querySelector('.tr-title').textContent = box ? box.dataset.title : '';
+      pane.querySelector('.tr-meta').innerHTML = box ? box.dataset.meta : '';   // meta 含 <br>，產生頁面時已跳脫
+      if (box && typeof activateCharts === 'function') activateCharts(box);
+    }
+
+    function trend(pane) {
+      return getJSON('data/trend.json').then(function (cards) {
+        var wrap = pane.querySelector('.tr-cards');
+        if (!tr.pick && cards.length) tr.pick = cards[0].id;
+        wrap.textContent = '';
+        cards.forEach(function (c) {
+          var b = el('button', 'tr-card mc-card');
+          b.type = 'button';
+          b.dataset.key = c.id;
+          var h = el('span', 'tr-head');
+          h.appendChild(el('span', 'tr-tab', c.tab));
+          if (c.date) h.appendChild(el('span', 'mc-sub', md(c.date)));
+          b.appendChild(h);
+          c.rows.forEach(function (r) {
+            var row = el('span', 'tr-row');
+            row.appendChild(el('span', 'tr-name', r.name));
+            row.appendChild(el('span', 'tr-last num', fmt(r.last, r.dec) + (c.id === 'bond' ? '%' : '')));
+            var ch = r.unit === 'pt' ? signed(r.d1, 2) : signed(r.d1, 2, '%');
+            row.appendChild(el('span', 'tr-chg num ' + dir(r.d1), ch));
+            var m20 = r.unit === 'pt' ? signed(r.d20, 2) : signed(r.d20, 1, '%');
+            row.appendChild(el('span', 'tr-chg tr-m num ' + dir(r.d20), m20));
+            b.appendChild(row);
+          });
+          if (c.more) b.appendChild(el('span', 'mc-sub', '另有 ' + c.more + ' 個' + (c.id === 'dram' ? '型號' : '項目')));
+          b.appendChild(sparkSvg(c.spark));
+          b.addEventListener('click', function () {
+            tr.pick = c.id;
+            trShow(pane);
+            var t = pane.querySelector('.tr-title');
+            if (t.getBoundingClientRect().top > window.innerHeight * 0.6) t.scrollIntoView({behavior: 'smooth', block: 'start'});
+          });
+          wrap.appendChild(b);
+        });
+        trShow(pane);
+      });
+    }
+
     // ── 總經：台灣、美國的經濟數據卡片＋走勢＋經濟日曆公布值（data/macro.json）──
     var mc = {data: null, pick: 'tw_signal'};
     var LIGHT_COLOR = {'紅燈': '#e03131', '黃紅燈': '#f08c00', '綠燈': '#2f9e44',
@@ -2997,7 +3052,7 @@
       });
     }
 
-    var RENDER = {today: today, market: market, global: globalMkt, macro: macro, sectors: sectors, momentum: momentum,
+    var RENDER = {today: today, market: market, global: globalMkt, trend: trend, macro: macro, sectors: sectors, momentum: momentum,
                   record: record, perf: perf, hold: hold, flows: flows};
 
     function show(sub) {

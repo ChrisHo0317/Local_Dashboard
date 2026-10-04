@@ -61,7 +61,10 @@ GROUPS = [
 ]
 RATE_ITEMS = {"美債2年", "美債10年", "10年−2年利差"}
 KEY_ITEMS = ["標普500", "那斯達克", "費城半導體", "台積電ADR", "輝達", "標普期貨",
-             "VIX", "美元兌台幣", "美債10年", "WTI原油"]
+             "VIX", "美元兌台幣", "美債10年", "WTI原油", "DRAM DDR5", "比特幣"]
+# 首頁卡片才用、不在國際分組裡的項目：(名稱, 小數位數)
+KEY_ONLY = {"DRAM DDR5": 3, "比特幣": 0}
+DRAM_KEY = "DDR5 16Gb (2Gx8) 4800/5600"
 
 
 def _r(v, d=2):
@@ -94,6 +97,22 @@ def load_series() -> dict[str, pd.Series]:
         for name, g in gd.groupby("item", observed=True):
             s = g.set_index(pd.to_datetime(g["price_date"]))["price_usd"].astype(float)
             out[str(name)] = s[~s.index.duplicated(keep="last")].sort_index().dropna()
+    except Exception:
+        pass
+    try:
+        from btc_data import load_btc
+        b = load_btc()
+        g = b[b["item"] == "比特幣"]
+        s = g.set_index(pd.to_datetime(g["price_date"]))["price_usd"].astype(float)
+        out["比特幣"] = s[~s.index.duplicated(keep="last")].sort_index().dropna()
+    except Exception:
+        pass
+    try:
+        from dram_data import load_dram
+        d = load_dram()
+        g = d[d["item"] == DRAM_KEY]
+        s = g.set_index(pd.to_datetime(g["price_date"]))["avg_price"].astype(float)
+        out["DRAM DDR5"] = s[~s.index.duplicated(keep="last")].sort_index().dropna()
     except Exception:
         pass
     try:
@@ -190,6 +209,11 @@ def build() -> dict:
         if rows:
             groups.append({"name": gname, "note": note, "items": rows})
     flat = {r["name"]: r for g in groups for r in g["items"]}
+    for name, dec in KEY_ONLY.items():
+        s = series.get(name)
+        if s is not None and len(s):
+            flat[name] = {"name": name, "last": _r(s.iloc[-1], dec), "dec": dec, "unit": "%",
+                          "d1": _r(_change(s, 1, False)), "date": s.index[-1].strftime("%Y-%m-%d")}
     key = [{"name": n, "last": flat[n]["last"], "dec": flat[n]["dec"], "d1": flat[n]["d1"],
             "unit": flat[n]["unit"], "date": flat[n]["date"]} for n in KEY_ITEMS if n in flat]
     return {"asof": asof.strftime("%Y-%m-%d") if asof is not None else "",

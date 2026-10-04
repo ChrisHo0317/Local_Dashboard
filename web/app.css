@@ -737,6 +737,19 @@
   .ck-gl-n { flex:1; min-width:0; }
   .ck-gl-d { min-width:64px; text-align:right; }
   @media (max-width:600px) { .gl-wide { display:none; } }
+  /* 走勢（總覽子分頁） */
+  .tr-cards { display:grid; gap:8px; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); }
+  .tr-card { gap:3px; }
+  .tr-head { display:flex; justify-content:space-between; align-items:baseline; width:100%; margin-bottom:2px; }
+  .tr-tab { font-size:14px; font-weight:600; }
+  .tr-row { display:grid; grid-template-columns:minmax(52px, 1fr) auto 56px 52px; gap:6px; width:100%;
+            font-size:12px; align-items:baseline; }
+  .tr-name { color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tr-last { font-weight:600; text-align:right; }
+  .tr-chg { text-align:right; }
+  .tr-m { opacity:.75; }
+  .tr-chart .chart { height:520px; }
+  @media (max-width:820px) { .tr-chart .chart { height:460px; } }
   /* 總經 */
   .mc-cards { display:grid; gap:8px; grid-template-columns:repeat(auto-fill, minmax(168px, 1fr)); }
   .mc-card { display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left;

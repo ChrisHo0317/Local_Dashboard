@@ -20,6 +20,7 @@ SUBTABS = [
     ("today", "今日重點", "今日重點", "摘要、市場溫度、主流族群、自選股警示與市場數字"),
     ("market", "大盤", "大盤", "加權指數與法人買賣超（估算）"),
     ("global", "國際", "國際市場", "美股、期貨、亞股、供應鏈龍頭、原物料、匯率與美債，以及和台股的連動"),
+    ("trend", "走勢", "走勢圖", "DRAM、美債、黃金、BTC、美股、匯率：點卡片看完整走勢"),
     ("macro", "總經", "總經數據", "台灣景氣燈號、PMI、M1B／M2、外銷訂單，美國通膨與就業，經濟數據公布值"),
     ("sectors", "類股", "類股", "面積＝成交值，顏色＝所選區間的漲跌（紅漲綠跌）"),
     ("momentum", "強勢股", "強勢股", "哪些股票漲得越來越快：強度 × 加速度"),
@@ -57,6 +58,27 @@ def _range_chips(cls: str, default: int) -> str:
         for d, label in opts)
     return (f'    <div class="sq-range {cls}" role="group" aria-label="顯示區間">\n'
             f'{btns}    </div>\n')
+
+
+def _trend_pane(data) -> str:
+    """走勢：精簡卡片（intel.js 由 data/trend.json 畫）＋每個項目一個完整圖的容器（app.js 的 CHARTS 畫）。"""
+    members = (data or {}).get("trend") or []
+    boxes = "".join(
+        f'    <div class="tr-chart" data-key="{escape(m["id"])}" data-title="{escape(m["title"])}"'
+        f' data-meta="{escape(m["meta"])}" hidden>\n'
+        f'      <div class="chart" id="chart-{escape(m["id"])}"></div>\n'
+        f'      <div class="legend-bar" data-chart="{escape(m["id"])}"></div>\n'
+        f'    </div>\n'
+        for m in members)
+    return ('  <div class="subpanel ov" data-sub="trend" hidden>\n'
+            '    <p class="mo-explain">每個商品一張卡：最新值與日／週／月變化（殖利率是百分點）。'
+            '卡片每一列依序是最新值、日變化、近 20 筆（約一個月）變化；'
+            '點卡片在下方看完整走勢圖，可以縮放、切換型號或年期。</p>\n'
+            '    <div class="tr-cards"></div>\n'
+            '    <h3 class="sd-h tr-title"></h3>\n'
+            '    <p class="sd-note tr-meta"></p>\n'
+            f'{boxes}'
+            '  </div>')
 
 
 def panel_html(data) -> str:
@@ -125,6 +147,7 @@ def panel_html(data) -> str:
         '    <p class="sd-note">資料：Yahoo Finance（日收盤；期貨與匯率是最近一次更新）、美國財政部殖利率。'
         '各市場休市日不同，名稱下方的日期是該項目最新一筆的日期。</p>\n'
         '  </div>',
+        _trend_pane(data),
         '  <div class="subpanel ov" data-sub="macro" hidden>\n'
         '    <p class="ov-asof"></p>\n'
         '    <section class="ov-card mc-high"><h3>總經重點</h3><div class="ov-body"></div></section>\n'
