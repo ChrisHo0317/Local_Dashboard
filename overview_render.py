@@ -82,6 +82,7 @@ def _trend_pane(data) -> str:
 
 
 def panel_html(data) -> str:
+    """舊的「總覽」分頁（全部子分頁在一起）；現在由 layout_render 拆成今日、市場、選股。"""
     btns = []
     for i, (sid, label, title, meta) in enumerate(SUBTABS):
         btns.append(
@@ -91,7 +92,12 @@ def panel_html(data) -> str:
         )
     subtabs = ('  <div class="subtabs" role="tablist" aria-label="總覽子分頁">\n'
                + "\n".join(btns) + "\n  </div>")
-    panes = [
+    return subtabs + "\n" + "\n".join(panes(data))
+
+
+def panes(data) -> list[str]:
+    """每個子分頁的內容（第一個以外都帶 hidden），由 layout_render 分配到各個底部分頁。"""
+    return [
         '  <div class="subpanel ov" data-sub="today">\n'
         '    <p class="ov-asof"></p>\n'
         '    <section class="ck" aria-label="決策摘要">\n'
@@ -370,4 +376,4 @@ def panel_html(data) -> str:
         '    <div class="ichart ichart-sm" id="ov-futures"></div>\n'
         '  </div>',
     ]
-    return subtabs + "\n" + "\n".join(panes)
+

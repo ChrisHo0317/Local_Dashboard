@@ -235,10 +235,25 @@
   var openStock = function () {};
   var openScreen = function () {};
 
-  // ════════════════════ 總覽 ════════════════════
+  // 跳到某個子分頁（可能在別的底部分頁裡）：先切底部分頁，再點子分頁
+  function goSub(sub) {
+    var b = document.querySelector('.subtab[data-sub="' + sub + '"]');
+    if (!b) return;
+    var host = b.closest('.panel');
+    if (host && host.hidden && typeof selectTab === 'function') selectTab(host.id.replace('panel-', ''), true);
+    b.click();
+    window.scrollTo(0, 0);
+  }
+
+  // ════════════════════ 今日、市場、選股、我的持股 ════════════════════
+  // v0.3.063 起原本的「總覽」拆成三個底部分頁（我的持股在個股底下），程式共用這一段：
+  // 各子分頁依 data-sub 找面板（data-sub 全站唯一），panel 指 document 讓既有的查詢照舊。
   (function () {
-    var panel = document.getElementById('panel-overview');
-    if (!panel) return;
+    var HOSTS = ['today', 'market', 'picks', 'stock'].map(function (id) {
+      return document.getElementById('panel-' + id);
+    }).filter(Boolean);
+    if (!HOSTS.length) return;
+    var panel = document;
     var flowSide = 'fi';
 
     function load() { return getJSON('data/overview.json'); }
@@ -441,8 +456,7 @@
           rec.theme = g.group;
           rec.query = '';
           rec.date = null;
-          var tab = panel.querySelector('.subtab[data-sub="record"]');
-          if (tab) tab.click();
+          goSub('record');
         });
         box.appendChild(b);
       });
@@ -484,8 +498,7 @@
       var more = el('button', 'ck-more', '看訊號績效 ›');
       more.type = 'button';
       more.addEventListener('click', function () {
-        var tab = panel.querySelector('.subtab[data-sub="perf"]');
-        if (tab) tab.click();
+        goSub('perf');
       });
       box.appendChild(more);
     }
@@ -532,7 +545,7 @@
       if (h.method !== 'claude') box.appendChild(el('p', 'sd-note', '尚未設定 Claude，只有熱門排行。'));
       var more = el('button', 'ck-more', '看熱門新聞分析 ›（' + h.label + ' ' + h.generated.slice(5) + '）');
       more.type = 'button';
-      more.addEventListener('click', function () { if (typeof selectTab === 'function') selectTab('news', true); });
+      more.addEventListener('click', function () { goSub('hot'); });
       box.appendChild(more);
     }
 
@@ -554,10 +567,7 @@
       box.appendChild(ul);
       var more = el('button', 'ck-more', '看國際市場 ›' + (g.asof ? '（' + g.asof.slice(5) + '）' : ''));
       more.type = 'button';
-      more.addEventListener('click', function () {
-        var tab = panel.querySelector('.subtab[data-sub="global"]');
-        if (tab) { tab.click(); window.scrollTo(0, 0); }
-      });
+      more.addEventListener('click', function () { goSub('global'); });
       box.appendChild(more);
     }
 
@@ -3057,7 +3067,7 @@
 
     function show(sub) {
       if (!sub || !RENDER[sub]) return;
-      var pane = panel.querySelector('.subpanel[data-sub="' + sub + '"]');
+      var pane = document.querySelector('.subpanel[data-sub="' + sub + '"]');
       if (!shown(pane)) return;
       load().then(function (d) { return RENDER[sub](pane, d); })
         .then(function () { syncSticky(); })
@@ -3067,9 +3077,20 @@
         });
     }
 
-    onShow(panel, show);
-    window.addEventListener('dash-theme', function () { show(currentSub(panel)); });
-    show(currentSub(panel));
+    // 沒有子分頁的分頁（今日）就是第一個面板
+    function subOf(host) {
+      var s = currentSub(host);
+      if (s) return s;
+      var first = host.querySelector('.subpanel');
+      return first ? first.dataset.sub : null;
+    }
+    HOSTS.forEach(function (host) {
+      onShow(host, function () { show(subOf(host)); });
+    });
+    window.addEventListener('dash-theme', function () {
+      HOSTS.forEach(function (host) { if (!host.hidden) show(subOf(host)); });
+    });
+    HOSTS.forEach(function (host) { if (!host.hidden) show(subOf(host)); });
   })();
 
   // ════════════════════ 個股深度頁 ════════════════════
@@ -3462,7 +3483,7 @@
 
   // ════════════════════ 選股 ════════════════════
   (function () {
-    var panel = document.getElementById('panel-stock');
+    var panel = document.getElementById('panel-picks');
     if (!panel) return;
     var pane = panel.querySelector('.subpanel[data-sub="screen"]');
     if (!pane) return;
@@ -3568,7 +3589,7 @@
     }
 
     openScreen = function (id) {
-      if (document.getElementById('panel-stock').hidden) selectTab('stock', true);
+      if (document.getElementById('panel-picks').hidden) selectTab('picks', true);
       var sub = panel.querySelector('.subtab[data-sub="screen"]');
       if (sub && sub.getAttribute('aria-selected') !== 'true') sub.click();
       setTimeout(function () {

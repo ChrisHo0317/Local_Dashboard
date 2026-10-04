@@ -320,9 +320,12 @@ function selectTab(name, animate) {
     var panel = document.getElementById('panel-' + t.dataset.tab);
     if (panel) panel.hidden = !on;
   });
+  var gear = document.getElementById('settings-btn');
+  if (gear) gear.setAttribute('aria-pressed', String(name === 'settings'));
+  setMetaOpen(false);
   var h = HEAD[name];
   document.getElementById('page-title').textContent = h.title;
-  document.getElementById('page-meta').innerHTML = h.meta;
+  document.getElementById('page-meta-text').innerHTML = h.meta;
   // 有二階分頁的話，回到主分頁時重設回第一個子分頁
   var panel = document.getElementById('panel-' + name);
   var firstSub = panel ? panel.querySelector('.subtab') : null;
@@ -341,6 +344,26 @@ function selectTab(name, animate) {
 tabs.forEach(function (t) {
   t.addEventListener('click', function () { selectTab(t.dataset.tab, true); });
 });
+
+// 頁首右上角的齒輪：設定不佔底部標籤列
+(function () {
+  var gear = document.getElementById('settings-btn');
+  if (gear) gear.addEventListener('click', function () { selectTab('settings', true); });
+})();
+
+// 頁首的 ⓘ：手機上說明文字預設收起，點了才展開（電腦版一直顯示，按鈕隱藏）
+function setMetaOpen(open) {
+  document.body.classList.toggle('meta-open', open);
+  var b = document.getElementById('meta-btn');
+  if (b) b.setAttribute('aria-expanded', String(open));
+}
+(function () {
+  var b = document.getElementById('meta-btn');
+  if (b) b.addEventListener('click', function () {
+    setMetaOpen(!document.body.classList.contains('meta-open'));
+    syncSticky();
+  });
+})();
 
 window.addEventListener('resize', function () {
   var cur = tabs.filter(function (t) { return t.getAttribute('aria-selected') === 'true'; })[0];
@@ -361,6 +384,9 @@ function loadGroups() {
   var saved = null;
   try { saved = JSON.parse(localStorage.getItem(GROUP_KEY)); } catch (e) { saved = null; }
   var list = (saved && Array.isArray(saved.groups)) ? saved.groups : null;
+  if (list && list.some(function (g) { return g && Array.isArray(g.tabs) && g.tabs.indexOf('overview') >= 0; })) {
+    list = null;   // v0.3.063 把總覽拆成今日、市場、選股，舊的排序已經不適用
+  }
   if (!list) list = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
 
   // 只留下真的存在的分頁，並確保每個分頁都有歸屬 ——
@@ -1178,7 +1204,7 @@ function initCalendarTable(table) {
       var src = target || subtab;
       if (src) {
         document.getElementById('page-title').textContent = src.dataset.title;
-        document.getElementById('page-meta').innerHTML = src.dataset.meta;
+        document.getElementById('page-meta-text').innerHTML = src.dataset.meta;
       }
       window.scrollTo(0, 0);
       syncSticky();
@@ -1232,7 +1258,7 @@ function activateCharts(container) {
 function setHead(el) {
   if (!el || !el.dataset.title) return;
   document.getElementById('page-title').textContent = el.dataset.title;
-  document.getElementById('page-meta').innerHTML = el.dataset.meta || '';
+  document.getElementById('page-meta-text').innerHTML = el.dataset.meta || '';
 }
 
 function initTabGroup(bar, tabClass, panelClass, dataKey) {
@@ -1288,9 +1314,16 @@ function loadBodies(sourceId) {
   return newsPending[sourceId];
 }
 
+// 新聞清單所在的面板對應的分頁鈕（子分頁或孫分頁）
+function newsTab(panel) {
+  return panel.dataset.grand
+    ? document.querySelector('.grandtab[data-grand="' + panel.dataset.grand + '"]')
+    : document.querySelector('.subtab[data-sub="' + panel.dataset.sub + '"]');
+}
+
 function initNewsPanel(panel) {
   var list = panel.querySelector('.news-list');
-  var sourceId = panel.dataset.sub;
+  var sourceId = panel.dataset.sub || panel.dataset.grand;
   var article = panel.querySelector('.news-article');
   var box = article.querySelector('.news-body');
 
@@ -1385,7 +1418,7 @@ function initNewsPanel(panel) {
   }
 
   // 切走再回來時回到清單，不要停在上次看的那一篇
-  var subtab = document.querySelector('.subtab[data-sub="' + sourceId + '"]');
+  var subtab = newsTab(panel);
   if (subtab) subtab.addEventListener('click', function () { show(null); });
 }
 
@@ -1417,9 +1450,10 @@ function newsItem(r) {
   return li;
 }
 
-Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(function (panel) {
+Array.prototype.slice.call(document.querySelectorAll('.subpanel, .grandpanel')).forEach(function (panel) {
   var list = panel.querySelector('.news-list');
   if (!list) return;
+  if (panel.classList.contains('subpanel') && panel.querySelector('.grandpanel')) return;
   if (!list.dataset.list) { initNewsPanel(panel); return; }
   var started = false;
   function start() {
@@ -1442,8 +1476,14 @@ Array.prototype.slice.call(document.querySelectorAll('.subpanel')).forEach(funct
       list.appendChild(li);
     });
   }
-  var subtab = document.querySelector('.subtab[data-sub="' + panel.dataset.sub + '"]');
+  var subtab = newsTab(panel);
   if (subtab) subtab.addEventListener('click', start);
+  // 孫分頁：點「各家新聞」時，目前選著的那個來源也要開始載
+  if (panel.dataset.grand) {
+    var host = panel.closest('.subpanel');
+    var hostTab = host && document.querySelector('.subtab[data-sub="' + host.dataset.sub + '"]');
+    if (hostTab) hostTab.addEventListener('click', function () { if (!panel.hidden) start(); });
+  }
 });
 
 // ── 筆記：存在 localStorage，不上傳 ─────────────────────────

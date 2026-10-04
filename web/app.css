@@ -24,23 +24,32 @@
   /* 標題釘選在畫面上方。上方的安全區留白移到 header 自己身上，
      否則捲動後 .wrap 的 padding 跟著捲走，標題會貼到瀏海。 */
   header { position:sticky; top:0; z-index:40; background:var(--bg);
-           display:flex; gap:16px; align-items:flex-start; justify-content:space-between;
-           padding:calc(18px + env(safe-area-inset-top)) 0 12px;
+           display:flex; flex-wrap:wrap; gap:4px 12px; align-items:center; justify-content:space-between;
+           padding:calc(12px + env(safe-area-inset-top)) 0 10px;
            transition:padding .18s, box-shadow .18s; }
-  body.scrolled header { padding-top:calc(9px + env(safe-area-inset-top)); padding-bottom:9px;
+  body.scrolled header { padding-top:calc(8px + env(safe-area-inset-top)); padding-bottom:8px;
                          box-shadow:0 1px 0 var(--border); }
-  /* 捲動後收起說明文字，只留標題，才不會吃掉太多畫面 */
-  #page-meta { overflow:hidden; max-height:64px; opacity:1;
+  /* 說明文字：電腦版在標題下面一列，捲動後收起；手機預設收起，點 ⓘ 才展開 */
+  #page-meta { flex-basis:100%; order:3; overflow:hidden; max-height:64px; opacity:1;
                transition:max-height .18s, opacity .18s; }
   body.scrolled #page-meta { max-height:0; opacity:0; }
-  h1 { font-size:20px; margin:0; font-weight:600; }
+  #page-meta .ver { margin-left:8px; font-size:11px; }
+  .info-btn { width:22px; height:22px; border-radius:50%; font-size:12px; font-weight:700;
+              font-style:italic; font-family:Georgia, "Times New Roman", serif; display:none; flex:none; }
+  .info-btn[aria-expanded="true"] { color:var(--fg); border-color:var(--fg); }
+  #settings-btn[aria-pressed="true"] { color:var(--accent); border-color:var(--accent); }
+  @media (max-width:820px) {
+    .info-btn { display:inline-flex; }
+    #page-meta { max-height:0; opacity:0; }
+    body.meta-open #page-meta, body.scrolled.meta-open #page-meta { max-height:120px; opacity:1; }
+  }
+  h1 { font-size:20px; margin:0; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .meta { font-size:12px; color:var(--muted); line-height:1.55; }
-  /* 說明文字靠右上，標題那一側才不會被長長的來源說明推下去 */
-  .head-right { display:flex; flex-direction:column; align-items:flex-end; gap:2px;
-                text-align:right; max-width:58%; padding-top:2px; }
+  /* 右邊：分組切換（財經／個人追蹤）＋設定齒輪 */
+  .head-right { display:flex; align-items:center; gap:8px; flex:none; }
   /* 看內文時標題列左邊出現返回鍵；標題列本身是 sticky，捲到哪都按得到 */
-  .head-left { display:flex; gap:8px; align-items:flex-start; min-width:0; }
-  .backbtn { flex:none; margin:-4px 0 0 -6px; padding:4px 6px; border-radius:8px;
+  .head-left { display:flex; gap:8px; align-items:center; min-width:0; flex:1; }
+  .backbtn { flex:none; margin:0 0 0 -6px; padding:4px 6px; border-radius:8px;
              color:var(--muted); border-color:transparent; background:transparent; }
   .backbtn:hover { color:var(--fg); }
   .backbtn svg { width:22px; height:22px; display:block; }
@@ -239,13 +248,13 @@
   .cmd-dots i { width:5px; height:5px; margin:0; }
 
   /* 分類切換：底部標籤列一次只顯示一組分頁 */
-  .groupbar { position:relative; display:flex; gap:4px; margin:0 0 16px;
-              padding:4px; border-radius:999px; background:var(--pill); width:max-content; }
-  .grp { position:relative; z-index:1; font-size:13px; font-weight:600; min-width:74px;
-         padding:6px 16px; border-radius:999px; color:var(--muted); border-color:transparent;
-         background:transparent; }
+  .groupbar { position:relative; display:flex; gap:2px; margin:0;
+              padding:3px; border-radius:999px; background:var(--pill); width:max-content; }
+  .grp { position:relative; z-index:1; font-size:12px; font-weight:600; min-width:0;
+         padding:4px 10px; border-radius:999px; color:var(--muted); border-color:transparent;
+         background:transparent; white-space:nowrap; }
   .grp[aria-selected="true"] { color:var(--fg); }
-  .grp-pill { position:absolute; top:4px; bottom:4px; left:0; width:0; border-radius:999px;
+  .grp-pill { position:absolute; top:3px; bottom:3px; left:0; width:0; border-radius:999px;
               background:var(--bg); box-shadow:0 1px 3px rgba(0,0,0,.12);
               transition:transform .22s cubic-bezier(.4,0,.2,1), width .22s cubic-bezier(.4,0,.2,1); }
   .grp-pill.no-anim { transition:none; }

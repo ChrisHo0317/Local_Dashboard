@@ -33,6 +33,7 @@ from pathlib import Path
 import plotly.io as pio
 
 import intel_build
+import layout_render
 import trend_cards
 from bond_data import CSV_PATH as BOND_CSV, latest_date as bond_latest, load_bonds
 from btc_data import CSV_PATH as BTC_CSV, latest_date as btc_latest, load_btc
@@ -151,21 +152,31 @@ TREND_CHARTS = [
     },
 ]
 
+_INTEL: dict = {}
+
+
+def _intel() -> dict:
+    """情報中心的資料（intel_build.build）只產生一次，今日、市場、選股三個分頁共用。"""
+    if "d" not in _INTEL:
+        _INTEL["d"] = intel_build.build(SITE_DIR)
+    return _INTEL["d"]
+
+
 # 圖表分頁定義。新增一組資料只要在這裡加一筆。
 PANELS = [
     {
-        "id": "overview",
+        "id": "today",
         "group": "finance",
         "kind": "calendar",
-        "tab": "總覽",
+        "tab": "今日",
         "title": "今日重點",
         "meta": OVERVIEW_META,
         "source_name": "證交所、櫃買中心",
         "source_url": "https://www.twse.com.tw/",
         "csv": None,
-        # 產生情報中心的資料，回傳設定頁要用的摘要
-        "load": lambda: intel_build.build(SITE_DIR),
-        "render": overview_panel_html,
+        # 產生情報中心的資料（市場、選股、個股也用同一份），回傳設定頁要用的摘要
+        "load": lambda: _intel(),
+        "render": layout_render.today_html,
         "stats": overview_stats,
         # 儀表圖示
         "icon": '<path d="M4.5 16.5a7.5 7.5 0 1 1 15 0"/>'
@@ -174,25 +185,41 @@ PANELS = [
                 '<line x1="4" y1="20" x2="20" y2="20"/>',
     },
     {
-        "id": "calendar",
+        "id": "market",
         "group": "finance",
         "kind": "calendar",
-        "tab": "行事曆",
-        "title": "財經行事曆",
-        "meta": "資料來源：FXStreet、證交所、櫃買中心　·　中／高影響總經事件與台股事件"
-                "　·　時間為台北時間（UTC+8）",
-        "source_name": "FXStreet",
-        "source_url": "https://www.fxstreet.com/economic-calendar",
-        "csv": CAL_CSV,
-        # 總經事件＋台股事件（自選股除權息、營收公布截止日）
-        "load": lambda: with_tw_events(load_events()),
-        "render": cal_panel_html,
-        "stats": cal_stats,
-        # 月曆圖示
-        "icon": '<rect x="3" y="4.5" width="18" height="16" rx="2.5"/>'
-                '<line x1="3" y1="9.5" x2="21" y2="9.5"/>'
-                '<line x1="8" y1="2.5" x2="8" y2="6.5"/>'
-                '<line x1="16" y1="2.5" x2="16" y2="6.5"/>',
+        "tab": "市場",
+        "title": "台股大盤",
+        "meta": "加權指數、法人買賣超與融資維持率",
+        "source_name": "證交所、櫃買中心、Yahoo Finance、國發會、FRED",
+        "source_url": "https://www.twse.com.tw/",
+        "csv": None,
+        "load": lambda: _intel(),
+        "render": layout_render.market_html,
+        "stats": layout_render.market_stats,
+        # 折線圖示
+        "icon": '<path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21"/>'
+                '<path d="M7 15l3.5-4 3 2.5L20 7"/>'
+                '<circle cx="20" cy="7" r="1.4" fill="currentColor" stroke="none"/>',
+    },
+    {
+        "id": "picks",
+        "group": "finance",
+        "kind": "calendar",
+        "tab": "選股",
+        "title": "強勢股",
+        "meta": "哪些股票漲得越來越快：強度 × 加速度",
+        "source_name": "證交所、櫃買中心",
+        "source_url": "https://www.twse.com.tw/",
+        "csv": None,
+        "load": lambda: _intel(),
+        "render": layout_render.picks_html,
+        "stats": layout_render.picks_stats,
+        # 火焰（強勢）圖示
+        "icon": '<path d="M12 21c-3.6 0-6.5-2.6-6.5-6.2 0-3.4 2.4-5.4 3.6-7.8.3 1.9 1.3 3 2.4 3.6'
+                '-.2-3.2 1.1-6.1 3.5-8.1.2 3.1 3.5 5.6 3.5 10.9 0 4.2-2.9 7.6-6.5 7.6z"/>'
+                '<path d="M12 21c-1.5 0-2.7-1.2-2.7-2.9 0-1.8 1.4-2.7 2.1-4 .9 1.4 3.3 2.2 3.3 4.2'
+                ' 0 1.6-1.2 2.7-2.7 2.7z"/>',
     },
     {
         "id": "f1",
@@ -234,26 +261,6 @@ PANELS = [
                 '<path d="M10.6 20.2 12 22.5l1.4-2.3"/>',
     },
     {
-        "id": "news",
-        "group": "finance",
-        "kind": "calendar",
-        "tab": "新聞",
-        "title": "新聞",
-        "meta": "資料來源：各新聞網站　·　點標題可看內文",
-        "source_name": "各新聞網站",
-        "source_url": "https://technews.tw/",
-        "csv": NEWS_CSV,
-        "load": load_news_all,
-        "render": news_panel_html,
-        "stats": news_stats,
-        # 報紙圖示
-        "icon": '<path d="M4 5.5h13v13H4z"/>'
-                '<path d="M17 9h3v7.5a2 2 0 0 1-2 2H4"/>'
-                '<line x1="7" y1="9" x2="14" y2="9"/>'
-                '<line x1="7" y1="12" x2="14" y2="12"/>'
-                '<line x1="7" y1="15" x2="11" y2="15"/>',
-    },
-    {
         "id": "stock",
         "group": "finance",
         "kind": "calendar",
@@ -264,12 +271,33 @@ PANELS = [
         "source_url": "https://mops.twse.com.tw/mops/#/web/home",
         "csv": STOCK_CSVS["revenue"],
         "load": load_stock_all,
-        "render": stock_panel_html,
+        "render": layout_render.stock_html,
         "stats": stock_stats,
         # 放大鏡加一段走勢
         "icon": '<circle cx="10.5" cy="10.5" r="6.5"/>'
                 '<line x1="15.4" y1="15.4" x2="20.5" y2="20.5"/>'
                 '<polyline points="7.6 12.2 9.6 9.6 11.6 11.2 13.6 8"/>',
+    },
+    {
+        "id": "info",
+        "group": "finance",
+        "kind": "calendar",
+        "tab": "資訊",
+        "title": "熱門新聞分析",
+        "meta": "新聞、熱門分析與財經行事曆",
+        "source_name": "各新聞網站、FXStreet",
+        "source_url": "https://www.fxstreet.com/economic-calendar",
+        "csv": NEWS_CSV,
+        # 新聞＋行事曆（總經事件＋台股事件）
+        "load": lambda: {"news": load_news_all(), "cal": with_tw_events(load_events())},
+        "render": layout_render.info_html,
+        "stats": layout_render.info_stats,
+        # 報紙圖示
+        "icon": '<path d="M4 5.5h13v13H4z"/>'
+                '<path d="M17 9h3v7.5a2 2 0 0 1-2 2H4"/>'
+                '<line x1="7" y1="9" x2="14" y2="9"/>'
+                '<line x1="7" y1="12" x2="14" y2="12"/>'
+                '<line x1="7" y1="15" x2="11" y2="15"/>',
     },
     {
         "id": "notes",
@@ -345,7 +373,8 @@ def _tab_button(tab_id: str, label: str, icon: str, selected: bool,
 def _tabbar_html() -> str:
     btns = [_tab_button(p["id"], p["tab"], p["icon"], i == 0, p.get("group", "all"))
             for i, p in enumerate(PANELS)]
-    btns.append(_tab_button("settings", "設定", SETTINGS_ICON, False))
+    btns.append(_tab_button("settings", "設定", SETTINGS_ICON, False).replace(
+        'class="tab"', 'class="tab" hidden', 1))
     return ('<nav class="tabbar" role="tablist" aria-label="主要分頁">\n'
             '    <span class="tab-pill" id="tab-pill" aria-hidden="true"></span>\n'
             + "\n".join(btns) + "\n  </nav>")
@@ -452,7 +481,7 @@ def _trend_settings_card(p: dict, stats: dict, switch: bool = True) -> str:
     </div>'''
 
 
-TREND_CARD = {"id": "trend", "tab": "總覽 › 走勢", "members": TREND_CHARTS}
+TREND_CARD = {"id": "trend", "tab": "市場 › 走勢", "members": TREND_CHARTS}
 
 
 def _settings_cards(stats: dict) -> str:
@@ -461,9 +490,6 @@ def _settings_cards(stats: dict) -> str:
         if p.get("kind") == "chartgroup":
             cards.append(_trend_settings_card(p, stats))
             continue
-        if p["id"] == "overview":
-            # 走勢圖嵌在總覽裡，資料卡片接在總覽後面
-            cards.append(_trend_settings_card(TREND_CARD, stats, switch=False))
         s = stats[p["id"]]
         if s.get("local"):
             # 筆記存在讀者自己的瀏覽器，建置時沒有任何數字可寫；
@@ -534,6 +560,9 @@ def _settings_cards(stats: dict) -> str:
         <a href="{p["source_url"]}" target="_blank" rel="noopener">{p["source_name"]}</a></div>
       </div>
     </div>''')
+    # 走勢圖嵌在市場分頁裡，資料卡片接在市場後面
+    at = next((i + 1 for i, c in enumerate(cards) if 'data-card="market"' in c), len(cards))
+    cards.insert(at, _trend_settings_card(TREND_CARD, stats, switch=False))
     return "\n\n".join(cards)
 
 
@@ -574,16 +603,21 @@ TPL = """<!doctype html>
         </svg>
       </button>
       <h1 id="page-title">__TITLE0__</h1>
+      <button id="meta-btn" class="iconbtn info-btn" type="button" aria-expanded="false"
+              aria-controls="page-meta" aria-label="這一頁的說明">i</button>
     </div>
     <div class="head-right">
-      <div class="meta" id="page-meta">__META0__</div>
-      <span class="ver">__VERSION__</span>
+      __GROUPBAR__
+      <button id="settings-btn" class="iconbtn" type="button" aria-label="設定" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">__SETTINGS_ICON__</svg>
+      </button>
     </div>
+    <div class="meta" id="page-meta"><span id="page-meta-text">__META0__</span>
+      <span class="ver">__VERSION__</span></div>
   </header>
 
   <div class="ptr" id="ptr" aria-hidden="true"><span class="ptr-box"></span></div>
-
-  __GROUPBAR__
 
 __CHART_PANELS__
 
@@ -755,8 +789,8 @@ def build() -> Path:
     (SITE_DIR / "data" / "trend.json").write_text(
         json.dumps(trend_cards.build(TREND_CHARTS, frames), ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8")
-    if isinstance(panel_data.get("overview"), dict):
-        panel_data["overview"]["trend"] = [
+    if isinstance(panel_data.get("market"), dict):
+        panel_data["market"]["trend"] = [
             {"id": m["id"], "tab": m["tab"], "title": head[m["id"]]["title"], "meta": head[m["id"]]["meta"]}
             for m in TREND_CHARTS]
 
@@ -773,6 +807,7 @@ def build() -> Path:
            .replace("__CHART_PANELS__", _panels_html(panel_data, head))
            .replace("__SETTINGS_CARDS__", _settings_cards(stats))
            .replace("__TABBAR__", _tabbar_html())
+           .replace("__SETTINGS_ICON__", SETTINGS_ICON)
            .replace("__CHARTS__", json.dumps(_write_charts(charts), ensure_ascii=False,
                                              separators=(",", ":")))
            .replace("__HEAD__", json.dumps(head, ensure_ascii=False))
@@ -788,7 +823,7 @@ def build() -> Path:
     html = re.sub(r"\n[ \t]+", "\n", html)
     OUTPUT.write_text(html, encoding="utf-8")
     _copy_web()
-    _write_news_bodies(panel_data.get("news", {}))
+    _write_news_bodies((panel_data.get("info") or {}).get("news", {}))
     _write_stock_data(panel_data.get("stock", {}))
     return OUTPUT
 
