@@ -1,0 +1,67 @@
+name: Deploy intraday worker
+
+# 盤中強勢族群的 Cloudflare Worker（intraday/）。改了 intraday/ 就自動重新部署，也可以手動執行。
+# 需要的 GitHub Secrets（沒設定就只跑測試、不部署）：
+#   CLOUDFLARE_API_TOKEN    Cloudflare 的 API token（範本「Edit Cloudflare Workers」）
+#   CLOUDFLARE_ACCOUNT_ID   Cloudflare 帳號 ID
+#   INTRADAY_ACCESS_CODE    自己決定的存取碼（網站設定頁要填同一組）
+#   BARK_KEY                選填：有的話盤中新族群衝進前 3 名會推播
+on:
+  push:
+    branches: [main]
+    paths: ["intraday/**", ".github/workflows/intraday.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ACCESS_CODE: ${{ secrets.INTRADAY_ACCESS_CODE }}
+      BARK_KEY: ${{ secrets.BARK_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Test
+        run: node intraday/test_core.js
+
+      - name: Check secrets
+        id: chk
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$ACCESS_CODE" ]; then
+            echo "::notice::還沒設定 CLOUDFLARE_API_TOKEN、CLOUDFLARE_ACCOUNT_ID、INTRADAY_ACCESS_CODE，只跑測試、不部署"
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: KV namespace
+        # 找名稱是 local-dash-intraday 的 KV 空間，沒有就建一個，把 id 填進 wrangler.toml
+        if: steps.chk.outputs.skip != '1'
+        run: |
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces"
+          id=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api?per_page=100" \
+               | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const r=JSON.parse(s).result||[];const n=r.find(x=>x.title==='local-dash-intraday');process.stdout.write(n?n.id:'')})")
+          if [ -z "$id" ]; then
+            id=$(curl -fsS -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
+                 --data '{"title":"local-dash-intraday"}' "$api" \
+                 | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).result.id))")
+            echo "建立 KV 空間 $id"
+          fi
+          sed -i "s/__KV_ID__/$id/" intraday/wrangler.toml
+
+      - name: Deploy
+        if: steps.chk.outputs.skip != '1'
+        working-directory: intraday
+        run: |
+          npx -y wrangler@3 deploy 2>&1 | tee deploy.log
+          echo "$ACCESS_CODE" | npx -y wrangler@3 secret put ACCESS_CODE
+          if [ -n "$BARK_KEY" ]; then echo "$BARK_KEY" | npx -y wrangler@3 secret put BARK_KEY; fi
+          url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)
+          echo "::notice::盤中服務網址：${url:-（請到 Cloudflare 後台 Workers 查看）}　把它填到網站設定頁，以及 GitHub Secret INTRADAY_URL"

@@ -24,11 +24,14 @@ import stock_render
 
 # 原本總覽子分頁的頁面標題與說明（id → (標題, 說明)）
 _OV = {sid: (title, meta) for sid, _label, title, meta in overview_render.SUBTABS}
+_OV["live"] = ("盤中強勢族群", "開盤後每分鐘更新：當日強勢族群與連動個股")
 _ST = {sid: (title, meta) for sid, _label, title, meta in stock_render.SUBTABS}
 
 # 各分頁的子分頁：(id, 標籤)
 MARKET = [("market", "台股"), ("sectors", "類股"), ("flows", "籌碼"), ("global", "國際"),
-          ("trend", "走勢"), ("macro", "總經")]
+          ("trend", "走勢"), ("macro", "總經"), ("live", "盤中")]
+# 盤中：設定好盤中服務才顯示（intraday.js 會把它移到第一個）
+HIDDEN_SUBS = {"live"}
 PICKS = [("momentum", "強勢股"), ("record", "強勢紀錄"), ("screen", "條件選股"), ("perf", "訊號績效")]
 STOCK = [("query", "查詢"), ("hold", "我的持股"), ("revenue", "營收"), ("announce", "重訊"),
          ("income", "財報")]
@@ -56,7 +59,8 @@ def _bar(items: list[tuple], meta: dict, label: str) -> str:
         title, desc = meta.get(sid, (text, ""))
         btns.append(f'      <button type="button" class="subtab" data-sub="{sid}"'
                     f' data-title="{escape(title)}" data-meta="{escape(desc)}"'
-                    f' aria-selected="{"true" if i == 0 else "false"}">{escape(text)}</button>')
+                    f' aria-selected="{"true" if i == 0 else "false"}"'
+                    f'{" hidden" if sid in HIDDEN_SUBS else ""}>{escape(text)}</button>')
     return (f'  <div class="subtabs" role="tablist" aria-label="{escape(label)}">\n'
             + "\n".join(btns) + "\n  </div>")
 

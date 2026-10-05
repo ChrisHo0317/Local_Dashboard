@@ -1,0 +1,6 @@
+{
+  "name": "local-dash-intraday",
+  "private": true,
+  "type": "module",
+  "description": "盤中強勢族群：Cloudflare Worker（每分鐘收證交所即時行情）與共用計算"
+}

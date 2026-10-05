@@ -1,0 +1,17 @@
+# 盤中強勢族群的 Cloudflare Worker。部署由 .github/workflows/intraday.yml 負責：
+# 它會自動建立（或找到）KV 空間，把下面的 __KV_ID__ 換成真正的 id，再部署並設定密鑰。
+name = "local-dash-intraday"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# UTC 01:00～05:59，週一到週五（台北 09:00～13:59）；程式裡只收 09:00～13:33
+[triggers]
+crons = ["* 1-5 * * 1-5"]
+
+[[kv_namespaces]]
+binding = "KV"
+id = "__KV_ID__"
+
+[vars]
+UNIVERSE_URL = "https://chrisho0317.github.io/Local_Dashboard/data/intraday_universe.json"
+SITE_URL = "https://chrisho0317.github.io/Local_Dashboard/"

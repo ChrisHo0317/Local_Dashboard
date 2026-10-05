@@ -83,6 +83,14 @@ jobs:
           ALERTS_ENABLED: ${{ vars.ALERTS_ENABLED }}
         run: python quality.py
 
+      - name: Intraday archive
+        # 盤中強勢族群：收盤後把當天的族群排行存進 data/intraday/（沒設定盤中服務就自動略過）
+        if: github.event.schedule == '30 9 * * 1-5' || github.event.schedule == '40 13 * * 1-5'
+        env:
+          INTRADAY_URL: ${{ secrets.INTRADAY_URL }}
+          INTRADAY_ACCESS_CODE: ${{ secrets.INTRADAY_ACCESS_CODE }}
+        run: node intraday/archive.js
+
       - name: Commit if changed
         id: commit
         run: |

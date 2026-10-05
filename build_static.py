@@ -632,6 +632,17 @@ __CHART_PANELS__
     </div>
 
     <div class="card">
+      <div class="card-h">盤中服務</div>
+      <p class="note">盤中強勢族群的資料來自你自己的 Cloudflare Worker（證交所即時行情不能公開轉載，所以要存取碼）。
+        網址與存取碼只存在這台裝置；換裝置要再填一次。兩欄都清空再按儲存就是關閉。</p>
+      <label class="live-field"><span>盤中服務網址</span>
+        <input id="live-url" type="url" inputmode="url" autocomplete="off" placeholder="https://local-dash-intraday.你的名稱.workers.dev"></label>
+      <label class="live-field"><span>存取碼</span>
+        <input id="live-code" type="password" autocomplete="off"></label>
+      <div class="row"><button type="button" class="chip" id="live-save">儲存並測試</button><span class="note" id="live-msg"></span></div>
+    </div>
+
+    <div class="card">
       <div class="card-h">分類</div>
       <p class="note">長按 ≡ 可以把分頁拖到別的分組，或調整組內順序。</p>
       <div id="group-editor"></div>
@@ -666,6 +677,7 @@ const VERSION = '__VERSION__';
 </script>
 <script src="app.js?v=__VERSION__"></script>
 <script src="intel.js?v=__VERSION__"></script>
+<script type="module" src="intraday.js?v=__VERSION__"></script>
 </body>
 </html>
 """
@@ -709,11 +721,19 @@ def _write_charts(charts: dict) -> dict:
 
 
 def _copy_web() -> None:
-    """web/ 底下的樣式、程式、圖示原樣複製到輸出目錄。"""
+    """web/ 底下的樣式、程式、圖示原樣複製到輸出目錄；盤中族群的共用計算（intraday/core.js）
+    複製成 intraday_core.js，intraday.js 匯入它時帶上版本號，避免手機用到舊的快取。"""
     SITE_DIR.mkdir(parents=True, exist_ok=True)
     for src in WEB_DIR.iterdir():
         if src.is_file():
             shutil.copy2(src, SITE_DIR / src.name)
+    core = BASE_DIR / "intraday" / "core.js"
+    if core.exists():
+        shutil.copy2(core, SITE_DIR / "intraday_core.js")
+        live = SITE_DIR / "intraday.js"
+        if live.exists():
+            live.write_text(live.read_text(encoding="utf-8").replace(
+                "'./intraday_core.js'", f"'./intraday_core.js?v={__version__}'"), encoding="utf-8")
 
 
 def build() -> Path:

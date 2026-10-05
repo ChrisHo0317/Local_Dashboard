@@ -102,6 +102,7 @@ def panes(data) -> list[str]:
         '    <p class="ov-asof"></p>\n'
         # 今日：結論、溫度、今天要注意、主流族群、市場數字、國際、新聞；
         # 手機一欄，900px 以上兩欄、1200px 以上三欄（td-grid 的 grid-template-areas）
+        '    <section class="ov-card td-live" hidden></section>\n'
         '    <div class="td-grid">\n'
         '      <div class="ck-digest ov-card td-a"></div>\n'
         '      <div class="ck-temp ov-card td-b">\n'
@@ -154,6 +155,13 @@ def panes(data) -> list[str]:
         '各市場休市日不同，名稱下方的日期是該項目最新一筆的日期。</p>\n'
         '  </div>',
         _trend_pane(data),
+        '  <div class="subpanel ov" data-sub="live" hidden>\n'
+        '    <p class="mo-explain">開盤後每分鐘更新：族群強度依漲幅、上漲比例、漲 3% 以上的強勢成員數、量比；'
+        '至少 3 檔強勢成員才算強勢族群。成員重疊太多的族群只留一個（「亦屬」）。<b>延續</b>＝昨天強勢紀錄也有；'
+        '<b>新進</b>＝今天才出現；<b>轉強</b>＝近 30 分鐘排名上升 5 名以上。點族群看連動個股。'
+        '資料來自你自己的盤中服務（證交所即時行情，只在這台裝置顯示）。</p>\n'
+        '    <div class="lv-body"></div>\n'
+        '  </div>',
         '  <div class="subpanel ov" data-sub="macro" hidden>\n'
         '    <p class="ov-asof"></p>\n'
         '    <section class="ov-card mc-high"><h3>總經重點</h3><div class="ov-body"></div></section>\n'

@@ -40,6 +40,7 @@ import earnings_calls
 import global_market
 import index_events
 import industry_chain
+import intraday_universe
 import macro_data
 import qfii_data
 
@@ -814,6 +815,9 @@ def build(out_dir: Path) -> dict:
         if not chain_tags.empty else {}
     chain_of_tag = dict(zip(chain_tags["tag"], chain_tags["chain"])) if not chain_tags.empty else {}
     _dump(industry_chain.site_json(chain_tags, chain_primary, in_panel), data_dir / "chains.json")
+    # 盤中強勢族群的今日名單（Cloudflare Worker 每天第一次執行時讀）
+    _dump(intraday_universe.build(panel, master, watch_codes, chain_tags, load_strong_history()),
+          data_dir / "intraday_universe.json")
     shards = write_stock_shards(data_dir, panel, master, pe, tdcc, exdiv, flags)
 
     results = signals.run(panel, load_revenue(), pe, tdcc, master)

@@ -276,6 +276,10 @@
     return svg;
   }
 
+  // 盤中族群（intraday.js，另一個 module）要用的小工具
+  window.DashUI = {el: el, fmt: fmt, signed: signed, dir: dir, md: md, sparkSvg: sparkSvg,
+                   goSub: function (s) { goSub(s); }, openStock: function (c) { openStock(c); }};
+
   // ── 跳到某一檔的深度頁（總覽、選股、推播網址都會用到）─────────
   var openStock = function () {};
   var openScreen = function () {};

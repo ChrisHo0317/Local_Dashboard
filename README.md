@@ -252,6 +252,30 @@ python -m pytest -q            # 測試
 
 ---
 
+## 盤中強勢族群（Cloudflare Workers）
+
+開盤後每分鐘更新「今天哪幾個族群最強、族群裡有幾檔一起漲、誰先漲」：今日頁最上面的卡片（09:00～14:30）
+與「市場 › 盤中」子分頁（設定好才出現）。族群用細產業（industry_chain.py＋industry_extra.csv）。
+
+| 檔案 | 用途 |
+|------|------|
+| `intraday_universe.py` | 今日名單 site/data/intraday_universe.json：要追蹤的股票、族群成員、20 日均量、量能曲線、昨日強勢族群 |
+| `intraday/worker.js` | Cloudflare Worker：每分鐘向證交所即時行情（MIS）抓價量存進 KV；帶存取碼才讀得到；可選 Bark 推播 |
+| `intraday/core.js` | 族群強度、連動、領漲的計算（Worker 與網站共用；網站版是 site/intraday_core.js）|
+| `intraday/archive.js` | 收盤後把當天的族群排行存進 data/intraday/（之後校正量能曲線、回測用）|
+| `web/intraday.js` | 網站的盤中卡與盤中子分頁，每 60 秒讀一次 |
+| `.github/workflows/intraday.yml` | 測試並部署 Worker（自動建立 KV 空間、設定存取碼） |
+
+證交所即時行情不能公開轉載，所以盤中資料要存取碼，網址與存取碼只存在自己裝置的瀏覽器裡。
+
+第一次設定（只要做一次）：
+1. 註冊 Cloudflare（免費），在 Workers & Pages 設定 workers.dev 子網域。
+2. 建立 API token（範本「Edit Cloudflare Workers」），記下帳號 ID。
+3. GitHub Secrets 加 `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`、`INTRADAY_ACCESS_CODE`（自己決定的存取碼）。
+4. Actions 手動執行「Deploy intraday worker」，執行結果會列出盤中服務網址。
+5. GitHub Secrets 再加 `INTRADAY_URL`（上一步的網址，收盤存檔用）。
+6. 網站設定頁「盤中服務」填網址與存取碼，按「儲存並測試」。
+
 ## 自動更新
 
 | Workflow | 頻率（台北時間）| 做什麼 |
@@ -332,7 +356,7 @@ python -m pytest -q            # 測試
 
 ## 版本
 
-目前 **v0.3.068**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
+目前 **v0.3.069**，顯示在頁面右下角與本地 Dash 的標題旁 —— GitHub Pages 與瀏覽器都會快取，用版本號比對才能確定手機上看到的是不是最新版。
 
 格式 `vMAJOR.MINOR.PATCH`，PATCH 固定三位數。**一般改動一律只遞增 PATCH**；前兩組除非明確指示否則不變更。改 `version.py` 後重跑 `build_static.py` 即可（`app.css`、`app.js` 也用版本號避開快取）。
 
