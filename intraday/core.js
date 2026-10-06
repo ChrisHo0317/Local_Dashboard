@@ -38,19 +38,35 @@ function num(x) {
   return Number.isFinite(v) && v > 0 ? v : null;
 }
 
+function first(x) { return typeof x === 'string' ? num(x.split('_')[0]) : null; }
+
 // MIS 的 msgArray 轉成 價／量／昨收／漲停價（依 U.codes 的順序）。
-// z（成交價）是 "-" 時（那幾秒沒成交）用最佳買價，再沒有就留 null，前端沿用上一分鐘的價。
-export function fromMis(U, rows) {
+// date 給了就只收那一天的列（開盤前還沒換日的舊資料不要）。
+// z（成交價）是 "-" 時（最近一次揭示沒有成交），prev（上一分鐘的快照）有的話：
+//   成交量沒變，或上一分鐘的價還在買賣價之間 → 沿用上一分鐘的價
+//   否則買賣價都有取中間；只有買價（漲停鎖住）用買價；只有賣價時，跌停鎖住或有上一分鐘的價才用賣價
+//   都沒有就沿用上一分鐘的價（還是沒有就留 null）
+export function fromMis(U, rows, date, prev) {
   const at = new Map(U.codes.map((c, i) => [c, i]));
   const n = U.codes.length;
   const out = {p: new Array(n).fill(null), v: new Array(n).fill(null), y: new Array(n).fill(null),
                u: new Array(n).fill(null), date: '', time: ''};
   for (const r of rows || []) {
     const i = at.get(r.c);
-    if (i === undefined) continue;
-    const bid = typeof r.b === 'string' ? num(r.b.split('_')[0]) : null;
-    out.p[i] = num(r.z) ?? bid;
-    out.v[i] = Number.isFinite(parseInt(r.v, 10)) ? parseInt(r.v, 10) : null;
+    if (i === undefined || (date && r.d !== date)) continue;
+    const v = Number.isFinite(parseInt(r.v, 10)) ? parseInt(r.v, 10) : null;
+    let p = num(r.z);
+    if (p == null) {
+      const p0 = prev && prev.p ? prev.p[i] : null, v0 = prev && prev.v ? prev.v[i] : null;
+      const bid = first(r.b), ask = first(r.a), lo = num(r.w);
+      if (p0 != null && ((v != null && v === v0) || (p0 >= (bid ?? -Infinity) && p0 <= (ask ?? Infinity)))) p = p0;
+      else if (bid != null && ask != null) p = (bid + ask) / 2;
+      else if (bid != null) p = bid;
+      else if (ask != null && (p0 != null || (lo != null && ask <= lo))) p = ask;
+      else p = p0;
+    }
+    out.p[i] = p;
+    out.v[i] = v;
     out.y[i] = num(r.y);
     out.u[i] = num(r.u);
     if (r.d && r.d > out.date) out.date = r.d;
@@ -60,6 +76,15 @@ export function fromMis(U, rows) {
 }
 
 function pct(p, y) { return p != null && y ? (p / y - 1) * 100 : null; }
+
+// 成交值（億）：張 × 價 × 1000
+function turnover(s, i) { return s.p[i] != null && s.v[i] != null ? s.v[i] * s.p[i] * 1000 / 1e8 : null; }
+
+// 族群加權漲幅的權重：目前累積成交值；還沒成交的用 20 日均值 × 這個時間點的量能比例
+function weight(U, s, i) {
+  const frac = U.profile[Math.max(1, Math.min(270, minuteOf(s.t) ?? 270))] || 1;
+  return turnover(s, i) || (U.avg[i] || 0) * frac || 0.01;
+}
 
 // 百分位（0～1），同分取平均
 function ranks(values) {
@@ -81,7 +106,7 @@ export function groupStats(U, ref, snap) {
   const minute = Math.max(1, Math.min(270, minuteOf(snap.t) ?? 270));
   const frac = U.profile[minute] || 1;
   const chg = U.codes.map((_, i) => pct(snap.p[i], ref.y[i]));
-  const tv = U.codes.map((_, i) => (snap.p[i] != null && snap.v[i] != null ? snap.v[i] * snap.p[i] * 1000 / 1e8 : null));
+  const tv = U.codes.map((_, i) => turnover(snap, i));
   const rows = [];
   U.groups.forEach((g, gi) => {
     let n = 0, up = 0, strong = 0, limit = 0, wsum = 0, csum = 0, tvs = 0, exp = 0;
@@ -91,7 +116,7 @@ export function groupStats(U, ref, snap) {
       if (chg[i] > 0) up++;
       if (chg[i] >= STRONG) strong++;
       if (ref.u[i] && snap.p[i] >= ref.u[i]) limit++;
-      const w = tv[i] || U.avg[i] * frac || 0.01;
+      const w = weight(U, snap, i);
       wsum += w; csum += chg[i] * w;
       tvs += tv[i] || 0; exp += (U.avg[i] || 0) * frac;
     }
@@ -110,21 +135,28 @@ export function groupStats(U, ref, snap) {
   return rows;
 }
 
+// 兩個族群的成員重疊 ≥ OVERLAP（以小的那個為分母）
+export function overlaps(U, a, b) {
+  const A = U.groups[a][2], B = new Set(U.groups[b][2]);
+  return A.filter(i => B.has(i)).length / Math.min(A.length, B.size) >= OVERLAP;
+}
+
 // 成員重疊太多的族群合併：只留排前面的，被併掉的名字記在 alias
 export function dedupe(U, rows, limit = 30) {
   const kept = [];
   for (const r of rows) {
     if (kept.length >= limit) break;
-    const mine = new Set(U.groups[r.gi][2]);
-    const dup = kept.find(k => {
-      const other = U.groups[k.gi][2];
-      const both = other.filter(i => mine.has(i)).length;
-      return both / Math.min(other.length, mine.size) >= OVERLAP;
-    });
+    const dup = kept.find(k => overlaps(U, k.gi, r.gi));
     if (dup) { (dup.alias = dup.alias || []).push(r.name); continue; }
     kept.push(Object.assign({}, r));
   }
   return kept;
+}
+
+// 族群 r 是否和 names 裡的某個族群是同一群（同名或成員重疊）：推播一天只推一次用
+export function seen(U, r, names) {
+  const at = new Map(U.groups.map((g, i) => [g[0], i]));
+  return names.some(n => n === r.name || (at.has(n) && overlaps(U, r.gi, at.get(n))));
 }
 
 // 一個族群的成員明細：漲幅、量比、是否漲停；series（依時間的快照）給了就算連動與領漲
@@ -134,7 +166,7 @@ export function members(U, ref, snap, gi, series) {
   const idx = U.groups[gi][2];
   const out = idx.map(i => {
     const c = pct(snap.p[i], ref.y[i]);
-    const tv = snap.p[i] != null && snap.v[i] != null ? snap.v[i] * snap.p[i] * 1000 / 1e8 : null;
+    const tv = turnover(snap, i);
     return {i, code: U.codes[i], name: U.names[i], chg: c, price: snap.p[i],
             vr: tv != null && U.avg[i] ? tv / (U.avg[i] * frac) : null,
             limit: !!(ref.u[i] && snap.p[i] >= ref.u[i]), corr: null, lead: null};
@@ -186,7 +218,7 @@ export function groupLine(U, ref, series, gi) {
     for (const i of U.groups[gi][2]) {
       const x = pct(s.p[i], ref.y[i]);
       if (x == null) continue;
-      const wt = s.v[i] != null ? s.v[i] * s.p[i] : U.avg[i];
+      const wt = weight(U, s, i);
       w += wt; c += x * wt;
     }
     return w ? c / w : null;

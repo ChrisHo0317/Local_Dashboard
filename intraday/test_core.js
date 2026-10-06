@@ -47,12 +47,35 @@ assert.equal(mem[0].code, 'A');                       // 漲最多排第一
 assert.equal(mem.find(m => m.first).code, 'A');       // 最先到 +3%
 assert.ok(mem.find(m => m.code === 'B').corr > 0.5);
 assert.ok(core.groupLine(U, ref, series, 0).length === series.length);
+// 族群走勢的最後一點和排行用的加權漲幅一致（有成員還沒成交時也一樣）
+const half = {t: '10:30', p: snap.p.slice(), v: snap.v.slice()};
+half.v[2] = null;
+assert.ok(Math.abs(core.groupLine(U, ref, [half], 0)[0] - core.groupStats(U, ref, half).find(r => r.gi === 0).chg) < 1e-9);
 
-// fromMis：z 是 "-" 時用最佳買價
-const q = core.fromMis(U, [{c: 'A', z: '-', b: '109.5_109_', v: '120', y: '100', u: '110', d: '20261005', t: '10:30:05'},
-                           {c: 'B', z: '106.00', v: '80', y: '100', u: '110', d: '20261005', t: '10:30:00'}]);
-assert.equal(q.p[0], 109.5); assert.equal(q.p[1], 106); assert.equal(q.p[2], null);
+// 推播去重：同名或成員重疊的族群算推過
+assert.equal(core.seen(U, {gi: 1, name: '光通訊元件'}, ['光通訊']), true);
+assert.equal(core.seen(U, {gi: 2, name: '水泥'}, ['光通訊']), false);
+
+// fromMis：z 是 "-"（最近一次揭示沒有成交）時
+const day0 = {d: '20261005', t: '10:30:05', y: '100', u: '110', w: '90'};
+const mis = [
+  {...day0, c: 'A', z: '-', b: '110.00_109.5_', a: '-', v: '120'},           // 漲停鎖住：只有買價
+  {...day0, c: 'B', z: '106.00', b: '105.5_', a: '106_', v: '80', t: '10:30:00'},
+  {...day0, c: 'C', z: '-', b: '-', a: '90.00_90.5_', v: '300'},             // 跌停鎖住：只有賣價＝跌停價
+  {...day0, c: 'D', z: '-', b: '100.5_', a: '101_', v: '50'},                // 沒有上一分鐘：買賣價中間
+  {...day0, c: 'E', z: '-', b: '-', a: '95_', v: '10'},                      // 冷門股只有賣價：不猜
+  {...day0, c: 'F', z: '-', b: '99_', a: '99.5_', v: '40'},                  // 量沒變：沿用上一分鐘
+  {...day0, c: 'G', z: '-', b: '97_', a: '97.5_', v: '60', d: '20261002'},   // 還沒換日的舊資料
+];
+const prevF = (p, v) => ({p: [null, null, null, null, null, p, null], v: [null, null, null, null, null, v, null]});
+let q = core.fromMis(U, mis, '20261005', prevF(100, 40));
+assert.deepEqual(q.p, [110, 106, 90, 100.75, null, 100, null]);
+assert.equal(q.y[6], null);                            // 舊日期那列的昨收也不要
 assert.equal(q.date, '20261005'); assert.equal(q.time, '10:30:05');
+// 量變了但上一分鐘的價還在買賣價之間：沿用；跑出去了：取中間
+assert.equal(core.fromMis(U, mis, '20261005', prevF(99.5, 30)).p[5], 99.5);
+assert.equal(core.fromMis(U, mis, '20261005', prevF(101, 30)).p[5], 99.25);
+assert.equal(core.fromMis(U, mis, '20261006').date, '');  // 行情不是今天的
 
 // ── Worker ──
 class KV {
@@ -61,19 +84,25 @@ class KV {
   async put(k, v) { this.m.set(k, v); }
 }
 const env = {KV: new KV(), UNIVERSE_URL: 'https://example/u.json', ACCESS_CODE: 'secret', MIS_GAP_MS: '0'};
+let misSkip = new Set();                               // 模擬某一批查詢失敗：這些代號不回
 globalThis.fetch = async (url) => {
   url = String(url);
   if (url.startsWith('https://example/u.json')) return new Response(JSON.stringify(U));
   if (url.startsWith('https://mis.twse.com.tw')) {
     const msg = U.codes.map((c, i) => ({c, z: String(snap.p[i]), v: String(snap.v[i]), y: '100', u: '110',
-                                        d: '20261005', t: '10:30:00'}));
+                                        d: '20261005', t: '10:30:00'})).filter(r => !misSkip.has(r.c));
     return new Response('\n\n' + JSON.stringify({msgArray: msg}));
   }
   throw new Error('unexpected ' + url);
 };
-const now = {date: '20261005', minute: 90, dow: 1};
-assert.equal(await collect(env, now), 'ok:7');
-assert.ok(env.KV.m.has('s:20261005:1030') && env.KV.m.has('r:20261005') && env.KV.m.has('u:20261005'));
+const now = {date: '20261005', minute: 89, dow: 1};
+misSkip = new Set(['C']);
+assert.equal(await collect(env, now), 'ok:6');
+assert.ok(env.KV.m.has('s:20261005:1029') && env.KV.m.has('r:20261005') && env.KV.m.has('u:20261005'));
+assert.equal(JSON.parse(env.KV.m.get('r:20261005')).y[2], null);
+misSkip = new Set();
+assert.equal(await collect(env, {...now, minute: 90}), 'ok:7');
+assert.equal(JSON.parse(env.KV.m.get('r:20261005')).y[2], 100);   // 開盤那次沒查到的昨收，之後補上
 assert.equal(await collect(env, {date: '20261005', minute: 300, dow: 1}), 'closed');
 assert.equal(await collect(env, {date: '20261004', minute: 90, dow: 0}), 'closed');
 assert.equal(await collect(env, {date: '20261006', minute: 90, dow: 2}), 'no-data');   // 行情日期不是今天
@@ -83,8 +112,13 @@ let r = await worker.fetch(new Request('https://w/day?date=20261005'), env);
 assert.equal(r.status, 401);
 r = await worker.fetch(new Request('https://w/day?date=20261005&u=1', {headers: {Authorization: 'Bearer secret'}}), env);
 const d = await r.json();
-assert.equal(d.date, '20261005'); assert.equal(d.snaps.length, 1); assert.equal(d.snaps[0].m, 90);
+assert.equal(d.date, '20261005'); assert.equal(d.snaps.length, 2); assert.equal(d.snaps[1].m, 90);
 assert.deepEqual(d.universe.codes, U.codes); assert.equal(d.ref.y.length, 7);
 assert.equal(r.headers.get('Access-Control-Allow-Origin'), '*');
+// KV 出錯（例如額度用完）：回 503，一樣帶 CORS
+r = await worker.fetch(new Request('https://w/status', {headers: {Authorization: 'Bearer secret'}}),
+                       {...env, KV: {get: async () => { throw new Error('KV GET failed: 429'); }}});
+assert.equal(r.status, 503); assert.equal(r.headers.get('Access-Control-Allow-Origin'), '*');
+assert.match((await r.json()).error, /429/);
 
 console.log('intraday tests ok');

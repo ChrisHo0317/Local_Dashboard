@@ -4,9 +4,10 @@ name = "local-dash-intraday"
 main = "worker.js"
 compatibility_date = "2025-01-01"
 
-# UTC 01:00～05:59，週一到週五（台北 09:00～13:59）；程式裡只收 09:00～13:33
+# UTC 01:00～05:59，週一到週五（台北 09:00～13:59）；程式裡只收 09:00～13:33。
+# 星期用英文縮寫：Cloudflare 的星期 1 是週日（和一般 cron 的 1＝週一不同），寫 1-5 會變成週日到週四。
 [triggers]
-crons = ["* 1-5 * * 1-5"]
+crons = ["* 1-5 * * mon-fri"]
 
 [[kv_namespaces]]
 binding = "KV"

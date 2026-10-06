@@ -328,7 +328,7 @@ function selectTab(name, animate) {
   document.getElementById('page-meta-text').innerHTML = h.meta;
   // 有二階分頁的話，回到主分頁時重設回第一個子分頁
   var panel = document.getElementById('panel-' + name);
-  var firstSub = panel ? panel.querySelector('.subtab') : null;
+  var firstSub = panel ? panel.querySelector('.subtab:not([hidden])') : null;
   if (firstSub && firstSub.getAttribute('aria-selected') !== 'true') { firstSub.click(); }
   else { activateCharts(panel); }
   // 圖表第一次顯示（或主題變更後首次顯示）才真正繪製；

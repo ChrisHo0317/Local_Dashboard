@@ -79,9 +79,9 @@ def _yi(x, n=2):
     return None if v is None else round(v / 1e8, n)
 
 
-def _dump(obj, path: Path) -> None:
+def _dump(obj, path: Path, allow_nan: bool = True) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")),
+    path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":"), allow_nan=allow_nan),
                     encoding="utf-8")
 
 
@@ -815,9 +815,10 @@ def build(out_dir: Path) -> dict:
         if not chain_tags.empty else {}
     chain_of_tag = dict(zip(chain_tags["tag"], chain_tags["chain"])) if not chain_tags.empty else {}
     _dump(industry_chain.site_json(chain_tags, chain_primary, in_panel), data_dir / "chains.json")
-    # 盤中強勢族群的今日名單（Cloudflare Worker 每天第一次執行時讀）
+    # 盤中強勢族群的今日名單（Cloudflare Worker 每天第一次執行時讀）；
+    # Worker 用 JSON.parse 讀，有 NaN 就整天收不到資料，所以寧可在這裡就失敗
     _dump(intraday_universe.build(panel, master, watch_codes, chain_tags, load_strong_history()),
-          data_dir / "intraday_universe.json")
+          data_dir / "intraday_universe.json", allow_nan=False)
     shards = write_stock_shards(data_dir, panel, master, pe, tdcc, exdiv, flags)
 
     results = signals.run(panel, load_revenue(), pe, tdcc, master)

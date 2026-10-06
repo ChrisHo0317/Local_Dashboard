@@ -10,10 +10,11 @@ const KEY = 'dash-intraday';
 const POLL_MS = 60000;
 const TOP = 20;              // 排行列幾個族群
 const MEMBERS = 10;          // 展開時先列幾檔
+const LAST_MINUTE = 273;     // Worker 收到 13:33
 const UI = window.DashUI || {};
 
-const st = {U: null, ref: null, date: null, series: [], error: null, busy: false, open: null, empty: false,
-            shownAll: false};
+const st = {U: null, ref: null, date: null, series: [], error: null, busy: false, open: null, memAll: null,
+            empty: false, shownAll: false, closeSync: null};
 let cfg = loadCfg();
 
 function loadCfg() {
@@ -42,26 +43,37 @@ async function api(path) {
   const r = await fetch(cfg.url.replace(/\/+$/, '') + path,
                         {headers: {Authorization: 'Bearer ' + cfg.code}, cache: 'no-store'});
   if (r.status === 401) throw new Error('存取碼不對，請到設定頁重新輸入');
-  if (!r.ok) throw new Error('盤中服務回應 ' + r.status);
+  if (!r.ok) {
+    let why = '';
+    try { why = (await r.json()).error || ''; } catch (e) { /* 不是 JSON */ }
+    throw new Error(why || '盤中服務回應 ' + r.status);
+  }
   return r.json();
 }
 
 // ── 資料 ──
+// 整份載入（每 3 分鐘一份快照＋今日名單）；沒有資料就保留畫面上原本那天的
+async function load(path) {
+  const d = await api(path);
+  st.empty = !d.universe || !d.snaps || !d.snaps.length;
+  if (!st.empty) {
+    st.U = d.universe; st.ref = d.ref; st.date = d.date;
+    st.series = core.fillForward(d.snaps);
+  }
+}
+
 async function refresh(full) {
   if (!configured() || st.busy) return;
   st.busy = true;
   try {
     const now = taipei();
-    if (full || !st.U || (marketOpen() && st.date !== now.date)) {
-      const d = await api('/day?step=3&u=1');
-      st.empty = !d.universe || !d.snaps || !d.snaps.length;
-      if (!st.empty) {
-        st.U = d.universe; st.ref = d.ref; st.date = d.date;
-        st.series = core.fillForward(d.snaps);
-      }
-    } else {
-      const last = st.series[st.series.length - 1];
+    if (full || !st.U) await load('/day?step=3&u=1');
+    // 畫面上是前一個交易日：只問今天（今天還沒資料的話 Worker 只讀一次 KV）
+    else if (st.date !== now.date) await load('/day?date=' + now.date + '&step=3&u=1');
+    else {
+      const last = latest();
       const d = await api('/day?date=' + st.date + '&step=1&from=' + core.hhmm(last.m + 1));
+      if (d.ref) st.ref = d.ref;          // Worker 會補上開盤時沒查到的昨收
       const fresh = (d.snaps || []).filter(s => s.m > last.m);
       if (fresh.length) st.series = core.fillForward(st.series.concat(fresh));
     }
@@ -163,7 +175,7 @@ function detail(r) {
   mem.forEach((m, k) => {
     const row = el('button', 'lv-m');
     row.type = 'button';
-    row.hidden = k >= MEMBERS;
+    row.hidden = st.memAll !== r.name && k >= MEMBERS;
     const n = el('span', 'lv-mn');
     n.appendChild(document.createTextNode(m.name + ' '));
     n.appendChild(el('small', null, m.code));
@@ -177,10 +189,11 @@ function detail(r) {
     t.appendChild(row);
   });
   box.appendChild(t);
-  if (mem.length > MEMBERS) {
+  if (st.memAll !== r.name && mem.length > MEMBERS) {
     const more = el('button', 'scr-more', '再看 ' + (mem.length - MEMBERS) + ' 檔');
     more.type = 'button';
     more.addEventListener('click', () => {
+      st.memAll = r.name;                 // 記住，每分鐘重畫時才不會又收起來
       Array.prototype.forEach.call(t.querySelectorAll('.lv-m[hidden]'), x => { x.hidden = false; });
       more.remove();
     });
@@ -247,6 +260,7 @@ function renderPane() {
     row.setAttribute('aria-expanded', String(st.open === r.name));
     row.addEventListener('click', () => {
       st.open = st.open === r.name ? null : r.name;
+      st.memAll = null;
       renderPane();
     });
     item.appendChild(row);
@@ -268,11 +282,19 @@ function render() {
 }
 
 // ── 子分頁、設定頁 ──
+// 設定好了：「盤中」排到市場的第一個子分頁；清除設定：藏起來、放回最後，選取狀態交給第一個看得到的
 function setupTab() {
   const btn = document.querySelector('.subtab[data-sub="live"]');
   if (!btn) return;
+  const bar = btn.parentNode;
   btn.hidden = !configured();
-  if (configured() && btn.parentNode.firstElementChild !== btn) btn.parentNode.insertBefore(btn, btn.parentNode.firstElementChild);
+  if (configured()) {
+    if (bar.firstElementChild !== btn) bar.insertBefore(btn, bar.firstElementChild);
+  } else {
+    bar.appendChild(btn);
+    const first = bar.querySelector('.subtab:not([hidden])');
+    if (btn.getAttribute('aria-selected') === 'true' && first) first.click();
+  }
   if (btn.dataset.bound) return;
   btn.dataset.bound = '1';
   btn.addEventListener('click', () => setTimeout(() => { renderPane(); if (!st.U) refresh(true); }, 0));
@@ -285,7 +307,16 @@ function setupSettings() {
   url.value = cfg.url || '';
   code.value = cfg.code ? cfg.code : '';
   document.getElementById('live-save').addEventListener('click', async () => {
-    cfg = {url: url.value.trim(), code: code.value.trim()};
+    // 網址一定要 https://（沒寫的話會被當成本站的路徑，存取碼就送錯地方）
+    const raw = url.value.trim();
+    let u = null;
+    try { u = raw ? new URL(raw) : null; } catch (e) { /* 下面處理 */ }
+    if (raw && (!u || u.protocol !== 'https:')) {
+      msg.textContent = '網址要以 https:// 開頭（例如 https://local-dash-intraday.xxx.workers.dev）';
+      return;
+    }
+    cfg = {url: u ? u.origin : '', code: code.value.trim()};
+    url.value = cfg.url;
     saveCfg(cfg);
     if (!configured()) { msg.textContent = '已清除：盤中功能關閉'; setupTab(); render(); return; }
     msg.textContent = '測試連線中…';
@@ -300,13 +331,27 @@ function setupSettings() {
   });
 }
 
+// 每分鐘一次：盤中抓新快照；收盤後第一次回到頁面補到 13:33；其他時候只重畫（14:30 收起今日卡、更新時間標示）
+function tick() {
+  if (document.hidden || !configured()) return;
+  const n = taipei();
+  if (marketOpen()) { refresh(false); return; }
+  const last = latest();
+  if (st.date === n.date && last && last.m < LAST_MINUTE && n.minute > 275 && st.closeSync !== n.date) {
+    st.closeSync = n.date;
+    refresh(false);
+    return;
+  }
+  render();
+}
+
 function start() {
   setupSettings();
   setupTab();
-  if (!configured()) return;
-  refresh(true);
-  setInterval(() => { if (!document.hidden && marketOpen()) refresh(false); }, POLL_MS);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && marketOpen()) refresh(false); });
+  if (configured()) refresh(true);
+  // 對齊到每分鐘第 30 秒左右：Worker 的快照大約第 15 秒才寫好
+  setTimeout(() => { tick(); setInterval(tick, POLL_MS); }, ((90 - new Date().getSeconds()) % 60) * 1000);
+  document.addEventListener('visibilitychange', tick);
 }
 
 start();

@@ -86,7 +86,7 @@ def build(panel: pd.DataFrame, master: pd.DataFrame, watch_codes: set,
     if not days:
         return {"date": "", "codes": [], "groups": []}
     recent = panel[panel["date"].isin(days[-DAYS:]) & ~panel["code"].str.startswith("00")]
-    avg = recent.groupby("code")["turnover"].mean()
+    avg = recent.groupby("code")["turnover"].mean().dropna()     # 停牌（20 日都沒成交值）的不列：MIS 也查不到價
     codes = sorted(set(avg[avg >= MIN_TURNOVER].index) | (set(watch_codes) & set(avg.index)))
     info = master.set_index("code")
     index = {c: i for i, c in enumerate(codes)}

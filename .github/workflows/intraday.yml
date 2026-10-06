@@ -6,6 +6,8 @@ name: Deploy intraday worker
 #   CLOUDFLARE_ACCOUNT_ID   Cloudflare 帳號 ID
 #   INTRADAY_ACCESS_CODE    自己決定的存取碼（網站設定頁要填同一組）
 #   BARK_KEY                選填：有的話盤中新族群衝進前 3 名會推播
+# 第一次部署前，Cloudflare 帳號要先有 workers.dev 子網域（後台 Workers & Pages 開一次頁面就會建立）。
+# 新增或修改 Secrets 不會自動觸發，要到 Actions →「Deploy intraday worker」→ Run workflow。
 on:
   push:
     branches: [main]
@@ -23,6 +25,9 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ACCESS_CODE: ${{ secrets.INTRADAY_ACCESS_CODE }}
       BARK_KEY: ${{ secrets.BARK_KEY }}
+    defaults:
+      run:
+        shell: bash          # 有 pipefail：wrangler deploy 失敗時，後面接 tee 也會讓步驟失敗
     steps:
       - uses: actions/checkout@v4
 
@@ -36,8 +41,15 @@ jobs:
       - name: Check secrets
         id: chk
         run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$ACCESS_CODE" ]; then
-            echo "::notice::還沒設定 CLOUDFLARE_API_TOKEN、CLOUDFLARE_ACCOUNT_ID、INTRADAY_ACCESS_CODE，只跑測試、不部署"
+          missing=""
+          [ -n "$CLOUDFLARE_API_TOKEN" ] || missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -n "$CLOUDFLARE_ACCOUNT_ID" ] || missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          [ -n "$ACCESS_CODE" ] || missing="$missing INTRADAY_ACCESS_CODE"
+          if [ -n "$missing" ]; then
+            msg="缺少 GitHub Secret：$missing（Settings → Secrets and variables → Actions → Repository secrets，名稱要完全一致）"
+            # 手動執行就是要部署：缺 Secret 直接失敗；push 觸發的只跑測試
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then echo "::error::$msg"; exit 1; fi
+            echo "::notice::$msg，只跑測試、不部署"
             echo "skip=1" >> "$GITHUB_OUTPUT"
           fi
 
@@ -63,5 +75,9 @@ jobs:
           npx -y wrangler@3 deploy 2>&1 | tee deploy.log
           echo "$ACCESS_CODE" | npx -y wrangler@3 secret put ACCESS_CODE
           if [ -n "$BARK_KEY" ]; then echo "$BARK_KEY" | npx -y wrangler@3 secret put BARK_KEY; fi
-          url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)
-          echo "::notice::盤中服務網址：${url:-（請到 Cloudflare 後台 Workers 查看）}　把它填到網站設定頁，以及 GitHub Secret INTRADAY_URL"
+          url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1 || true)
+          if [ -z "$url" ]; then
+            echo "::error::部署沒有產生 workers.dev 網址（可能還沒在 Cloudflare 後台 Workers & Pages 建立 workers.dev 子網域）"
+            exit 1
+          fi
+          echo "::notice::盤中服務網址：$url　把它填到網站設定頁，以及 GitHub Secret INTRADAY_URL"

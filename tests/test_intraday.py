@@ -39,6 +39,17 @@ def test_universe():
     assert all(a <= b for a, b in zip(U["profile"], U["profile"][1:]))
 
 
+def test_universe_skips_suspended_watchlist_stock():
+    # 自選股停牌 20 天（成交值全是 NaN）：不列，名單要是 Worker 讀得了的 JSON
+    panel = pd.concat([_panel(), pd.DataFrame({"date": pd.bdate_range("2026-09-01", periods=22), "code": "1589",
+                                               "turnover": float("nan")})])
+    master = pd.DataFrame({"code": ["2330", "1589"], "name": ["台積電", "停牌股"], "market": ["twse", "twse"],
+                           "industry": ["", ""]})
+    U = iu.build(panel, master, {"1589"}, pd.DataFrame(columns=["code", "tag", "chain"]))
+    assert "1589" not in U["codes"]
+    json.dumps(U, allow_nan=False)
+
+
 def test_profile_calibrates_from_archive(tmp_path, monkeypatch):
     monkeypatch.setattr(iu, "ARCHIVE_DIR", tmp_path)
     assert iu._archive_points() is None
