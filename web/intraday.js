@@ -912,8 +912,12 @@ function renderRace() {
 // 最上面一條是每個時段的第 1 名，下面一句摘要，▲ 轉強 ▼ 轉弱。可切換「名次變化」折線。
 // 和動畫連動：虛線是動畫目前的時間；點格子讓動畫跳到那個時間（回放），點族群名稱讓動畫切到「族群」固定看它。
 // 計算在 core.timeline（收盤存檔用同一套）；超過 5 天前的日子讀收盤存檔（data/intraday/{日期}.json 的 heat）。
-const TL_CW = 5, TL_RH = 18, TL_TOP = 22, TL_AX = 16, TL_NAME_W = 104, TL_LEADS = 5;
-const tl = {view: 'heat', cache: new Map(), key: null, data: null, notes: null, sig: '', index: null};
+const TL_RH = 18, TL_TOP = 22, TL_AX = 16, TL_NAME_W = 96, TL_LEADS = 5;
+// 橫軸固定是整個交易時段（09:00～13:30），寬度撐滿：每格寬＝可用寬度 ÷ 格數（手機上一格約 2～3 px，電腦上較寬）
+const tl = {view: 'heat', cache: new Map(), key: null, data: null, notes: null, sig: '', index: null,
+            cw: 5, total: 91, width: 0, ro: null};
+const tlX = k => k * tl.cw;                                  // 第 k 格的左邊
+const tlGap = () => (tl.cw >= 5 ? 1 : tl.cw >= 3 ? 0.5 : 0);   // 格子之間的縫，窄的時候不留
 const SVGNS = 'http://www.w3.org/2000/svg';
 
 function svgEl(tag, attrs, text) {
@@ -1030,7 +1034,7 @@ function tlNames(d) {
 }
 
 function tlHeat(d, marks) {
-  const W = d.n * TL_CW + 6, H = TL_TOP + d.rows.length * TL_RH + TL_AX;
+  const W = tl.width, H = TL_TOP + d.rows.length * TL_RH + TL_AX;
   const svg = svgEl('svg', {width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, class: 'tl-svg'});
   // 第 1 名條
   let from = 0;
@@ -1038,7 +1042,8 @@ function tlHeat(d, marks) {
     if (k < d.n && d.leader[k] === d.leader[from]) continue;
     const i = d.leader[from];
     if (i >= 0) {
-      const r = svgEl('rect', {x: from * TL_CW, y: 2, width: (k - from) * TL_CW - 1, height: 12, rx: 2, fill: tlColor(d, i)});
+      const r = svgEl('rect', {x: tlX(from), y: 2, width: Math.max(1, (k - from) * tl.cw - tlGap()), height: 12, rx: 2,
+                               fill: tlColor(d, i)});
       const a = from, b = k - 1;
       r.addEventListener('pointermove', e => tlTip(e, '<b>' + esc(d.rows[i].name) + '</b> 第 1 名<br><span class="num">' + d.t[a] + '–' + d.t[b] + '</span>'));
       r.addEventListener('pointerleave', tlTipHide);
@@ -1050,7 +1055,7 @@ function tlHeat(d, marks) {
     const y = TL_TOP + i * TL_RH;
     for (let k = 0; k < d.n; k++) {
       const s = row.s[k];
-      const c = svgEl('rect', {x: k * TL_CW, y: y + 1, width: TL_CW - 1, height: TL_RH - 3,
+      const c = svgEl('rect', {x: tlX(k), y: y + 1, width: tl.cw - tlGap() + (tlGap() ? 0 : 0.4), height: TL_RH - 3,
                                fill: s == null ? 'var(--tl0)' : 'var(--tl' + tlStep(row.r[k]) + ')'});
       c.addEventListener('pointermove', e => tlTip(e, '<b>' + esc(row.name) + '</b>　<span class="num">' + d.t[k] + '</span><br>' +
         (s == null ? '這一刻沒有排名' : '強度 ' + s + '・第 ' + row.r[k] + ' 名<br>漲幅 ' + signed(row.c[k], 2, '%') + '・強勢 ' + row.st[k] + ' 檔' +
@@ -1060,7 +1065,7 @@ function tlHeat(d, marks) {
       c.addEventListener('click', () => tlJump(k, d));
       svg.appendChild(c);
       if (marks[i][k]) {
-        const cx = k * TL_CW + TL_CW / 2, cy = y + TL_RH / 2 - 1;
+        const cx = tlX(k) + tl.cw / 2, cy = y + TL_RH / 2 - 1;
         const pts = marks[i][k] === 1 ? [cx, cy - 3, cx - 3, cy + 2, cx + 3, cy + 2] : [cx, cy + 3, cx - 3, cy - 2, cx + 3, cy - 2];
         svg.appendChild(svgEl('polygon', {points: pts.join(' '), fill: marks[i][k] === 1 ? 'var(--up)' : 'var(--down)',
                                           stroke: 'var(--card)', 'stroke-width': 0.8, 'pointer-events': 'none'}));
@@ -1072,11 +1077,11 @@ function tlHeat(d, marks) {
 }
 
 function tlRank(d) {
-  const W = d.n * TL_CW + 6, H = TL_TOP + d.rows.length * TL_RH + TL_AX;
+  const W = tl.width, H = TL_TOP + d.rows.length * TL_RH + TL_AX;
   const svg = svgEl('svg', {width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, class: 'tl-svg'});
   const N = d.rows.length;
   const yOf = r => TL_TOP + (Math.min(r, N) - 1) * TL_RH + TL_RH / 2;
-  for (let r = 1; r <= N; r++) svg.appendChild(svgEl('line', {x1: 0, x2: d.n * TL_CW, y1: yOf(r), y2: yOf(r), class: 'tl-grid'}));
+  for (let r = 1; r <= N; r++) svg.appendChild(svgEl('line', {x1: 0, x2: W, y1: yOf(r), y2: yOf(r), class: 'tl-grid'}));
   const leads = tlLeaders(d);
   const order = d.rows.map((_, i) => i).sort((a, b) => (leads.indexOf(a) >= 0) - (leads.indexOf(b) >= 0));
   order.forEach(i => {
@@ -1084,7 +1089,7 @@ function tlRank(d) {
     let path = '', pen = false;
     row.r.forEach((r, k) => {
       if (r == null || r > N) { pen = false; return; }
-      path += (pen ? 'L' : 'M') + (k * TL_CW + TL_CW / 2) + ' ' + yOf(r);
+      path += (pen ? 'L' : 'M') + (tlX(k) + tl.cw / 2).toFixed(1) + ' ' + yOf(r);
       pen = true;
     });
     if (!path) return;
@@ -1094,7 +1099,7 @@ function tlRank(d) {
   });
   // 整張圖一個感應區：顯示那一刻的前 3 名
   const hit = svgEl('rect', {x: 0, y: 0, width: W, height: H - TL_AX, fill: 'transparent'});
-  const at = e => Math.max(0, Math.min(d.n - 1, Math.floor((e.clientX - svg.getBoundingClientRect().left) / TL_CW)));
+  const at = e => Math.max(0, Math.min(d.n - 1, Math.floor((e.clientX - svg.getBoundingClientRect().left) / tl.cw)));
   hit.addEventListener('pointermove', e => {
     const k = at(e);
     const top = d.rows.map((row, i) => [row.r[k], i]).filter(x => x[0] != null && x[0] <= 3).sort((a, b) => a[0] - b[0]);
@@ -1108,8 +1113,14 @@ function tlRank(d) {
 }
 
 function tlAxis(svg, d, H) {
-  for (let k = 0; k < d.n; k += 10) {
-    svg.appendChild(svgEl('text', {x: k * TL_CW, y: H - 3, class: 'tl-tick'}, d.t[k]));
+  const per = Math.round(30 / d.step);                       // 30 分鐘幾格
+  const every = tl.cw * per >= 34 ? per : per * 2;             // 太擠就每小時一個
+  for (let k = 0; k < tl.total; k += every) {
+    const m = k * d.step;
+    const label = String(9 + Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+    const x = tlX(k);
+    svg.appendChild(svgEl('line', {x1: x, x2: x, y1: H - TL_AX, y2: H - TL_AX + 3, class: 'tl-grid'}));
+    svg.appendChild(svgEl('text', {x, y: H - 3, class: 'tl-tick', 'text-anchor': k === 0 ? 'start' : 'middle'}, label));
   }
 }
 
@@ -1128,7 +1139,18 @@ function tlUpdate() {
   const d = tlCompute();
   box.hidden = !d || !d.n;
   if (box.hidden) return;
-  const sig = [tl.view, race.pin, d.n, d.t[d.n - 1], d.rows.map(r => r.name + ':' + r.s[d.n - 1]).join(',')].join('|');
+  if (!tl.ro && window.ResizeObserver) {
+    tl.ro = new ResizeObserver(() => {
+      const w = box.clientWidth - TL_NAME_W;
+      if (w > 0 && Math.abs(w - tl.width) > 2) { tl.sig = ''; tlUpdate(); }
+    });
+    tl.ro.observe(box);
+  }
+  tl.total = Math.round(270 / d.step) + 1;
+  // 可用寬度＝整塊寬度扣掉族群名稱那一欄（名稱欄固定寬；不能量捲動區，第一次畫的時候名稱欄還是空的）
+  tl.width = Math.max(120, (box.clientWidth || 360) - TL_NAME_W);
+  tl.cw = tl.width / tl.total;
+  const sig = [tl.view, race.pin, tl.width, d.n, d.t[d.n - 1], d.rows.map(r => r.name + ':' + r.s[d.n - 1]).join(',')].join('|');
   if (sig !== tl.sig) {
     tl.sig = sig;
     tl.data = d;
@@ -1149,14 +1171,15 @@ function tlUpdate() {
   let line = svg.querySelector('.tl-cursor');
   const k = tlCursorBin(tl.data);
   if (k == null) { if (line) line.remove(); return; }
-  const x = k * TL_CW + TL_CW / 2;
+  const x = tlX(k) + tl.cw / 2;
   if (!line) {
     line = svgEl('line', {class: 'tl-cursor', y1: 0, y2: Number(svg.getAttribute('height')) - TL_AX + 2, 'pointer-events': 'none'});
     svg.appendChild(line);
   }
   line.setAttribute('x1', x);
   line.setAttribute('x2', x);
-  if (x < scroll.scrollLeft + 10 || x > scroll.scrollLeft + scroll.clientWidth - 10) {
+  if (scroll.scrollWidth > scroll.clientWidth + 2 &&
+      (x < scroll.scrollLeft + 10 || x > scroll.scrollLeft + scroll.clientWidth - 10)) {
     scroll.scrollLeft = Math.max(0, x - scroll.clientWidth * 0.7);
   }
 }

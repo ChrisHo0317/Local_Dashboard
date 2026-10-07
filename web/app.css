@@ -1008,8 +1008,8 @@
   .tl-sum p { margin:0; }
   .tl-sum .num { font-variant-numeric:tabular-nums; }
   .tl-body { display:flex; align-items:flex-start; }
-  .tl-names { flex:none; }
-  .tl-scroll { flex:1; min-width:0; overflow-x:auto; overscroll-behavior-x:contain; }
+  .tl-names { flex:0 0 96px; width:96px; }                    /* 和 intraday.js 的 TL_NAME_W 一樣 */
+  .tl-scroll { flex:1; min-width:0; overflow:hidden; }        /* 寬度撐滿，不用左右捲 */
   .tl-namesvg, .tl-svg { display:block; }
   .tl-name { fill:var(--fg); font-size:11px; cursor:pointer; }
   .tl-name.is-pin { font-weight:700; fill:var(--accent); }
