@@ -425,7 +425,7 @@
     }
 
     // 市場熱度：綜合分數＋三個分項（全市場、權值股、高價股）、分歧提示、當天漲跌與高價股檔數
-    function ckTemp(pane, t) {
+    function ckTemp(pane, t, m) {
       var box = pane.querySelector('.ck-temp');
       if (!t || t.temp == null) { box.hidden = true; return; }
       box.hidden = false;
@@ -453,12 +453,23 @@
        ['權值股', t.temp_cap, '市值加權，單檔最多 10%'],
        ['高價股', t.temp_hp, '千元以上 ' + (hp.counts['1000'] || 0) + ' 檔'],
        ['上漲家數', t.adv_ratio, t.adv + ' 漲 / ' + t.dec + ' 跌', '%']].forEach(function (x) {
-        var b = el('div', 'ck-tile');
-        b.appendChild(el('span', 'ck-tile-k', x[0]));
+        var link = x[3] && t.record;
+        var b = el(link ? 'button' : 'div', 'ck-tile' + (link ? ' is-link' : ''));
+        b.appendChild(el('span', 'ck-tile-k', x[0] + (link ? ' ›' : '')));
         b.appendChild(el('b', x[3] ? null : hot(x[1]), x[1] == null ? '—' : fmt(x[1], 0) + (x[3] || '')));
         b.appendChild(el('span', 'ck-tile-d', x[2]));
+        if (link) {
+          b.type = 'button';
+          b.setAttribute('aria-expanded', String(advOpen));
+          b.addEventListener('click', function () {
+            advOpen = !advOpen;
+            b.setAttribute('aria-expanded', String(advOpen));
+            advRecord(pane, t.record, m);
+          });
+        }
         tiles.appendChild(b);
       });
+      advRecord(pane, t.record, m);
       // 當天家數、高價股分級（點開看名單）
       var counts = pane.querySelector('.ck-counts');
       counts.textContent = '';
@@ -529,6 +540,99 @@
                    {type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: 0, y1: 35, fillcolor: c.down,
                     opacity: 0.07, line: {width: 0}}]
         }), {displayModeBar: false, responsive: true});
+    }
+
+    // 上漲家數紀錄（點首頁「上漲家數」展開）：上面加權指數、下面每天的上漲家數比，底下每日表
+    var advOpen = false, advDays = 120;
+    function advRecord(pane, rec, m) {
+      var box = pane.querySelector('.ck-adv');
+      if (!box) return;
+      box.hidden = !advOpen || !rec || !rec.t.length;
+      if (box.hidden) return;
+      box.textContent = '';
+      var c = palette();
+      var px = {};
+      (m && m.t || []).forEach(function (d, i) { if (m.taiex[i] != null) px[d] = m.taiex[i]; });
+      var n = rec.t.length;
+      var rows = rec.t.map(function (d, i) {
+        return {d: d, adv: rec.adv[i], dec: rec.dec[i], flat: rec.flat[i], r: rec.ratio[i],
+                lu: rec.lu[i], ld: rec.ld[i], px: px[d] == null ? null : px[d]};
+      });
+      rows.forEach(function (r, i) {
+        var prev = null;
+        for (var k = i - 1; k >= 0 && prev == null; k--) prev = rows[k].px;
+        r.chg = r.px != null && prev ? (r.px / prev - 1) * 100 : null;
+      });
+
+      box.appendChild(el('h4', 'ck-adv-h', '上漲家數紀錄'));
+      // 近期統計
+      var last20 = rows.slice(-20);
+      var avg = last20.reduce(function (s, r) { return s + r.r; }, 0) / last20.length;
+      var over = last20.filter(function (r) { return r.r > 50; }).length;
+      var lag = rows.slice(-20).filter(function (r) { return r.chg != null && r.chg > 0 && r.r < 45; }).length;
+      box.appendChild(el('p', 'ck-adv-sum', '近 20 日平均上漲比 ' + fmt(avg, 0) + '%，過半的有 ' + over + ' 天' +
+                                          (lag ? '；指數漲但上漲比不到 45% 的有 ' + lag + ' 天' : '')));
+      // 區間
+      var seg = el('div', 'ck-adv-seg');
+      [[60, '60 日'], [120, '120 日'], [0, '一年']].forEach(function (x) {
+        var b = el('button', 'chip', x[1]);
+        b.type = 'button';
+        b.setAttribute('aria-pressed', String(advDays === x[0]));
+        seg.appendChild(b);
+        b.addEventListener('click', function () { advDays = x[0]; advRecord(pane, rec, m); });
+      });
+      box.appendChild(seg);
+      // 圖
+      var gd = el('div', 'ichart ck-adv-chart');
+      box.appendChild(gd);
+      var part = advDays ? rows.slice(-advDays) : rows;
+      var xs = part.map(function (r) { return r.d.slice(5).replace('-', '/'); });
+      Plotly.react(gd, [
+        {type: 'scatter', mode: 'lines', x: xs, y: part.map(function (r) { return r.px; }), yaxis: 'y',
+         line: {color: c.blue, width: 1.8}, connectgaps: true, name: '加權指數',
+         hovertemplate: '加權指數 %{y:,.0f}<extra></extra>'},
+        {type: 'bar', x: xs, y: part.map(function (r) { return r.r; }), yaxis: 'y2', name: '上漲家數比',
+         marker: {color: part.map(function (r) { return r.r >= 50 ? c.up : c.down; })},
+         customdata: part.map(function (r) { return [r.adv, r.dec, r.flat]; }),
+         hovertemplate: '上漲 %{customdata[0]}／下跌 %{customdata[1]}／平盤 %{customdata[2]}（%{y:.0f}%）<extra></extra>'}
+      ], layout({
+        margin: {l: 46, r: 8, t: 6, b: 24}, hovermode: 'x unified', bargap: 0.15,
+        xaxis: {type: 'category', nticks: 6, fixedrange: true, showgrid: false},
+        yaxis: {domain: [0.42, 1], gridcolor: c.grid, fixedrange: true, tickformat: ',.0f'},
+        yaxis2: {domain: [0, 0.34], range: [0, 100], tickvals: [0, 50, 100], ticksuffix: '%', gridcolor: c.grid,
+                 fixedrange: true},
+        shapes: [{type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y2', y0: 50, y1: 50,
+                  line: {color: c.fg, width: 1, dash: 'dot'}}]
+      }), {displayModeBar: false, responsive: true});
+      // 每日表（新的在上面）
+      var tbl = el('table', 'ck-adv-tbl');
+      var head = el('tr');
+      ['日期', '加權指數', '上漲／下跌', '上漲比', '漲停／跌停'].forEach(function (h) { head.appendChild(el('th', null, h)); });
+      var thead = el('thead');
+      thead.appendChild(head);
+      tbl.appendChild(thead);
+      var tbody = el('tbody');
+      rows.slice().reverse().forEach(function (r, k) {
+        var tr = el('tr');
+        tr.hidden = k >= FIRST_ROWS;
+        tr.appendChild(el('td', null, md(r.d)));
+        var ix = el('td', 'num');
+        ix.appendChild(el('span', null, r.px == null ? '—' : fmt(r.px, 0)));
+        if (r.chg != null) ix.appendChild(el('small', dir(r.chg), signed(r.chg, 2, '%')));
+        tr.appendChild(ix);
+        var cnt = el('td', 'num');
+        cnt.appendChild(el('span', null, r.adv + '／' + r.dec));
+        cnt.appendChild(el('small', 'muted', '平盤 ' + r.flat));
+        tr.appendChild(cnt);
+        tr.appendChild(el('td', 'num ' + (r.r >= 50 ? 'up' : 'down'), fmt(r.r, 0) + '%'));
+        tr.appendChild(el('td', 'num', r.lu + '／' + r.ld));
+        tbody.appendChild(tr);
+      });
+      tbl.appendChild(tbody);
+      var wrap = el('div', 'ck-adv-wrap');
+      wrap.appendChild(tbl);
+      box.appendChild(wrap);
+      moreRows(box, tbody);
     }
 
     // date：主流族群是哪天收盤的強勢紀錄；比首頁資料日期舊（那天的強勢紀錄還沒算好）就註明
@@ -702,7 +806,7 @@
 
     function cockpit(pane, d) {
       ckDigest(pane.querySelector('.ck-digest'), d.digest);
-      ckTemp(pane, d.temp);
+      ckTemp(pane, d.temp, d.market);
       ckGroups(pane.querySelector('.ck-groups .ov-body'), d.groups, d.groups_date, d.asof);
       ckAlerts(pane.querySelector('.td-alerts'), d.alerts);
       watch(pane.querySelector('.td-watch'), d);

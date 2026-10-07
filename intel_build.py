@@ -430,6 +430,10 @@ def _market_series(panel: pd.DataFrame, xm: pd.DataFrame, summary: pd.DataFrame 
     p = panel.assign(fv=panel["foreign"] * px, tv=panel["trust"] * px)
     daily = p.groupby("date").agg(fv=("fv", "sum"), tv=("tv", "sum"), turnover=("turnover", "sum"))
     taiex = xm[xm["item"] == "加權指數"].set_index("price_date")["price"]
+    # 證交所的收盤指數優先（Yahoo 偶爾記到盤中或延遲的數字），沒有的日子才用 Yahoo
+    if summary is not None and not summary.empty and "twse_index" in summary:
+        official = summary.assign(date=pd.to_datetime(summary["date"])).set_index("date")["twse_index"].dropna()
+        taiex = official.combine_first(taiex)
     taiex = taiex.reindex(daily.index)
     t = [d.strftime("%Y-%m-%d") for d in daily.index]
     mr = margin_ratio(panel, summary if summary is not None else pd.DataFrame())

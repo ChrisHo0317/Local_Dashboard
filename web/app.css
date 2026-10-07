@@ -738,6 +738,22 @@
   .ck-temp-v { font-size:34px; line-height:1; font-variant-numeric:tabular-nums; }
   .ck-temp-d { font-size:12px; color:var(--muted); }
   .ck-tile b.is-hot { color:var(--up); } .ck-tile b.is-cold { color:var(--down); }
+  /* 上漲家數那一格可以點：展開紀錄（大盤＋上漲家數比、每日表） */
+  button.ck-tile.is-link { font:inherit; color:inherit; text-align:left; cursor:pointer; }
+  button.ck-tile.is-link[aria-expanded="true"] { outline:1.5px solid var(--accent); outline-offset:-1.5px; }
+  .ck-adv { border-top:1px solid var(--border); padding-top:8px; }
+  .ck-adv-h { font-size:13px; margin:0 0 4px; }
+  .ck-adv-sum { font-size:12.5px; color:var(--muted); margin:0 0 6px; }
+  .ck-adv-seg { display:flex; gap:4px; margin-bottom:4px; }
+  .ck-adv-chart { height:260px; }
+  .ck-adv-wrap { overflow-x:auto; margin-top:6px; }
+  .ck-adv-tbl { width:100%; border-collapse:collapse; font-size:12.5px; font-variant-numeric:tabular-nums; }
+  .ck-adv-tbl th { font-size:11px; font-weight:600; color:var(--muted); text-align:right; padding:4px;
+                   border-bottom:1px solid var(--border); white-space:nowrap; }
+  .ck-adv-tbl th:first-child, .ck-adv-tbl td:first-child { text-align:left; padding-left:0; }
+  .ck-adv-tbl td { text-align:right; padding:5px 4px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  .ck-adv-tbl td small { display:block; font-size:11px; }
+  .ck-adv-tbl td small.muted { color:var(--muted); }
   .ck-diverge { margin:6px 0 0; font-size:12.5px; font-weight:600; color:var(--warn); }
   .ck-counts { display:flex; flex-direction:column; gap:3px; font-size:12.5px; }
   .ck-count { margin:0; line-height:1.5; font-variant-numeric:tabular-nums; }

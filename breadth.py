@@ -137,10 +137,10 @@ def summary(panel: pd.DataFrame, shares: pd.Series | None = None, names: dict | 
     if shares is None:
         from shares_data import load
         shares = load()
-    b = breadth(panel, shares=shares)
-    if b.empty or b["temp"].isna().all():
+    full = breadth(panel, days=len(panel["date"].unique()), shares=shares)
+    if full.empty or full["temp"].isna().all():
         return {}
-    b = b.dropna(subset=["temp"])
+    b = full.dropna(subset=["temp"])
     last = b.iloc[-1]
     prev = b.iloc[-6] if len(b) > 5 else b.iloc[0]
     before = b.iloc[-21] if len(b) > 20 else b.iloc[0]
@@ -174,4 +174,13 @@ def summary(panel: pd.DataFrame, shares: pd.Series | None = None, names: dict | 
                    "temp_hp": [r(v) for v in tail["temp_hp"]],
                    "above20": [r(v) for v in tail["above20"]],
                    "adv": [r(v) for v in tail["adv_ratio"]]},
+        # 上漲家數紀錄（首頁點「上漲家數」看）：日資料有多少天就給多少天
+        "record": _record(full[full["n"] > 0]),
     }
+
+
+def _record(b: pd.DataFrame) -> dict:
+    return {"t": [d.strftime("%Y-%m-%d") for d in b.index],
+            "adv": [int(v) for v in b["adv"]], "dec": [int(v) for v in b["dec"]], "flat": [int(v) for v in b["flat"]],
+            "ratio": [round(float(v), 1) for v in b["adv_ratio"]],
+            "lu": [int(v) for v in b["limit_up"]], "ld": [int(v) for v in b["limit_down"]]}

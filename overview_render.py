@@ -108,6 +108,7 @@ def panes(data) -> list[str]:
         '      <div class="ck-temp ov-card td-b">\n'
         '        <div class="ck-gauge"></div>\n'
         '        <div class="ck-tiles"></div>\n'
+        '        <div class="ck-adv" hidden></div>\n'
         '        <div class="ck-counts"></div>\n'
         '        <button type="button" class="ck-more ck-temp-more" aria-expanded="false">看近 60 日走勢 ›</button>\n'
         '        <div class="ichart" id="ov-temp" hidden></div>\n'

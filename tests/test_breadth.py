@@ -60,3 +60,5 @@ def test_summary_high_price_lists():
     assert s["hp"]["counts"] == {"10000": 0, "5000": 0, "1000": 1}
     assert s["hp"]["tiers"]["1000"] == [["5274", "信驊", 1295]]
     assert len(s["series"]["temp_cap"]) == len(s["series"]["t"])
+    rec = s["record"]                                   # 上漲家數紀錄：第一天沒有漲跌，從第二天起
+    assert len(rec["t"]) == 79 and rec["adv"][-1] == 2 and rec["dec"][-1] == 2 and rec["ratio"][-1] == 50.0

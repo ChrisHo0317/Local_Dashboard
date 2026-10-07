@@ -104,7 +104,7 @@ def context(mode: str) -> dict:
         "mode": mode, "asof": latest, "today": today.isoformat(),
         "kpi": [{k: v for k, v in x.items() if k in ("label", "value", "delta", "note")} for x in kpi],
         "temp": {k: ({kk: vv for kk, vv in v.items() if kk != "tiers"} if k == "hp" else v)
-                 for k, v in breadth.summary(panel).items() if k != "series"},
+                 for k, v in breadth.summary(panel).items() if k not in ("series", "record")},
         "groups": top_groups(load_history()),
         "strong": [{"code": c, "name": s.get("name"), "r5": s.get("r5"), "tag": s.get("tag"),
                     "why": s.get("why")} for c, s in strong],
