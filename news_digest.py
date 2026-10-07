@@ -19,6 +19,20 @@ from news_sources import SOURCE_BY_ID
 
 TAIPEI = timezone(timedelta(hours=8))
 
+
+def when_label(value) -> str:
+    """新聞、重訊的時間 → 「10/7 14:31」（台北時間）。
+    帶時區的（RSS 的 ISO、…Z）換成台北時間；沒帶時區的（熱門新聞存的「2026-10-07 14:31」）當作已經是台北時間；
+    解析不了就回空字串（HTML 來源有時沒有時間）"""
+    if not value:
+        return ""
+    ts = pd.to_datetime(str(value), errors="coerce")
+    if pd.isna(ts):
+        return ""
+    if ts.tzinfo is not None:
+        ts = ts.tz_convert(TAIPEI)
+    return f"{ts.month}/{ts.day} {ts:%H:%M}"
+
 # 這份清單決定「什麼算重要」，照自己關心的東西改
 TOPICS = [
     # (權重, 名稱, 關鍵字)

@@ -79,6 +79,15 @@ def _roc_to_iso(v: str) -> str:
     return ""
 
 
+def _ann_when(iso: str, t) -> str:
+    """重訊的發言日期（ISO）＋時間（143105 或 93105）→ 「10/7 14:31」"""
+    t = str(t or "").split(".")[0]
+    if not iso or not t.isdigit():
+        return ""
+    t = t.zfill(6)
+    return f"{int(iso[5:7])}/{int(iso[8:10])} {t[:2]}:{t[2:4]}"
+
+
 def announce_events(codes: set, names: dict, today: pd.Timestamp) -> list[dict]:
     ann = load_announce()
     if ann.empty:
@@ -93,7 +102,7 @@ def announce_events(codes: set, names: dict, today: pd.Timestamp) -> list[dict]:
             "id": f"ann|{r['code']}|{r['date']}|{r['time']}|{r['subject'][:40]}",
             "code": r["code"], "urgent": True,
             "title": f"【重訊】{r['code']} {names.get(r['code'], r['name'])}",
-            "body": r["subject"],
+            "body": r["subject"], "when": _ann_when(r["iso"], r["time"]),
         })
     return out
 
@@ -205,7 +214,8 @@ def messages(events: list[dict]) -> list[dict]:
     msgs = []
     for e in events:
         if e["urgent"]:
-            msgs.append({"title": e["title"], "body": e["body"], "level": "timeSensitive",
+            body = (e["when"] + "　" if e.get("when") else "") + e["body"]     # 發言時間放最前面：10/7 14:31　主旨
+            msgs.append({"title": e["title"], "body": body, "level": "timeSensitive",
                          "url": f"{SITE_URL}?stock={e['code']}", "ids": [e["id"]]})
     rest = [e for e in events if not e["urgent"]]
     if rest:

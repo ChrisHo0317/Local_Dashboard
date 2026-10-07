@@ -15,7 +15,7 @@ from html import escape
 
 import pandas as pd
 
-from news_digest import build as build_digest
+from news_digest import build as build_digest, when_label
 from news_sources import SOURCES
 
 TAIPEI = timezone(timedelta(hours=8))
@@ -67,15 +67,6 @@ def _subtabs_html() -> str:
             + "\n".join(btns) + "\n  </div>")
 
 
-def _when(value: str) -> str:
-    """RSS 有時間就顯示台北時間；HTML 來源沒有時間就留空。"""
-    if not value:
-        return ""
-    ts = pd.to_datetime(value, errors="coerce", utc=True)
-    if pd.isna(ts):
-        return ""
-    local = ts.tz_convert(TAIPEI)
-    return f"{local.month}/{local.day:02d} {local.strftime('%H:%M')}"
 
 
 def _source_html(source: dict, part: pd.DataFrame) -> str:
@@ -107,7 +98,7 @@ def lists(data: dict) -> dict:
         part = df[df["source"] == source["id"]] if not df.empty else df
         rows = []
         for n, (_, e) in enumerate(part.iterrows()):
-            when = _when(e["published"])
+            when = when_label(e["published"])
             meta = " · ".join(x for x in (when, source["label"]) if x)
             rows.append([n, 1 if e["body"] else 0, e["url"], e["title"], meta])
         out[source["id"]] = rows
@@ -148,7 +139,7 @@ def _digest_html(df: pd.DataFrame) -> str:
 
     items = []
     for n, e in enumerate(events):
-        when = _when(e["published"])
+        when = when_label(e["published"])
         tags = "".join(f'<span class="dg-tag">{escape(t)}</span>' for t in e["topics"])
         srcs = "／".join(e["sources"])
         meta = " · ".join(x for x in (when, srcs) if x)
@@ -188,18 +179,21 @@ def _hot_topic(t: dict, items: dict) -> str:
     tags = "".join(f'<span class="hot-tag">{escape(x)}</span>' for x in t.get("sectors", []))
     tags += "".join(f'<span class="hot-tag is-stock">{escape(x)}</span>' for x in t.get("stocks", []))
     links = []
+    times = [items[i]["time"] for i in t.get("ids", []) if i in items and items[i].get("time")]
+    latest = when_label(max(times)) if times else ""
     for i in t.get("ids", [])[:3]:
         it = items.get(i)
         if not it:
             continue
-        src = escape("、".join(dict.fromkeys(it["srcs"]))[:30])
+        src = escape(" · ".join(x for x in (when_label(it.get("time")), "、".join(dict.fromkeys(it["srcs"]))[:30]) if x))
         title = escape(it["title"])
         link = (f'<a href="{escape(it["url"])}" target="_blank" rel="noopener noreferrer">{title}</a>'
                 if it.get("url") else title)
         links.append(f'<li>{link}<span class="hot-src">{src}</span></li>')
     return (f'      <article class="hot-topic imp-{t["importance"]}">\n'
             f'        <div class="hot-head"><span class="hot-imp" title="重要性 {t["importance"]}／5">{stars}</span>'
-            f'<span class="hot-impact {IMPACT_CLASS.get(t["impact"], "")}">{escape(t["impact"])}</span></div>\n'
+            f'<span class="hot-impact {IMPACT_CLASS.get(t["impact"], "")}">{escape(t["impact"])}</span>'
+            + (f'<span class="hot-time">{escape(latest)}</span>' if latest else "") + '</div>\n'
             f'        <h4>{escape(t["title"])}</h4>\n'
             f'        <p class="hot-sum">{escape(t["summary"])}</p>\n'
             f'        <p class="hot-why">對台股：{escape(t["why"])}</p>\n'
@@ -211,7 +205,7 @@ def _hot_topic(t: dict, items: dict) -> str:
 def _hot_raw(region: dict, label: str) -> str:
     rows = []
     for it in region.get("items", [])[:20]:
-        src = escape("、".join(dict.fromkeys(it["srcs"]))[:30])
+        src = escape(" · ".join(x for x in (when_label(it.get("time")), "、".join(dict.fromkeys(it["srcs"]))[:30]) if x))
         title = escape(it["title"])
         link = (f'<a href="{escape(it["url"])}" target="_blank" rel="noopener noreferrer">{title}</a>'
                 if it.get("url") else title)

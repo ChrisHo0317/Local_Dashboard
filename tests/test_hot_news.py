@@ -95,3 +95,25 @@ def test_update_pushes_new_alerts_once(tmp_path, monkeypatch):
     data = json.loads(path.read_text(encoding="utf-8"))
     assert sent == ["財經快訊：非農爆冷"] and data["done"]["2026-10-03"] == ["pre", "mid"]
     assert data["method"] == "claude" and "非農爆冷" in data["pushed"]
+
+
+def test_when_label_and_alert_time():
+    from news_digest import when_label
+    assert when_label("2026-10-07T06:31:00Z") == "10/7 14:31"          # RSS 的 UTC → 台北時間
+    assert when_label("2026-10-07 09:24") == "10/7 09:24"              # 熱門新聞存的已經是台北時間
+    assert when_label("") == "" and when_label("壞掉") == ""
+    lists = {"tw": {"items": [{"id": 1, "time": "2026-10-07 09:24"}, {"id": 2, "time": "2026-10-07 13:05"},
+                              {"id": 3, "time": ""}]}}
+    assert hn.alert_time({"region": "tw", "ids": [1, 2, 3]}, lists) == "10/7 13:05"   # 相關新聞裡最新的
+    assert hn.alert_time({"region": "intl", "ids": [1]}, lists) == "" and hn.alert_time({"key": "x"}, None) == ""
+
+
+def test_push_body_starts_with_news_time(monkeypatch):
+    import alerts
+    sent = []
+    monkeypatch.setenv("BARK_KEY", "test")
+    monkeypatch.setattr(alerts, "send", lambda msg, key, server: sent.append(msg["body"]) or True)
+    lists = {"tw": {"items": [{"id": 4, "time": "2026-10-07 14:31"}]}}
+    hn.push([{"key": "台積電", "text": "內容", "region": "tw", "ids": [4]}], {}, "2026-10-07", lists)
+    assert sent == ["10/7 14:31　內容"]
+

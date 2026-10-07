@@ -70,6 +70,16 @@ def test_messages_split_urgent():
     assert msgs[1]["ids"] == ["b", "c"] and "2 則" in msgs[1]["title"]
 
 
+def test_announce_time_in_push_body():
+    # 重訊的發言時間（民國日期＋時分秒）→ 10/7 14:31，推播內容最前面放時間
+    assert alerts._ann_when("2026-10-07", "143105") == "10/7 14:31"
+    assert alerts._ann_when("2026-10-07", "93408") == "10/7 09:34"
+    assert alerts._ann_when("2026-10-07", None) == "" and alerts._ann_when("", "143105") == ""
+    msgs = alerts.messages([{"id": "a", "code": "2330", "urgent": True, "title": "【重訊】2330",
+                             "body": "主旨", "when": "10/7 14:31"}])
+    assert msgs[0]["body"] == "10/7 14:31　主旨"
+
+
 @pytest.fixture
 def sent_path(tmp_path, monkeypatch):
     path = tmp_path / "alerts_sent.csv"

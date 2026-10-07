@@ -369,6 +369,7 @@
       var ul = el('ul', 'ov-list');
       list.forEach(function (n) {
         var li = el('li');
+        if (n.time) li.appendChild(el('span', 'ov-news-w', n.time));
         var a = el('a', 'ov-news-t', n.title);
         a.href = n.url; a.target = '_blank'; a.rel = 'noopener';
         li.appendChild(a);
@@ -675,6 +676,7 @@
       var ul = el('ul', 'ck-list');
       list.slice(0, 6).forEach(function (a) {
         var li = el('li', a.urgent ? 'is-urgent' : null);
+        if (a.when) li.appendChild(el('span', 'ck-when', a.when));
         var b = el('button', 'ck-link', a.text);
         b.type = 'button';
         b.addEventListener('click', function () { openStock(a.code); });
@@ -699,7 +701,7 @@
         var ul = el('ul', 'ck-list');
         x[1].forEach(function (t) {
           var li = el('li');
-          li.appendChild(el('span', 'ck-when', x[0]));
+          li.appendChild(el('span', 'ck-when', x[0] + (t[3] ? ' ' + t[3] : '')));
           li.appendChild(el('span', 'ck-hot-t', t[0]));
           li.appendChild(el('span', 'hot-impact ' + (t[1] === '利多' ? 'up' : t[1] === '利空' ? 'down' : ''), t[1]));
           ul.appendChild(li);

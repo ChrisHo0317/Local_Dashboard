@@ -31,7 +31,7 @@ from chip_data import load_futures, load_tdcc
 from fundamentals import load_announce, load_income, load_revenue
 from market_data import load_summary
 from news_data import load_all as load_news_all
-from news_digest import build as build_digest
+from news_digest import build as build_digest, when_label
 from stock_news import load_history as load_strong_history
 from stock_data import load as load_stock_list
 from watchlist import EDIT_URL, load_watchlist
@@ -589,7 +589,7 @@ def _watch_alerts(codes: set) -> list:
         events = alerts.watch_events(codes)
     except Exception:
         return []
-    return [{"code": e["code"], "urgent": bool(e.get("urgent")),
+    return [{"code": e["code"], "urgent": bool(e.get("urgent")), "when": e.get("when", ""),
              "text": e.get("line") or f"{e.get('title', '')}：{e.get('body', '')}"} for e in events][:10]
 
 
@@ -601,10 +601,15 @@ def _hot_summary() -> dict:
         return {}
     def pick(r):
         part = h.get(r) or {}
+        items = {it["id"]: it for it in part.get("items") or []}
         if part.get("topics"):
-            return [[t["title"], t["impact"], t["importance"]] for t in part["topics"][:3]]
+            # 事件的時間＝歸進來的新聞裡最新的那則
+            def latest(t):
+                times = [items[i]["time"] for i in t.get("ids", []) if i in items and items[i].get("time")]
+                return when_label(max(times)) if times else ""
+            return [[t["title"], t["impact"], t["importance"], latest(t)] for t in part["topics"][:3]]
         # 沒有 Claude 歸納（只有流量排行）時，列排行前三則
-        return [[t["title"], "", 0] for t in (part.get("items") or [])[:3]]
+        return [[t["title"], "", 0, when_label(t.get("time"))] for t in (part.get("items") or [])[:3]]
     return {"generated": h.get("generated", ""), "label": h.get("label", ""), "method": h.get("method", ""),
             "headline": h.get("headline", ""), "intl": pick("intl"), "tw": pick("tw")}
 
@@ -756,7 +761,7 @@ def _news(watch_terms: list[str]) -> list[dict]:
     df = load_news_all().get("news", pd.DataFrame())
     if df.empty:
         return []
-    return [{"title": e["title"], "url": e["url"], "sources": e["sources"],
+    return [{"title": e["title"], "url": e["url"], "sources": e["sources"], "time": when_label(e["published"]),
              "summary": e["summary"], "topics": e["topics"]}
             for e in build_digest(df, watch_terms)[:5]]
 
