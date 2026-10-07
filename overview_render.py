@@ -17,7 +17,7 @@ META = "資料來源：證交所、櫃買、期交所、集保　·　盤後更�
 
 # (id, 標籤, 頁面標題, 說明)。說明要短：手機上標頭只留兩三行，太長會被切掉
 SUBTABS = [
-    ("today", "今日重點", "今日重點", "摘要、市場溫度、主流族群、自選股警示與市場數字"),
+    ("today", "今日重點", "今日重點", "摘要、市場熱度、主流族群、自選股警示與市場數字"),
     ("market", "大盤", "大盤", "加權指數與法人買賣超（估算）"),
     ("global", "國際", "國際市場", "美股、期貨、亞股、供應鏈龍頭、原物料、匯率與美債，以及和台股的連動"),
     ("trend", "走勢", "走勢圖", "DRAM、美債、黃金、BTC、美股、匯率：點卡片看完整走勢"),
@@ -108,6 +108,7 @@ def panes(data) -> list[str]:
         '      <div class="ck-temp ov-card td-b">\n'
         '        <div class="ck-gauge"></div>\n'
         '        <div class="ck-tiles"></div>\n'
+        '        <div class="ck-counts"></div>\n'
         '        <button type="button" class="ck-more ck-temp-more" aria-expanded="false">看近 60 日走勢 ›</button>\n'
         '        <div class="ichart" id="ov-temp" hidden></div>\n'
         '      </div>\n'

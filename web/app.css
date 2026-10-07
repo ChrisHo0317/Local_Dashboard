@@ -737,6 +737,14 @@
   .ck-temp-k { font-size:12px; color:var(--muted); }
   .ck-temp-v { font-size:34px; line-height:1; font-variant-numeric:tabular-nums; }
   .ck-temp-d { font-size:12px; color:var(--muted); }
+  .ck-tile b.is-hot { color:var(--up); } .ck-tile b.is-cold { color:var(--down); }
+  .ck-diverge { margin:6px 0 0; font-size:12.5px; font-weight:600; color:var(--warn); }
+  .ck-counts { display:flex; flex-direction:column; gap:3px; font-size:12.5px; }
+  .ck-count { margin:0; line-height:1.5; font-variant-numeric:tabular-nums; }
+  .ck-count b { color:var(--muted); font-weight:600; margin-right:6px; }
+  .ck-hp summary { cursor:pointer; color:var(--accent); font-size:12.5px; margin-top:2px; }
+  .ck-hp-row { margin:4px 0 0; line-height:1.6; font-size:12.5px; }
+  .ck-hp-row b { color:var(--muted); font-weight:600; margin-right:6px; }
   .ck-pill { font-size:12px; font-weight:600; padding:1px 8px; border-radius:999px; background:var(--pill); }
   .ck-pill.is-hot { color:var(--up); }
   .ck-pill.is-cold { color:var(--down); }

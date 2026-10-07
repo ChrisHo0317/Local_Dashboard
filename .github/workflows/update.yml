@@ -105,12 +105,12 @@ jobs:
               # 熱門新聞不在這裡做：news.yml 08:03 已經準時做過 08:00 那個時段，兩邊同時做會重複推播、推送衝突
               python update_data.py xmarket bonds events stocknews digest ;;
             "0 1 * * *")
-              python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket options stock events backfill macro calls qfii chain hotnews ;;
+              python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket options stock events backfill macro calls qfii chain shares hotnews ;;
             "30 9 * * 1-5")
               python update_data.py market chips xmarket options stock events signallog qfii calls stocknews digest hotnews ;;
             "")
               # 手動執行：全部跑一次
-              python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket options stock events signallog backfill stocknews macro calls qfii chain hotnews ;;
+              python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket options stock events signallog backfill stocknews macro calls qfii chain shares hotnews ;;
             *)
               python update_data.py market chips xmarket stock events signallog backfill calendar macro qfii hotnews ;;
           esac

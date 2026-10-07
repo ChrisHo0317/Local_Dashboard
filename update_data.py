@@ -543,6 +543,8 @@ JOBS = {
     "calls": lambda: __import__("earnings_calls").update(log),
     # 細產業（櫃買中心產業價值鏈，一週重抓一次）
     "chain": lambda: __import__("industry_chain").update(log),
+    # 已發行股數（市場熱度的權值股分項用；每天早上一次）
+    "shares": lambda: __import__("shares_data").update(log),
     # 國際／台灣熱門新聞分析：新聞排程每 10 分鐘呼叫，08:00、14:00、21:00 三個時段各做一次
     "hotnews": lambda: __import__("hot_news").update(log),
     # 盤前／盤後摘要（Claude 整理、Bark 推播；依台北時間決定是盤前還是盤後）

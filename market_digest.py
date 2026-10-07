@@ -1,7 +1,7 @@
 """
 盤前／盤後摘要（python update_data.py digest）
 
-    盤後（17:30 排程）：大盤與成交、市場溫度、法人、主流族群、強勢股、自選股異動
+    盤後（17:30 排程）：大盤與成交、市場熱度、法人、主流族群、強勢股、自選股異動
     盤前（08:10 排程）：前一晚美股、費半、供應鏈龍頭、美股期貨、原物料、匯率、美債（global_market）、
                         昨天收盤的重點、今天的事件、自選股新消息
 
@@ -31,7 +31,7 @@ SYSTEM = """你是台股觀測站的摘要助理。根據提供的數字與名�
 - headline：一句話，25 字以內，說出今天最重要的事。
 - bullets：3～5 點，每點 45 字以內，依重要性排序；要有具體數字或股票名稱。
 - watch：自選股相關的重點，0～3 點，每點 40 字以內；沒有就給空陣列。
-- risks：需要留意的風險，0～2 點（例如市場溫度偏空、外資大賣、處置股、重要數據公布）；沒有就給空陣列。"""
+- risks：需要留意的風險，0～2 點（例如市場熱度偏空、權值撐盤但多數個股弱、外資大賣、處置股、重要數據公布）；沒有就給空陣列。"""
 
 SCHEMA = {
     "type": "object",
@@ -103,7 +103,8 @@ def context(mode: str) -> dict:
     return {
         "mode": mode, "asof": latest, "today": today.isoformat(),
         "kpi": [{k: v for k, v in x.items() if k in ("label", "value", "delta", "note")} for x in kpi],
-        "temp": {k: v for k, v in breadth.summary(panel).items() if k != "series"},
+        "temp": {k: ({kk: vv for kk, vv in v.items() if kk != "tiers"} if k == "hp" else v)
+                 for k, v in breadth.summary(panel).items() if k != "series"},
         "groups": top_groups(load_history()),
         "strong": [{"code": c, "name": s.get("name"), "r5": s.get("r5"), "tag": s.get("tag"),
                     "why": s.get("why")} for c, s in strong],
@@ -158,8 +159,10 @@ def rule_digest(ctx: dict) -> dict:
     if fi or tr:
         bullets.append(f"外資 {fi or '—'}、投信 {tr or '—'}")
     if t:
-        bullets.append(f"市場溫度 {t.get('temp')}（{t.get('label')}）：上漲家數 {t.get('adv_ratio')}%、"
-                       f"站上 20 日線 {t.get('above20')}%、漲停 {t.get('limit_up')} 檔")
+        bullets.append(f"市場熱度 {t.get('temp')}（{t.get('label')}）：全市場 {t.get('temp_all')}、"
+                       f"權值股 {t.get('temp_cap') if t.get('temp_cap') is not None else '—'}、高價股 {t.get('temp_hp')}；"
+                       f"上漲 {t.get('adv')} 家、下跌 {t.get('dec')} 家、漲停 {t.get('limit_up')} 檔"
+                       + (f"（{t['divergence']}）" if t.get("divergence") else ""))
     if ctx["groups"]:
         bullets.append("主流族群：" + "、".join(f"{g['group']}（{g['n']} 檔）" for g in ctx["groups"]))
     fx = kpi.get("費半（前一晚）")
@@ -167,10 +170,12 @@ def rule_digest(ctx: dict) -> dict:
         bullets.insert(0, "國際：" + "、".join(ctx["global_key"][:6]))
     elif ctx["mode"] == "pre" and fx and fx.get("value") != "—":
         bullets.insert(0, f"費半前一晚 {fx['value']}（{fx.get('delta') or '—'}）")
-    head = (f"市場溫度 {t.get('temp')}，{t.get('label')}" if t else "盤後摘要")
+    head = (f"市場熱度 {t.get('temp')}，{t.get('label')}" if t else "盤後摘要")
     risks = []
     if t and t.get("label") == "偏空":
-        risks.append("市場溫度偏空，強勢股容易被拖累")
+        risks.append("市場熱度偏空，強勢股容易被拖累")
+    if t and t.get("divergence") == "權值撐盤、多數個股弱":
+        risks.append("權值股撐盤、多數個股偏弱，指數漲不代表個股好做")
     return {"headline": head, "bullets": bullets[:5], "watch": ctx["watch"][:3], "risks": risks}
 
 

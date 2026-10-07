@@ -424,17 +424,19 @@
       }
     }
 
+    // 市場熱度：綜合分數＋三個分項（全市場、權值股、高價股）、分歧提示、當天漲跌與高價股檔數
     function ckTemp(pane, t) {
       var box = pane.querySelector('.ck-temp');
       if (!t || t.temp == null) { box.hidden = true; return; }
       box.hidden = false;
       var c = palette();
+      var hot = function (v) { return v == null ? '' : v >= 65 ? 'is-hot' : v <= 35 ? 'is-cold' : ''; };
       var big = pane.querySelector('.ck-gauge');
       big.textContent = '';
       var top = el('div', 'ck-temp-top');
-      top.appendChild(el('span', 'ck-temp-k', '市場溫度'));
+      top.appendChild(el('span', 'ck-temp-k', '市場熱度'));
       top.appendChild(el('b', 'ck-temp-v', fmt(t.temp, 0)));
-      top.appendChild(el('span', 'ck-pill ' + (t.label === '偏多' ? 'is-hot' : t.label === '偏空' ? 'is-cold' : ''), t.label));
+      top.appendChild(el('span', 'ck-pill ' + hot(t.temp), t.label));
       top.appendChild(el('span', 'ck-temp-d', '5 日前 ' + fmt(t.temp_5d, 0)));
       big.appendChild(top);
       var bar = el('div', 'ck-bar');
@@ -442,19 +444,61 @@
       mark.style.left = Math.max(0, Math.min(100, t.temp)) + '%';
       bar.appendChild(mark);
       big.appendChild(bar);
-      big.appendChild(el('p', 'ck-scale', '0 偏空　35　中性　65　偏多 100'));
+      big.appendChild(el('p', 'ck-scale', '0 偏空　35　中性　65　偏多 100　·　全市場 50%＋權值股 30%＋高價股 20%'));
+      if (t.divergence) big.appendChild(el('p', 'ck-diverge', '⚠ ' + t.divergence));
+      var hp = t.hp || {counts: {}, counts_20d: {}};
       var tiles = pane.querySelector('.ck-tiles');
       tiles.textContent = '';
-      [['上漲家數', fmt(t.adv_ratio, 0) + '%', t.adv + ' 漲 / ' + t.dec + ' 跌'],
-       ['站上 20 日', fmt(t.above20, 0) + '%', '60 日線 ' + fmt(t.above60, 0) + '%'],
-       ['新高／新低', t.nh + ' / ' + t.nl, '52 週，家數'],
-       ['漲停／跌停', t.limit_up + ' / ' + t.limit_down, '漲跌 ≥ 9.5%']].forEach(function (x) {
+      [['全市場', t.temp_all, '每檔一樣重'],
+       ['權值股', t.temp_cap, '市值加權，單檔最多 10%'],
+       ['高價股', t.temp_hp, '千元以上 ' + (hp.counts['1000'] || 0) + ' 檔'],
+       ['上漲家數', t.adv_ratio, t.adv + ' 漲 / ' + t.dec + ' 跌', '%']].forEach(function (x) {
         var b = el('div', 'ck-tile');
         b.appendChild(el('span', 'ck-tile-k', x[0]));
-        b.appendChild(el('b', null, x[1]));
+        b.appendChild(el('b', x[3] ? null : hot(x[1]), x[1] == null ? '—' : fmt(x[1], 0) + (x[3] || '')));
         b.appendChild(el('span', 'ck-tile-d', x[2]));
         tiles.appendChild(b);
       });
+      // 當天家數、高價股分級（點開看名單）
+      var counts = pane.querySelector('.ck-counts');
+      counts.textContent = '';
+      var line = function (k, parts) {
+        var p = el('p', 'ck-count');
+        p.appendChild(el('b', null, k));
+        p.appendChild(document.createTextNode(parts.join('・')));
+        counts.appendChild(p);
+      };
+      line('今日', ['上漲 ' + t.adv, '下跌 ' + t.dec, '平盤 ' + t.flat, '漲停 ' + t.limit_up, '跌停 ' + t.limit_down,
+                   '新高 ' + t.nh + '／新低 ' + t.nl]);
+      var was = hp.counts_20d || {};
+      var delta = function (k) {
+        var d = (hp.counts[k] || 0) - (was[k] || 0);
+        return d ? '（20 日前 ' + (was[k] || 0) + '）' : '';
+      };
+      line('高價股', ['萬元以上 ' + (hp.counts['10000'] || 0) + delta('10000'),
+                     '五千以上 ' + (hp.counts['5000'] || 0) + delta('5000'),
+                     '千元以上 ' + (hp.counts['1000'] || 0) + delta('1000'),
+                     '今日 漲 ' + (hp.up || 0) + '／跌 ' + (hp.down || 0)]);
+      var tiers = hp.tiers || {};
+      if (Object.keys(tiers).length) {
+        var det = el('details', 'ck-hp');
+        det.appendChild(el('summary', null, '看高價股名單'));
+        [['10000', '萬元以上'], ['5000', '五千～一萬'], ['1000', '千元～五千']].forEach(function (x) {
+          var list = tiers[x[0]] || [];
+          if (!list.length) return;
+          var row = el('p', 'ck-hp-row');
+          row.appendChild(el('b', null, x[1] + '（' + list.length + '）'));
+          list.forEach(function (s, k) {
+            var a = el('button', 'ck-link', s[1] + ' ' + fmt(s[2], 0));
+            a.type = 'button';
+            a.addEventListener('click', function () { openStock(s[0]); });
+            row.appendChild(a);
+            if (k < list.length - 1) row.appendChild(document.createTextNode('、'));
+          });
+          det.appendChild(row);
+        });
+        counts.appendChild(det);
+      }
       var gd = document.getElementById('ov-temp');
       var tbtn = pane.querySelector('.ck-temp-more');
       if (tbtn && !tbtn.dataset.bound) {
@@ -467,19 +511,24 @@
         });
       }
       var s = t.series || {t: [], temp: []};
-      Plotly.react(gd, [{
-        type: 'scatter', mode: 'lines', x: s.t.map(function (d) { return d.slice(5).replace('-', '/'); }),
-        y: s.temp, line: {color: c.blue, width: 2}, fill: 'tozeroy', fillcolor: 'rgba(0,0,0,0)',
-        hovertemplate: '%{x}　溫度 %{y:.0f}<extra></extra>'
-      }], layout({
-        margin: {l: 30, r: 8, t: 6, b: 24},
-        xaxis: {type: 'category', nticks: 6, fixedrange: true, showgrid: false},
-        yaxis: {range: [0, 100], tickvals: [35, 65], gridcolor: c.grid, fixedrange: true},
-        shapes: [{type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: 65, y1: 100, fillcolor: c.up,
-                  opacity: 0.07, line: {width: 0}},
-                 {type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: 0, y1: 35, fillcolor: c.down,
-                  opacity: 0.07, line: {width: 0}}]
-      }), {displayModeBar: false, responsive: true});
+      var xs = s.t.map(function (d) { return d.slice(5).replace('-', '/'); });
+      var trace = function (name, y, color, width, dash) {
+        return {type: 'scatter', mode: 'lines', name: name, x: xs, y: y || [],
+                line: {color: color, width: width, dash: dash || 'solid'},
+                hovertemplate: name + ' %{y:.0f}<extra></extra>'};
+      };
+      Plotly.react(gd, [trace('全市場', s.temp_all, c.gray, 1.2, 'dot'), trace('權值股', s.temp_cap, c.orange, 1.2),
+                        trace('高價股', s.temp_hp, c.purple, 1.2), trace('熱度', s.temp, c.blue, 2.4)],
+        layout({
+          margin: {l: 30, r: 8, t: 6, b: 24}, hovermode: 'x unified', showlegend: true,
+          legend: {orientation: 'h', y: 1.12, x: 0, font: {size: 11}},
+          xaxis: {type: 'category', nticks: 6, fixedrange: true, showgrid: false},
+          yaxis: {range: [0, 100], tickvals: [35, 65], gridcolor: c.grid, fixedrange: true},
+          shapes: [{type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: 65, y1: 100, fillcolor: c.up,
+                    opacity: 0.07, line: {width: 0}},
+                   {type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: 0, y1: 35, fillcolor: c.down,
+                    opacity: 0.07, line: {width: 0}}]
+        }), {displayModeBar: false, responsive: true});
     }
 
     // date：主流族群是哪天收盤的強勢紀錄；比首頁資料日期舊（那天的強勢紀錄還沒算好）就註明

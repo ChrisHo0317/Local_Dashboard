@@ -848,7 +848,7 @@ def build(out_dir: Path) -> dict:
         "futures": _futures(),
         "options": _options(),
         # 決策首頁
-        "temp": breadth.summary(panel),
+        "temp": breadth.summary(panel, names=names),
         "groups": main_groups["list"],
         "groups_date": main_groups["date"],
         "alerts": _watch_alerts(watch_codes),
