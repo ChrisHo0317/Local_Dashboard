@@ -4,12 +4,13 @@
 //   1. 讀今日名單（網站的 data/intraday_universe.json，每天第一次讀完存進 KV，整天用同一份）
 //   2. 分批向證交所即時行情（MIS）查價量：每批 100 檔、間隔 1.2 秒
 //   3. 存一份快照到 KV：s:{日期}:{HHMM}；昨收與漲停價存在 r:{日期}（第一次收到就存，之後缺的再補）
-//   4. 每 5 分鐘（有設 BARK_KEY 時）算一次族群，新族群衝進前 3 名就推播
-// 計算幾乎都在網站端做（Worker 免費方案每次只有 10 毫秒 CPU）。
-// 另外兩個 cron 準時觸發 GitHub Actions 的資料排程（dispatch.js）。
+// 推播（PUSH_CRON，每 5 分鐘；有設 BARK_KEY 時）另一個 cron 跑：讀上一分鐘的快照算族群，新族群衝進前 3 名就推。
+// 和收資料分開，是因為免費方案每次只有 10 毫秒 CPU：收資料約 5 毫秒、算族群約 4 毫秒，放在一起太接近上限。
+// 計算幾乎都在網站端做。另外兩個 cron 準時觸發 GitHub Actions 的資料排程（dispatch.js）。
 //
 // 讀取（網站用，要帶 Authorization: Bearer {ACCESS_CODE}）：
 //   GET /status                     服務狀態
+//   GET /health                     不用存取碼：今天有沒有在收、最新一份的時間、推播結果（不含任何價格）
 //   GET /day?from=HHMM&step=N&u=1   當天（或最近一個交易日）的快照；u=1 連今日名單一起給
 //
 // 即時行情只給帶存取碼的人看（證交所即時行情不能公開轉載）。
@@ -23,6 +24,8 @@ const TTL = 86400 * 5;            // 快照留 5 天
 const PUSH_FROM = 15;             // 09:15 以前不推播（開盤前幾分鐘排名不穩）
 const PUSH_MIN_STRONG = 4;
 const WRITTEN_BY = 25;            // 每分鐘的快照大約第 10～15 秒才寫好；第 25 秒以前不讀這一分鐘
+// 推播檢查的 cron（要和 wrangler.toml 一字不差）：每 5 分鐘的第 2 分，讀上一分鐘（1、6、11…分）的快照
+export const PUSH_CRON = '2,7,12,17,22,27,32,37,42,47,52,57 1-5 * * mon-fri';
 
 function taipei(ts = Date.now()) {
   const d = new Date(ts + 8 * 3600 * 1000);
@@ -49,21 +52,29 @@ export async function collect(env, now = taipei()) {
   if (now.dow === 0 || now.dow === 6 || now.minute < 0 || now.minute > LAST_MINUTE) return 'closed';
   const uText = await loadUniverse(env, now.date);
   const U = JSON.parse(uText);
-  const rows = [];
+  const rows = [], http = [];
   const batches = misBatches(U);
   for (let k = 0; k < batches.length; k++) {
     if (k) await sleep(env.MIS_GAP_MS ? Number(env.MIS_GAP_MS) : 1200);
     try {
       const r = await fetch(MIS + '?ex_ch=' + batches[k] + '&json=1&delay=0&_=' + Date.now(), {
         headers: {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://mis.twse.com.tw/stock/index.jsp'}});
+      http.push(r.status);
       if (!r.ok) continue;
       const j = JSON.parse(await r.text());
       if (Array.isArray(j.msgArray)) rows.push(...j.msgArray);
-    } catch (e) { /* 單批失敗不影響其他批 */ }
+    } catch (e) {
+      http.push('err');                                           // 單批失敗不影響其他批
+    }
   }
   const prev = now.minute > 0 ? await env.KV.get('s:' + now.date + ':' + hhmm(now.minute - 1)) : null;
   const q = fromMis(U, rows, now.date, prev ? JSON.parse(prev) : null);
-  if (!q.date) return 'no-data';                                  // 休市或還沒開盤（行情不是今天的）
+  if (!q.date) {
+    // 休市、還沒開盤（行情不是今天的），或證交所擋掉：記下來給 /health 看（正常的交易日不會寫）
+    await env.KV.put('h:' + now.date, JSON.stringify({at: hhmm(now.minute), rows: rows.length, http: http.join(',')}),
+                     {expirationTtl: TTL});
+    return 'no-data';
+  }
   // 昨收與漲停價：第一次收到就存；某一批那時沒查到的，之後查到再補
   const refKey = 'r:' + now.date;
   let ref = await env.KV.get(refKey);
@@ -79,21 +90,32 @@ export async function collect(env, now = taipei()) {
   }
   const snap = {t: (q.time || '').slice(0, 5), p: q.p.map(x => (x == null ? null : Math.round(x * 100) / 100)), v: q.v};
   await env.KV.put('s:' + now.date + ':' + hhmm(now.minute), JSON.stringify(snap), {expirationTtl: TTL});
-  if (env.BARK_KEY && now.minute >= PUSH_FROM && now.minute % 5 === 0) {
-    await push(env, U, R, snap, now.date);
-  }
   return 'ok:' + rows.length;
 }
 
-// 新族群衝進前 3 名、而且至少 PUSH_MIN_STRONG 檔強勢成員：推一則。
+// 推播檢查（PUSH_CRON）：讀上一分鐘的快照算族群
+export async function pushCheck(env, now = taipei()) {
+  const m = now.minute - 1;
+  if (!env.BARK_KEY) return 'no-bark';
+  if (now.dow === 0 || now.dow === 6 || m < PUSH_FROM || m > LAST_MINUTE) return 'closed';
+  const [u, ref, snap] = await Promise.all(['u:' + now.date, 'r:' + now.date, 's:' + now.date + ':' + hhmm(m)]
+    .map(k => env.KV.get(k)));
+  if (!u || !ref || !snap) return 'no-snap';
+  return push(env, JSON.parse(u), JSON.parse(ref), JSON.parse(snap), now.date);
+}
+
+// 至少 PUSH_MIN_STRONG 檔強勢成員的族群裡，排名前 3 的（成員重疊的算一個）有新面孔：推一則。
+// 先篩再合併：先合併的話，重疊的一群可能由成員較少、強勢不到 4 檔的那個代表，整群就推不出去。
 // 同一族群一天只推一次；成員重疊的族群（例如「光通訊」和「光通訊元件」）算同一個
 async function push(env, U, ref, snap, date) {
-  const top = dedupe(U, groupStats(U, ref, snap), 3).filter(r => r.hot && r.strong >= Math.max(PUSH_MIN_STRONG, MIN_STRONG));
-  if (!top.length) return;
+  const min = Math.max(PUSH_MIN_STRONG, MIN_STRONG);
+  const top = dedupe(U, groupStats(U, ref, snap).filter(r => r.hot && r.strong >= min), 3);
+  if (!top.length) return 'none';
   const key = 'b:' + date;
   const done = JSON.parse((await env.KV.get(key)) || '[]');
   const fresh = top.filter(r => !seen(U, r, done));
-  if (!fresh.length) return;
+  if (!fresh.length) return 'none';
+  const results = [];
   for (const r of fresh) {
     const title = '盤中強勢族群：' + r.name;
     const body = (r.chg >= 0 ? '+' : '') + r.chg.toFixed(1) + '%，' + r.up + '/' + r.n + ' 上漲、' +
@@ -101,10 +123,34 @@ async function push(env, U, ref, snap, date) {
     const url = 'https://api.day.app/' + encodeURIComponent(env.BARK_KEY) + '/' + encodeURIComponent(title) + '/' +
                 encodeURIComponent(body) + '?group=' + encodeURIComponent('盤中族群') +
                 (env.SITE_URL ? '&url=' + encodeURIComponent(env.SITE_URL) : '');
-    try { await fetch(url); } catch (e) { /* 推播失敗不影響收資料 */ }
-    done.push(r.name);
+    let status = 0;
+    try {
+      const res = await fetch(url);
+      const body = await res.json().catch(() => ({}));
+      status = res.status === 200 && body.code === 200 ? 200 : (res.status || -2);
+    } catch (e) {
+      status = -1;
+    }
+    results.push(r.name + ':' + status);
+    if (status === 200) done.push(r.name);          // Bark 確認收到才算推過；失敗的 5 分鐘後再試
   }
   await env.KV.put(key, JSON.stringify(done), {expirationTtl: TTL});
+  await env.KV.put('p:' + date, JSON.stringify({at: snap.t, results}), {expirationTtl: TTL});
+  return results.join(',');
+}
+
+// 不用存取碼的健康檢查：今天有沒有收到資料、最新一份的時間、推播結果；不含任何價格
+async function health(env) {
+  const now = taipei();
+  const top = Math.min(now.minute - 1, LAST_MINUTE);         // 這一分鐘可能還沒寫好，不讀（免得 KV 快取「不存在」）
+  let latest = null;
+  for (let m = top; m >= Math.max(0, top - 4) && !latest; m--) {
+    if (await env.KV.get('s:' + now.date + ':' + hhmm(m))) latest = hhmm(m);
+  }
+  const [ref, b, p, h] = await Promise.all(['r:', 'b:', 'p:', 'h:'].map(k => env.KV.get(k + now.date)));
+  const colon = t => t && t.slice(0, 2) + ':' + t.slice(2);
+  return {date: now.date, collected_today: !!ref, latest: colon(latest), bark: !!env.BARK_KEY, dispatch: !!env.GH_TOKEN,
+          pushed_today: b ? JSON.parse(b) : [], last_push: p ? JSON.parse(p) : null, issue: h ? JSON.parse(h) : null};
 }
 
 function cors(env) {
@@ -160,6 +206,7 @@ async function day(env, url) {
 async function handle(request, env) {
   if (request.method === 'OPTIONS') return new Response(null, {status: 204, headers: cors(env)});
   const url = new URL(request.url);
+  if (url.pathname === '/health') return reply(env, await health(env));
   const auth = request.headers.get('Authorization') || '';
   if (!env.ACCESS_CODE || auth !== 'Bearer ' + env.ACCESS_CODE) return reply(env, {error: '存取碼不對'}, 401);
   if (url.pathname === '/status') {
@@ -175,9 +222,10 @@ async function handle(request, env) {
 }
 
 export default {
-  // 每個 cron 各自觸發一次：叫 GitHub 跑排程的兩個交給 dispatch，其餘（每分鐘那個）收盤中行情
+  // 每個 cron 各自觸發一次：叫 GitHub 跑排程的兩個交給 dispatch、推播檢查交給 pushCheck，其餘（每分鐘那個）收盤中行情
   async scheduled(event, env, ctx) {
     if (event.cron === NEWS_CRON || event.cron === SLOT_CRON) ctx.waitUntil(dispatch(env, event.cron, event.scheduledTime));
+    else if (event.cron === PUSH_CRON) ctx.waitUntil(pushCheck(env, taipei(event.scheduledTime)));
     else ctx.waitUntil(collect(env));
   },
 

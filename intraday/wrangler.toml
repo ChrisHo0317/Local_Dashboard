@@ -8,9 +8,11 @@ compatibility_date = "2025-01-01"
 #    星期用英文縮寫：Cloudflare 的星期 1 是週日（和一般 cron 的 1＝週一不同），寫 1-5 會變成週日到週四。
 # 2. 每 10 分鐘叫 GitHub 跑新聞（news.yml）
 # 3. 台北 08:10、09:00、17:30、21:40 叫 GitHub 跑資料更新（update.yml），哪幾個時刻由 dispatch.js 的 SLOTS 決定
-# 2、3 的字串要和 dispatch.js 的 NEWS_CRON、SLOT_CRON 一字不差。免費方案一個帳號最多 5 個 cron。
+# 4. 盤中推播檢查：每 5 分鐘的第 2 分（讀上一分鐘的快照），和收資料分開跑（免費方案每次只有 10 毫秒 CPU）
+# 2、3、4 的字串要和 dispatch.js 的 NEWS_CRON、SLOT_CRON、worker.js 的 PUSH_CRON 一字不差。免費方案一個帳號最多 5 個 cron。
 [triggers]
-crons = ["* 1-5 * * mon-fri", "3,13,23,33,43,53 * * * *", "0,10,30,40 0,1,9,13 * * *"]
+crons = ["* 1-5 * * mon-fri", "3,13,23,33,43,53 * * * *", "0,10,30,40 0,1,9,13 * * *",
+         "2,7,12,17,22,27,32,37,42,47,52,57 1-5 * * mon-fri"]
 
 [[kv_namespaces]]
 binding = "KV"

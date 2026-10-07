@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as core from './core.js';
-import worker, { collect } from './worker.js';
+import worker, { collect, pushCheck, PUSH_CRON } from './worker.js';
 import { dispatch, plan, NEWS_CRON, SLOT_CRON, SLOTS } from './dispatch.js';
 
 // ── 計算 ──
@@ -123,11 +123,36 @@ r = await worker.fetch(new Request('https://w/status', {headers: {Authorization:
 assert.equal(r.status, 503); assert.equal(r.headers.get('Access-Control-Allow-Origin'), '*');
 assert.match((await r.json()).error, /429/);
 
+// 推播檢查（另一個 cron）：讀上一分鐘的快照；Bark 確認收到才算推過
+env.KV.m.set('s:20261005:1031', JSON.stringify({t: '10:31', p: [110, 106, 105, 104, 99, 100.5, 98], v: snap.v}));
+const pnow = {date: '20261005', minute: 92, dow: 1};
+assert.equal(await pushCheck(env, pnow), 'no-bark');
+const benv = {...env, BARK_KEY: 'bk'};
+let barkCode = 400;
+const barkCalls = [];
+globalThis.fetch = async (url) => {
+  barkCalls.push(String(url));
+  return new Response(JSON.stringify({code: barkCode, message: 'x'}), {status: barkCode === 200 ? 200 : 400});
+};
+assert.equal(await pushCheck(benv, pnow), '光通訊:400');                 // 失敗：不算推過
+assert.deepEqual(JSON.parse(env.KV.m.get('b:20261005')), []);
+barkCode = 200;
+assert.equal(await pushCheck(benv, pnow), '光通訊:200');
+assert.deepEqual(JSON.parse(env.KV.m.get('b:20261005')), ['光通訊']);
+assert.equal(await pushCheck(benv, pnow), 'none');                        // 同一族群一天一次
+assert.equal(barkCalls.length, 2);
+assert.equal(await pushCheck(benv, {...pnow, minute: 10}), 'closed');      // 09:15 以前不推
+// 健康檢查：不用存取碼、不含價格
+r = await worker.fetch(new Request('https://w/health'), env);
+const hj = await r.json();
+assert.equal(r.status, 200);
+assert.ok('collected_today' in hj && 'latest' in hj && 'pushed_today' in hj && !('ref' in hj) && !('snaps' in hj));
+
 // ── 準時觸發 GitHub 排程（dispatch.js）──
 // wrangler.toml 的 crons 要和程式裡的字串一字不差，不然 scheduled 分不出是哪一個
 const toml = fs.readFileSync(new URL('./wrangler.toml', import.meta.url), 'utf8');
-const crons = JSON.parse(/^crons\s*=\s*(\[.*\])/m.exec(toml)[1]);
-assert.ok(crons.includes(NEWS_CRON) && crons.includes(SLOT_CRON) && crons.length <= 5);
+const crons = JSON.parse(/^crons\s*=\s*(\[[\s\S]*?\])/m.exec(toml)[1]);
+assert.ok(crons.includes(NEWS_CRON) && crons.includes(SLOT_CRON) && crons.includes(PUSH_CRON) && crons.length <= 5);
 const at = (iso) => Date.parse(iso);
 assert.deepEqual(plan(NEWS_CRON, at('2026-10-06T09:33:00Z')), [['news.yml', null]]);
 assert.deepEqual(plan(SLOT_CRON, at('2026-10-06T09:30:00Z')), [['update.yml', {slot: '30 9 * * 1-5'}]]);   // 週二 17:30
