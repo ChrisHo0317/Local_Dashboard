@@ -185,7 +185,7 @@ def panel_html(data: dict) -> str:
 
 
 def datasets(data: dict) -> dict:
-    """輸出成 docs/stock/{資料集}.json 的內容，進子分頁時才載。"""
+    """輸出成 site/stock/{資料集}.json 的內容，進子分頁時才載。"""
     out = {}
     for key in ("revenue", "announce", "income"):
         df = data.get(key, pd.DataFrame())

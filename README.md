@@ -172,7 +172,6 @@ python -m pytest -q            # 測試
 | `trend_cards.py` | 總覽「走勢」子分頁的精簡卡片（site/data/trend.json）|
 | `web/` | 靜態檔：`app.css`、`app.js`（主程式）、`intel.js`（情報中心）、圖示、`manifest.webmanifest` |
 | `site/` | 產生的網站（不進 git）|
-| `docs/` | 舊的發布目錄，改用 deploy-pages 後不再更新 |
 | `scraper.py` | TrendForce DRAM 現貨報價爬蟲（僅提供當日快照）|
 | `update_data.py` | 爬蟲 → 併入 data/ |
 | `build_static.py` | 產生 `site/` |

@@ -4,7 +4,7 @@
 每個來源一個子分頁，內容是條列式清單；點任一則會切到內文檢視，
 左上角有返回鍵回到清單。
 
-清單（標題、時間、連結）寫在頁面裡，內文另外存成 docs/news/{來源}.json，
+清單（標題、時間、連結）寫在頁面裡，內文另外存成 site/news/{來源}.json，
 點開某一則時才抓，同一個來源只抓一次。內文佔了新聞資料的九成以上，
 每個來源 60 則全部內嵌會讓首頁大到不合理。
 
@@ -115,7 +115,7 @@ def lists(data: dict) -> dict:
 
 
 def bodies(data: dict) -> dict:
-    """每個來源一份 {序號: 內文}，寫成 docs/news/{來源}.json。"""
+    """每個來源一份 {序號: 內文}，寫成 site/news/{來源}.json。"""
     df = data.get("news", pd.DataFrame())
     out = {}
     for source in SOURCES:
