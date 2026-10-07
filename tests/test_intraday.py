@@ -35,6 +35,7 @@ def test_universe():
     assert U["mk"] == ["o", "t", "t", "t", "t"]
     assert U["groups"] == [["記憶體", "手動補充", [0, 2, 3, 4]]]          # 晶圓代工只有 1 檔，不成族群
     assert U["yday"] == ["記憶體"] and len(U["profile"]) == 271
+    assert U["watch"] == [0]                                            # 自選股 1234 的序號
     assert U["profile"][0] == 0 and U["profile"][-1] == 1.0
     assert all(a <= b for a, b in zip(U["profile"], U["profile"][1:]))
 

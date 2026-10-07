@@ -10,6 +10,7 @@
     avg       近 20 日平均成交值（億），算量比用
     groups    族群：[[名稱, 產業鏈, [成員在 codes 裡的序號]]]，細產業中至少 MIN_MEMBERS 檔在名單裡的
     yday      上一個交易日強勢紀錄裡「族群連動」的族群（盤中標「延續」）
+    watch     自選股在 codes 裡的序號（盤中動畫可以只看自選股）
     profile   盤中累積成交量占全天的比例，09:00 起每分鐘一個（0～270），算「到現在應該有多少量」
 """
 from __future__ import annotations
@@ -115,5 +116,6 @@ def build(panel: pd.DataFrame, master: pd.DataFrame, watch_codes: set,
         "avg": [round(float(avg[c]) / 1e8, 3) for c in codes],
         "groups": groups,
         "yday": yday,
+        "watch": [index[c] for c in sorted(set(watch_codes)) if c in index],
         "profile": profile(),
     }

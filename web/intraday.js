@@ -315,9 +315,278 @@ function renderPane() {
   }
 }
 
+// ── 今日強勢股動畫（排行賽跑）──
+// 每 3 分鐘一格（加上最新一份），每格依漲幅排前 RACE_N 名，條形滑動換位；可播放、拖時間軸、換範圍（全部／自選股／族群）、
+// 換日期（Cloudflare 留最近 5 天的每分鐘資料）。今天的資料跟著盤中輪詢更新，其他日子另外讀一次。
+const RACE_N = 15;
+const RACE_ROW = 38;                       // 每列高度（px），和 CSS .rc-row 一致
+const RACE_SPEEDS = [['1×', 600], ['4×', 150], ['10×', 60]];   // 每格幾毫秒（一格＝3 分鐘）
+const race = {date: null, data: null, frames: [], idx: -1, playing: false, timer: null, speed: 600, scope: 'all',
+              nodes: new Map(), prevTop: [], groupOf: null, days: null, loading: false};
+
+function raceSource() {
+  if (race.date && race.data) return race.data;
+  return st.U ? {U: st.U, ref: st.ref, series: st.series, date: st.date} : null;
+}
+
+function raceFrames(series) {
+  const f = series.filter(x => x.m % 3 === 0);
+  const last = series[series.length - 1];
+  if (last && f[f.length - 1] !== last) f.push(last);
+  return f;
+}
+
+// 每檔歸到「最新一格排名最前面」的族群，列在名字下面
+function raceGroups(src) {
+  const out = new Array(src.U.codes.length).fill('');
+  const last = src.series[src.series.length - 1];
+  if (!last) return out;
+  core.groupStats(src.U, src.ref, last).forEach(r => {
+    src.U.groups[r.gi][2].forEach(i => { if (!out[i]) out[i] = r.name; });
+  });
+  return out;
+}
+
+function raceScopeIdx(src) {
+  const U = src.U;
+  if (race.scope === 'watch') return U.watch || [];
+  if (race.scope.startsWith('g:')) {
+    const g = U.groups.find(x => x[0] === race.scope.slice(2));
+    return g ? g[2] : [];
+  }
+  return U.codes.map((_, i) => i);
+}
+
+function raceTop(src, snap, idx) {
+  const out = [];
+  for (const i of idx) {
+    const p = snap.p[i], y = src.ref.y[i];
+    if (p == null || !y) continue;
+    out.push([i, (p / y - 1) * 100]);
+  }
+  out.sort((a, b) => b[1] - a[1]);
+  return out.slice(0, RACE_N);
+}
+
+function raceDraw() {
+  const box = document.querySelector('.lv-race');
+  const src = raceSource();
+  if (!box || !src || !race.frames.length) return;
+  const snap = race.frames[race.idx];
+  const list = box.querySelector('.rc-list');
+  const minute = Math.max(1, Math.min(270, snap.m));
+  const frac = src.U.profile[minute] || 1;
+  const top = raceTop(src, snap, raceScopeIdx(src));
+  const prev = new Set(race.prevTop);
+  box.querySelector('.rc-time').textContent = snap.t || core.hhmm(snap.m).replace(/^(..)/, '$1:');
+  box.querySelector('.rc-slider').value = String(race.idx);
+  list.style.height = (Math.max(top.length, 1) * RACE_ROW) + 'px';
+  const seen = new Set();
+  top.forEach(([i, chg], k) => {
+    seen.add(i);
+    let row = race.nodes.get(i);
+    if (!row) {
+      row = el('button', 'rc-row');
+      row.type = 'button';
+      row.innerHTML = '<span class="rc-rank"></span><span class="rc-name"><b></b><small></small></span>' +
+                      '<span class="rc-bar"><i></i></span><span class="rc-chg"></span>';
+      row.style.transform = 'translateY(' + (RACE_N * RACE_ROW) + 'px)';
+      row.addEventListener('click', () => UI.openStock && UI.openStock(src.U.codes[i]));
+      list.appendChild(row);
+      race.nodes.set(i, row);
+      void row.offsetWidth;                               // 先停在底下，下一步才滑上來
+    }
+    const tv = snap.p[i] != null && snap.v[i] != null ? snap.v[i] * snap.p[i] * 1000 / 1e8 : null;
+    const vr = tv != null && src.U.avg[i] ? tv / (src.U.avg[i] * frac) : null;
+    const lim = !!(src.ref.u[i] && snap.p[i] >= src.ref.u[i]);
+    row.hidden = false;
+    row.className = 'rc-row ' + dir(chg) + (lim ? ' is-lim' : '') + (race.prevTop.length && !prev.has(i) ? ' is-new' : '');
+    row.style.transform = 'translateY(' + (k * RACE_ROW) + 'px)';
+    row.style.opacity = '1';
+    row.querySelector('.rc-rank').textContent = String(k + 1);
+    row.querySelector('.rc-name b').textContent = src.U.names[i] || src.U.codes[i];
+    row.querySelector('.rc-name small').textContent = [race.groupOf[i], vr == null ? '' : '量比 ' + vr.toFixed(1)]
+      .filter(Boolean).join('・');
+    row.querySelector('.rc-bar i').style.width = Math.min(Math.abs(chg), 10) * 10 + '%';
+    row.querySelector('.rc-chg').textContent = signed(chg, 1, '%') + (lim ? ' 漲停' : '');
+  });
+  race.nodes.forEach((row, i) => {
+    if (seen.has(i)) return;
+    row.style.transform = 'translateY(' + (RACE_N * RACE_ROW) + 'px)';
+    row.style.opacity = '0';
+  });
+  race.prevTop = top.map(x => x[0]);
+  const empty = box.querySelector('.rc-empty');
+  empty.hidden = top.length > 0;
+}
+
+function raceStop() {
+  race.playing = false;
+  clearTimeout(race.timer);
+  const b = document.querySelector('.lv-race .rc-play');
+  if (b) b.textContent = '▶ 播放';
+}
+
+function racePlay() {
+  if (race.idx >= race.frames.length - 1) { race.idx = 0; race.prevTop = []; }
+  race.playing = true;
+  document.querySelector('.lv-race .rc-play').textContent = '⏸ 暫停';
+  const step = () => {
+    if (!race.playing) return;
+    raceDraw();
+    if (race.idx >= race.frames.length - 1) { raceStop(); return; }
+    race.idx++;
+    race.timer = setTimeout(step, race.speed);
+  };
+  step();
+}
+
+// 換日期、換範圍、資料更新後：重算格子與族群；正在看最新一格又沒在播放，就跟到新的最新一格
+function raceReset(keepIdx) {
+  const src = raceSource();
+  const box = document.querySelector('.lv-race');
+  if (!box) return;
+  box.hidden = !src || !src.series.length;
+  if (box.hidden) return;
+  const wasEnd = race.idx < 0 || race.idx >= race.frames.length - 1;
+  race.frames = raceFrames(src.series);
+  race.groupOf = raceGroups(src);
+  const slider = box.querySelector('.rc-slider');
+  slider.max = String(race.frames.length - 1);
+  if (!keepIdx || wasEnd && !race.playing) race.idx = race.frames.length - 1;
+  race.idx = Math.min(race.idx, race.frames.length - 1);
+  box.style.setProperty('--rc-dur', Math.min(race.speed * 0.85, 450) + 'ms');
+  raceScopes(src);
+  if (!race.playing) raceDraw();
+}
+
+function raceScopes(src) {
+  const sel = document.querySelector('.lv-race .rc-scope');
+  const want = [['all', '全部名單']].concat(src.U.watch && src.U.watch.length ? [['watch', '自選股']] : [])
+    .concat(core.dedupe(src.U, core.groupStats(src.U, src.ref, src.series[src.series.length - 1]), 20)
+      .map(r => ['g:' + r.name, r.name]));
+  if (!want.some(x => x[0] === race.scope)) race.scope = 'all';
+  sel.textContent = '';
+  want.forEach(([v, t]) => {
+    const o = el('option', null, t);
+    o.value = v;
+    o.selected = v === race.scope;
+    sel.appendChild(o);
+  });
+}
+
+// 最近 5 個平日（含今天）；點了才讀那天的資料
+const mdOf = d => Number(d.slice(4, 6)) + '/' + Number(d.slice(6));      // 20261006 → 10/6
+
+function raceDays() {
+  const out = [];
+  for (let k = 0; out.length < 5 && k < 10; k++) {
+    const d = new Date(Date.now() + 8 * 3600 * 1000 - k * 86400 * 1000);
+    if (d.getUTCDay() === 0 || d.getUTCDay() === 6) continue;
+    out.push(d.toISOString().slice(0, 10).replace(/-/g, ''));
+  }
+  return out;
+}
+
+async function raceDate(date) {
+  raceStop();
+  const msg = document.querySelector('.lv-race .rc-msg');
+  msg.textContent = '';
+  if (!date || date === st.date) {
+    race.date = null; race.data = null;
+  } else {
+    race.loading = true;
+    msg.textContent = '載入中…';
+    try {
+      const d = await api('/day?date=' + date + '&step=3&u=1');
+      if (!d.universe || !d.snaps || !d.snaps.length) {
+        msg.textContent = mdOf(date) + ' 沒有資料（休市，或已超過 5 天）';
+        race.loading = false;
+        return;
+      }
+      race.date = date;
+      race.data = {U: d.universe, ref: d.ref, series: core.fillForward(d.snaps), date};
+      msg.textContent = '';
+    } catch (e) {
+      msg.textContent = e.message || '讀取失敗';
+      race.loading = false;
+      return;
+    }
+    race.loading = false;
+  }
+  race.nodes.forEach(row => row.remove());
+  race.nodes.clear();
+  race.prevTop = [];
+  raceReset(false);
+  document.querySelectorAll('.lv-race .rc-day').forEach(b => {
+    b.setAttribute('aria-pressed', String(b.dataset.date === (race.date || st.date)));
+  });
+}
+
+function setupRace() {
+  const pane = document.querySelector('.subpanel[data-sub="live"]');
+  if (!pane || pane.querySelector('.lv-race')) return;
+  const box = el('section', 'lv-race ov-card');
+  box.hidden = true;
+  box.innerHTML =
+    '<div class="rc-head"><h3>強勢股動畫</h3><span class="rc-time num"></span></div>' +
+    '<div class="rc-days"></div>' +
+    '<div class="rc-ctrl"><button type="button" class="rc-play chip">▶ 播放</button>' +
+    '<span class="rc-speed"></span><select class="rc-scope" aria-label="範圍"></select></div>' +
+    '<input type="range" class="rc-slider" min="0" max="0" value="0" aria-label="時間">' +
+    '<p class="rc-msg sd-note"></p><p class="rc-empty ov-empty" hidden>這個範圍沒有股票。</p>' +
+    '<div class="rc-list"></div>' +
+    '<p class="sd-note">每格 3 分鐘，依當下漲幅排前 ' + RACE_N + ' 名；名字下面是所屬族群（今天排名最前的那個）與量比。點股票看個股頁。</p>';
+  pane.insertBefore(box, pane.querySelector('.lv-body'));
+  const days = box.querySelector('.rc-days');
+  raceDays().forEach((d, k) => {
+    const b = el('button', 'chip rc-day', k ? mdOf(d) : '今天');
+    b.type = 'button';
+    b.dataset.date = d;
+    b.addEventListener('click', () => raceDate(d));
+    days.appendChild(b);
+  });
+  const sp = box.querySelector('.rc-speed');
+  RACE_SPEEDS.forEach(([t, ms]) => {
+    const b = el('button', 'chip', t);
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(ms === race.speed));
+    b.addEventListener('click', () => {
+      race.speed = ms;
+      box.style.setProperty('--rc-dur', Math.min(ms * 0.85, 450) + 'ms');
+      sp.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    });
+    sp.appendChild(b);
+  });
+  box.querySelector('.rc-play').addEventListener('click', () => (race.playing ? raceStop() : racePlay()));
+  box.querySelector('.rc-slider').addEventListener('input', e => {
+    raceStop();
+    race.idx = Number(e.target.value);
+    raceDraw();
+  });
+  box.querySelector('.rc-scope').addEventListener('change', e => {
+    race.scope = e.target.value;
+    race.prevTop = [];
+    raceDraw();
+  });
+}
+
+// 盤中資料更新時（今天）跟著更新；看的是別天就不動
+function renderRace() {
+  const pane = document.querySelector('.subpanel[data-sub="live"]');
+  if (!pane || pane.hidden) return;
+  setupRace();
+  const box = pane.querySelector('.lv-race');
+  if (!configured()) { box.hidden = true; return; }
+  if (race.date) return;
+  box.querySelectorAll('.rc-day').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.date === st.date)));
+  raceReset(true);
+}
+
 function render() {
   renderCard();
   renderPane();
+  renderRace();
 }
 
 // ── 子分頁、設定頁 ──
@@ -336,7 +605,7 @@ function setupTab() {
   }
   if (btn.dataset.bound) return;
   btn.dataset.bound = '1';
-  btn.addEventListener('click', () => setTimeout(() => { renderPane(); if (!st.U) refresh(true); }, 0));
+  btn.addEventListener('click', () => setTimeout(() => { renderPane(); renderRace(); if (!st.U) refresh(true); }, 0));
 }
 
 function setupSettings() {
