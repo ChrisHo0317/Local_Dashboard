@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-06 15:08",
+ "generated": "2026-10-07 13:49",
  "status": "warn",
  "checks": [
   {
@@ -23,7 +23,7 @@
   {
    "id": "secrets",
    "level": "info",
-   "title": "還沒設定：BARK_KEY、ANTHROPIC_API_KEY",
+   "title": "還沒設定：ANTHROPIC_API_KEY",
    "detail": "GitHub → Settings → Secrets and variables → Actions"
   },
   {
