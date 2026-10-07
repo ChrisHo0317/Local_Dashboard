@@ -587,6 +587,7 @@ event_time,country,title,impact,forecast,previous,actual,better
 2026-10-07T05:00:00Z,EMU,ECB's Cipollone speech,Medium,,,,
 2026-10-07T06:00:00Z,DE,Industrial Production s.a. (MoM),Medium,1.4,-1.1,2,1
 2026-10-07T06:00:00Z,DE,Industrial Production n.s.a. w.d.a. (YoY),Medium,,-1.6,2.3,
+2026-10-07T06:00:00Z,EMU,ECB's Moulin speech,Medium,,,,
 2026-10-07T07:20:00Z,EMU,ECB's Vujčić speech,Medium,,,,
 2026-10-07T17:30:00Z,EMU,ECB's Vujčić speech,Medium,,,,
 2026-10-07T18:00:00Z,US,FOMC Minutes,High,,,,
