@@ -3,7 +3,7 @@
 // 設定頁填「盤中服務網址」與「存取碼」（只存在這台裝置的 localStorage）後才會出現：
 //   今日頁最上面的「盤中強勢族群」卡（09:00～14:30）、市場底下的「盤中」子分頁。
 // 計算在 intraday_core.js（和 Worker 共用，原始檔 intraday/core.js）。
-// 依賴 intel.js 放在 window.DashUI 的小工具（el、fmt、signed、dir、md、sparkSvg、openStock、goSub）。
+// 依賴 intel.js 放在 window.DashUI 的小工具（el、fmt、signed、dir、md、openStock、goSub）。
 import * as core from './intraday_core.js';
 
 const KEY = 'dash-intraday';
@@ -159,32 +159,70 @@ function groupRow(r, clickable) {
   return row;
 }
 
+// 盤中走勢小圖：橫軸從 09:00 到最新一份資料（end，分鐘），虛線是基準（昨收、或族群的 0%）
+function lineSvg(pts, base, w, h, cls, end) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+  svg.setAttribute('preserveAspectRatio', 'none');
+  svg.setAttribute('aria-hidden', 'true');
+  const last = pts.length ? pts[pts.length - 1][1] : null;
+  svg.setAttribute('class', 'lv-line ' + (cls || '') + ' ' + (last != null && base != null ? dir(last - base) : ''));
+  if (pts.length < 2 || base == null) return svg;
+  const vals = pts.map(q => q[1]).concat([base]);
+  const lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), span = hi - lo || 1;
+  const X = m => (Math.min(Math.max(m, 0), end) / end * (w - 2) + 1).toFixed(1);
+  const Y = v => (h - 1 - (v - lo) / span * (h - 2)).toFixed(1);
+  const mk = (tag, attrs) => {
+    const n = document.createElementNS(ns, tag);
+    Object.keys(attrs).forEach(k => n.setAttribute(k, attrs[k]));
+    n.setAttribute('vector-effect', 'non-scaling-stroke');
+    svg.appendChild(n);
+  };
+  mk('line', {x1: 0, x2: w, y1: Y(base), y2: Y(base), class: 'lv-base'});
+  mk('path', {d: pts.map((q, k) => (k ? 'L' : 'M') + X(q[0]) + ' ' + Y(q[1])).join(' ')});
+  return svg;
+}
+
+// 個股價格：千元以上不帶小數，其餘最多兩位（去掉多餘的 0）
+function price(v) {
+  return v == null ? '—' : Number(v).toLocaleString('zh-TW', {maximumFractionDigits: v >= 1000 ? 0 : 2});
+}
+
 function detail(r) {
   const box = el('div', 'lv-detail');
-  const line = core.groupLine(st.U, st.ref, st.series, r.gi).filter(v => v != null);
-  if (line.length > 1 && UI.sparkSvg) {
-    const sp = UI.sparkSvg(line);
-    sp.classList.add('lv-spark');
-    box.appendChild(sp);
-  }
+  // 同一個族群的線共用橫軸：09:00 到最新一份（開盤頭半小時至少留 30 分鐘寬，線才不會擠成一團）
+  const end = Math.max(30, Math.min(270, latest().m));
+  const line = core.groupLine(st.U, st.ref, st.series, r.gi);
+  const gpts = st.series.map((s, k) => [s.m, line[k]]).filter(q => q[1] != null);
+  if (gpts.length > 1) box.appendChild(lineSvg(gpts, 0, 300, 46, 'lv-gline', end));
   const mem = core.members(st.U, st.ref, latest(), r.gi, corrSeries());
   const t = el('div', 'lv-mem');
   const head = el('div', 'lv-m lv-m-h');
-  ['股票', '漲幅', '量比', '連動'].forEach(x => head.appendChild(el('span', null, x)));
+  ['股票', '今日走勢', '價格・漲幅'].forEach(x => head.appendChild(el('span', null, x)));
   t.appendChild(head);
   mem.forEach((m, k) => {
     const row = el('button', 'lv-m');
     row.type = 'button';
     row.hidden = st.memAll !== r.name && k >= MEMBERS;
+    // 左：名稱、標記；下一行代號、量比、連動
+    const info = el('span', 'lv-mi');
     const n = el('span', 'lv-mn');
-    n.appendChild(document.createTextNode(m.name + ' '));
-    n.appendChild(el('small', null, m.code));
+    n.appendChild(el('b', null, m.name));
     if (m.limit) n.appendChild(el('span', 'lv-lim', '漲停'));
     if (m.first) n.appendChild(el('span', 'lv-lead', m.lead + ' 領漲'));
-    row.appendChild(n);
-    row.appendChild(el('span', 'num ' + dir(m.chg), signed(m.chg, 2, '%')));
-    row.appendChild(el('span', 'num', m.vr == null ? '—' : m.vr.toFixed(1)));
-    row.appendChild(el('span', 'num', m.corr == null ? '—' : m.corr.toFixed(2)));
+    info.appendChild(n);
+    info.appendChild(el('small', 'lv-ms', m.code + '　量比 ' + (m.vr == null ? '—' : m.vr.toFixed(1)) +
+                                          '　連動 ' + (m.corr == null ? '—' : m.corr.toFixed(2))));
+    row.appendChild(info);
+    // 中：今日走勢（虛線＝昨收）
+    const pts = st.series.filter(s => s.p[m.i] != null).map(s => [s.m, s.p[m.i]]);
+    row.appendChild(lineSvg(pts, st.ref.y[m.i], 64, 26, 'lv-mline', end));
+    // 右：目前價格、漲幅
+    const q = el('span', 'lv-mq ' + dir(m.chg));
+    q.appendChild(el('b', 'num', price(m.price)));
+    q.appendChild(el('span', 'num', signed(m.chg, 2, '%')));
+    row.appendChild(q);
     row.addEventListener('click', () => UI.openStock && UI.openStock(m.code));
     t.appendChild(row);
   });
@@ -199,7 +237,8 @@ function detail(r) {
     });
     box.appendChild(more);
   }
-  box.appendChild(el('p', 'sd-note', '量比＝目前累積成交值 ÷ 同一時間點的 20 日平均；連動＝今天每 3 分鐘漲跌和族群其他成員的相關係數（開盤 30 分鐘後才有）；領漲＝最先漲到 +3%。'));
+  box.appendChild(el('p', 'sd-note', '今日走勢＝09:00 到現在的成交價（虛線是昨收）；量比＝目前累積成交值 ÷ 同一時間點的 20 日平均；' +
+                                     '連動＝今天每 3 分鐘漲跌和族群其他成員的相關係數（開盤 30 分鐘後才有）；領漲＝最先漲到 +3%。'));
   return box;
 }
 
