@@ -76,6 +76,7 @@ def sent_path(tmp_path, monkeypatch):
     monkeypatch.setattr(alerts, "SENT_PATH", path)
     monkeypatch.setattr(alerts, "collect", lambda: [
         {"id": "x", "code": "2330", "urgent": False, "line": "營收"}])
+    monkeypatch.setattr(alerts, "load_watchlist", lambda: [{"code": "2330", "note": "", "push": True}])
     sent = []
     monkeypatch.setattr(alerts, "send", lambda msg, key, server: sent.append(msg) or True)
     return path, sent
@@ -101,6 +102,28 @@ def test_alerts_first_run_is_silent_then_sends_new(sent_path, monkeypatch):
         {"id": "y", "code": "2330", "urgent": False, "line": "新事件"}])
     alerts.main([])
     assert len(sent) == 1 and sent[0]["ids"] == ["y"]
+
+
+def test_alerts_new_watch_codes_start_silent(sent_path, monkeypatch):
+    # 盤後摘要先建立了 alerts_sent.csv：自選股第一次推播仍然只記錄，不會一次推一堆舊消息
+    path, sent = sent_path
+    monkeypatch.delenv("ALERTS_ENABLED", raising=False)
+    monkeypatch.setenv("BARK_KEY", "k")
+    alerts.save_sent({"digest|post|2026-10-06": "2026-10-06"}, "2026-10-06")
+    alerts.main([])
+    assert sent == []
+    # 新加一檔：它現有的事件不推；原本那檔的新事件照推
+    monkeypatch.setattr(alerts, "load_watchlist", lambda: [{"code": "2330", "note": "", "push": True},
+                                                           {"code": "6488", "note": "", "push": True}])
+    monkeypatch.setattr(alerts, "collect", lambda: [
+        {"id": "old", "code": "6488", "urgent": True, "title": "【重訊】6488", "body": "舊"},
+        {"id": "y", "code": "2330", "urgent": False, "line": "新事件"}])
+    alerts.main([])
+    assert len(sent) == 1 and sent[0]["ids"] == ["y"]
+    monkeypatch.setattr(alerts, "collect", lambda: [
+        {"id": "new", "code": "6488", "urgent": True, "title": "【重訊】6488", "body": "新"}])
+    alerts.main([])
+    assert len(sent) == 2 and sent[1]["ids"] == ["new"]
 
 
 def test_alerts_without_key_sends_nothing(sent_path, monkeypatch):

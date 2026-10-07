@@ -268,27 +268,31 @@ def main(argv=None) -> int:
     events = collect()
     today = intel_data.today_taipei().isoformat()
     sent = load_sent()
-    first_run = not SENT_PATH.exists()
-    fresh = [e for e in events if e["id"] not in sent]
-    log.info(f"自選股事件 {len(events)} 則，未推過 {len(fresh)} 則")
+    pending = [e for e in events if e["id"] not in sent]
+    log.info(f"自選股事件 {len(events)} 則，未推過 {len(pending)} 則")
 
     if args.dry_run:
-        for m in messages(fresh):
+        for m in messages(pending):
             log.info(f"[預覽] {m['title']}｜{m['body']}")
         return 0
-    if not fresh:
-        return 0
-    if first_run and key:
-        # 第一次只記錄現有事件，不推播，免得一開始就收到一堆舊消息
-        for e in fresh:
-            sent[e["id"]] = today
-        save_sent(sent, today)
-        log.info(f"第一次執行：記錄 {len(fresh)} 則現有事件，不推播")
-        return 0
     if not key:
-        for m in messages(fresh):
+        for m in messages(pending):
             log.info(f"[未設定 BARK_KEY，略過] {m['title']}")
         return 0
+
+    # 剛開始推播的自選股（第一次設定 BARK_KEY、或新加進清單）：現有事件只記錄、不推，
+    # 免得一開始就收到一堆舊消息。每檔記一個 watch|代號，每次都更新日期，還在清單上就不會被清掉。
+    # （不能只看 alerts_sent.csv 存不存在：盤前盤後摘要、資料品質的推播也會建立這個檔）
+    codes = {w["code"] for w in load_watchlist() if w["push"]}
+    new = {c for c in codes if f"watch|{c}" not in sent}
+    quiet = [e for e in pending if e["code"] in new]
+    fresh = [e for e in pending if e["code"] not in new]
+    for e in quiet:
+        sent[e["id"]] = today
+    for c in codes:
+        sent[f"watch|{c}"] = today
+    if new:
+        log.info(f"新開始推播的自選股 {len(new)} 檔：記錄 {len(quiet)} 則現有事件，不推播")
 
     for m in messages(fresh):
         if send(m, key, server):
