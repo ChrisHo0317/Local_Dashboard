@@ -12,11 +12,16 @@
 //   GET /status                     服務狀態
 //   GET /health                     不用存取碼：今天有沒有在收、最新一份的時間、推播結果（不含任何價格）
 //   GET /day?from=HHMM&step=N&u=1   當天（或最近一個交易日）的快照；u=1 連今日名單一起給
+//   /feed、/stream                  即時轉播站（WebSocket，見 livehub.js；永豐金行情程式送進來、網站連上去收）
 //
 // 即時行情只給帶存取碼的人看（證交所即時行情不能公開轉載）。
 
 import { misBatches, fromMis, groupStats, dedupe, seen, hhmm, MIN_STRONG } from './core.js';
-import { dispatch, NEWS_CRON, SLOT_CRON } from './dispatch.js';
+// 主程式只能匯出處理函式與類別（Workers 會把每個具名匯出當成進入點，匯出字串會讓它無法啟動），所以常數放在 dispatch.js
+import { dispatch, NEWS_CRON, SLOT_CRON, PUSH_CRON } from './dispatch.js';
+import { LiveHub } from './livehub.js';
+
+export { LiveHub };              // Durable Object 的類別要從主程式匯出
 
 const MIS = 'https://mis.twse.com.tw/stock/api/getStockInfo.jsp';
 const LAST_MINUTE = 273;          // 13:33：13:30 收盤集合競價的結果要幾十秒才出來
@@ -24,8 +29,6 @@ const TTL = 86400 * 5;            // 快照留 5 天
 const PUSH_FROM = 15;             // 09:15 以前不推播（開盤前幾分鐘排名不穩）
 const PUSH_MIN_STRONG = 4;
 const WRITTEN_BY = 25;            // 每分鐘的快照大約第 10～15 秒才寫好；第 25 秒以前不讀這一分鐘
-// 推播檢查的 cron（要和 wrangler.toml 一字不差）：每 5 分鐘的第 2 分，讀上一分鐘（1、6、11…分）的快照
-export const PUSH_CRON = '2,7,12,17,22,27,32,37,42,47,52,57 1-5 * * mon-fri';
 
 function taipei(ts = Date.now()) {
   const d = new Date(ts + 8 * 3600 * 1000);
@@ -203,10 +206,26 @@ async function day(env, url) {
   return reply(env, out + '}');
 }
 
+function hub(env) {
+  return env.HUB ? env.HUB.get(env.HUB.idFromName('live')) : null;
+}
+
+// 轉播站狀態（不含價格）；還沒有轉播站或讀取失敗就是 null
+async function liveStatus(env) {
+  const h = hub(env);
+  if (!h) return null;
+  try { return await (await h.fetch('https://hub/status')).json(); } catch (e) { return null; }
+}
+
 async function handle(request, env) {
   if (request.method === 'OPTIONS') return new Response(null, {status: 204, headers: cors(env)});
   const url = new URL(request.url);
-  if (url.pathname === '/health') return reply(env, await health(env));
+  // 即時轉播站：WebSocket，存取碼與行情程式的密鑰由轉播站自己檢查
+  if (url.pathname === '/feed' || url.pathname === '/stream') {
+    const h = hub(env);
+    return h ? h.fetch(request) : reply(env, {error: '還沒有即時轉播站'}, 503);
+  }
+  if (url.pathname === '/health') return reply(env, Object.assign(await health(env), {live: await liveStatus(env)}));
   const auth = request.headers.get('Authorization') || '';
   if (!env.ACCESS_CODE || auth !== 'Bearer ' + env.ACCESS_CODE) return reply(env, {error: '存取碼不對'}, 401);
   if (url.pathname === '/status') {

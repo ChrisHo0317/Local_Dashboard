@@ -1,4 +1,4 @@
-// 盤中強勢族群（網站端）：讀自己的 Cloudflare Worker，每分鐘更新
+// 盤中強勢族群（網站端）：讀自己的 Cloudflare Worker，每分鐘更新；有永豐金即時資料時每 5 秒更新
 //
 // 設定頁填「盤中服務網址」與「存取碼」（只存在這台裝置的 localStorage）後才會出現：
 //   今日頁最上面的「盤中強勢族群」卡（09:00～14:30）、市場底下的「盤中」子分頁。
@@ -82,11 +82,189 @@ async function refresh(full) {
     st.error = e.message || '讀取失敗';
   } finally {
     st.busy = false;
+    live.frame = null;
     render();
   }
 }
 
 function latest() { return st.series[st.series.length - 1]; }
+
+// ── 即時（永豐金行情程式 → Cloudflare 即時轉播站 intraday/livehub.js）──
+// 盤中（平日 08:55～13:40）而且畫面在前景時，和轉播站保持 WebSocket 連線；收到的價量蓋在最新一分鐘的快照上，
+// 變成「即時這一格」current()。LIVE_STALE_MS 沒收到就當作暫停，畫面自動退回每分鐘的資料。
+const LIVE_STALE_MS = 30000;
+const live = {ws: null, q: {}, date: null, t: null, recv: 0, seen: 0, state: 'off', why: '', retry: 0, timer: null,
+              frame: null, idx: null, idxU: null};
+const LIVE_DEAD_MS = 75000;            // 連 'pong' 都 75 秒沒收到：連線其實斷了（換網路、電腦睡醒），重連
+
+function liveWanted() {
+  const n = taipei();
+  return configured() && !document.hidden && n.dow >= 1 && n.dow <= 5 && n.minute >= -5 && n.minute <= 280;
+}
+
+function liveSync() {
+  if (liveWanted()) {
+    if (!live.ws && live.state !== 'error') liveConnect();
+  } else if (live.ws) {
+    liveClose('off');
+  }
+}
+
+function liveConnect() {
+  clearTimeout(live.timer);
+  let ws;
+  try {
+    ws = new WebSocket(cfg.url.replace(/\/+$/, '').replace(/^http/, 'ws') + '/stream');
+  } catch (e) {
+    live.state = 'error'; live.why = '網址不對，無法連線';
+    return;
+  }
+  live.ws = ws;
+  live.state = 'connecting';
+  live.seen = Date.now();
+  ws.onopen = () => {
+    ws.send(JSON.stringify({auth: cfg.code}));
+    live.retry = 0;
+    ws._ping = setInterval(() => { try { ws.send('ping'); } catch (e) { /* 斷了就等 onclose */ } }, 30000);
+  };
+  ws.onmessage = e => {
+    if (live.ws === ws) live.seen = Date.now();
+    let m;
+    try { m = JSON.parse(e.data); } catch (x) { return; }      // 'pong'
+    if (live.ws === ws) liveMessage(m);
+  };
+  ws.onclose = e => {
+    clearInterval(ws._ping);
+    if (live.ws !== ws) return;                                 // 舊連線遲到的關閉，不影響新的
+    live.ws = null;
+    if (e.code === 4001) { live.state = 'error'; live.why = '存取碼不對'; scheduleRender(); return; }
+    if (live.state !== 'off') live.state = 'idle';
+    live.frame = null;
+    scheduleRender();
+    if (liveWanted()) live.timer = setTimeout(liveSync, Math.min(60000, 5000 * 2 ** live.retry++));
+  };
+}
+
+function liveClose(state) {
+  const ws = live.ws;
+  live.ws = null;
+  live.state = state;
+  live.frame = null;
+  clearTimeout(live.timer);
+  if (ws) {
+    clearInterval(ws._ping);
+    try { ws.close(1000); } catch (e) { /* 已經關了 */ }
+  }
+}
+
+function liveMessage(m) {
+  if (m.type === 'full' || m.type === 'delta') {
+    if (m.type === 'full' || live.date !== m.date) live.q = {};
+    Object.assign(live.q, m.q || {});
+    live.date = m.date; live.t = m.t; live.recv = Date.now(); live.state = 'live';
+  } else if (m.type === 'hb') {
+    if (live.date === m.date) { live.t = m.t; live.recv = Date.now(); }
+  } else if (m.type === 'idle') {
+    live.state = 'idle';
+  }
+  live.frame = null;
+  scheduleRender();
+}
+
+// 即時這一格：最新一分鐘的快照，名單內有即時價量的股票換成即時的
+function liveFrame() {
+  const base = latest();
+  if (!base || !st.U || live.state !== 'live' || live.date !== st.date || Date.now() - live.recv > LIVE_STALE_MS) return null;
+  if (live.frame) return live.frame;
+  if (live.idxU !== st.U) { live.idx = new Map(st.U.codes.map((c, i) => [c, i])); live.idxU = st.U; }
+  const p = base.p.slice(), v = base.v.slice();
+  for (const code in live.q) {
+    const i = live.idx.get(code);
+    if (i === undefined) continue;
+    const a = live.q[code];
+    if (a[0] > 0) p[i] = a[0];
+    if (a[1] > 0) v[i] = a[1];
+  }
+  const m = core.minuteOf(live.t);
+  live.frame = {t: live.t, m: m == null ? base.m : Math.max(base.m, m), p, v, live: true};
+  return live.frame;
+}
+
+function current() { return liveFrame() || latest(); }
+
+// 畫走勢線用：每分鐘的資料，有即時就接在最後
+function seriesNow() {
+  const f = liveFrame();
+  return f ? st.series.concat([f]) : st.series;
+}
+
+// 即時資料每 5 秒一份：重畫最多每秒一次
+let renderTimer = null, lastRender = 0;
+function scheduleRender() {
+  if (renderTimer) return;
+  renderTimer = setTimeout(() => { renderTimer = null; lastRender = Date.now(); render(); },
+                           Math.max(0, 1000 - (Date.now() - lastRender)));
+}
+
+// ── 事件快訊：每次有新的一格就和上一格比（衝進前 5、漲停／打開、族群換第 1、族群跳升、量比放大）──
+const EV_MAX = 30, EV_QUIET_MS = 10 * 60000;
+const ev = {list: [], prev: null, t: null, src: null, ranks: [], last: new Map()};
+
+function evPush(key, t, text, target) {
+  const now = Date.now();
+  if (now - (ev.last.get(key) || 0) < EV_QUIET_MS) return;       // 同一件事 10 分鐘內不重複
+  ev.last.set(key, now);
+  ev.list.unshift({t, text, target});
+  if (ev.list.length > EV_MAX) ev.list.length = EV_MAX;
+}
+
+function evalEvents() {
+  const snap = current();
+  if (!snap || !st.U || st.date !== taipei().date || ev.t === snap.t) return;
+  ev.t = snap.t;
+  // 資料來源換了（每分鐘 ↔ 即時）：兩邊的量算法不同，這一格只當比較基準，不發快訊
+  const src = snap.live ? 'live' : 'min';
+  if (ev.src !== src) { ev.src = src; ev.prev = null; ev.ranks = []; }
+  const U = st.U, ref = st.ref, t = (snap.t || '').slice(0, 5);
+  const frac = U.profile[Math.max(1, Math.min(270, snap.m))] || 1;
+  const chg = [], lim = new Set(), surge = new Set();
+  U.codes.forEach((c, i) => {
+    const p = snap.p[i], y = ref.y[i];
+    if (p == null || !y) return;
+    const x = (p / y - 1) * 100;
+    chg.push([i, x]);
+    if (ref.u[i] && p >= ref.u[i]) lim.add(i);
+    const tv = snap.v[i] != null ? snap.v[i] * p * 1000 / 1e8 : 0;
+    if (x >= 2 && U.avg[i] && tv / (U.avg[i] * frac) >= 3) surge.add(i);
+  });
+  chg.sort((a, b) => b[1] - a[1]);
+  const top5 = chg.slice(0, 5).map(x => x[0]);
+  const groups = core.dedupe(U, core.groupStats(U, ref, snap), 8).map(r => r.name);
+  const name = i => U.names[i] || U.codes[i];
+  const pct = i => signed((snap.p[i] / ref.y[i] - 1) * 100, 1, '%') + '，' + price(snap.p[i]);
+  if (ev.prev) {
+    top5.forEach((i, k) => {
+      if (ev.prev.top5.indexOf(i) < 0) evPush('top|' + i, t, name(i) + ' 衝進漲幅前 5（第 ' + (k + 1) + '，' + pct(i) + '）', {code: U.codes[i]});
+    });
+    lim.forEach(i => { if (!ev.prev.lim.has(i)) evPush('lim|' + i, t, name(i) + ' 漲停（' + price(snap.p[i]) + '）', {code: U.codes[i]}); });
+    ev.prev.lim.forEach(i => { if (!lim.has(i)) evPush('open|' + i, t, name(i) + ' 漲停打開（' + pct(i) + '）', {code: U.codes[i]}); });
+    surge.forEach(i => { if (!ev.prev.surge.has(i)) evPush('vr|' + i, t, name(i) + ' 量比放大到 3 倍以上（' + pct(i) + '）', {code: U.codes[i]}); });
+    if (groups[0] && groups[0] !== ev.prev.groups[0]) evPush('g1|' + groups[0], t, groups[0] + ' 升到族群第 1', {group: groups[0]});
+    // 和大約 1 分鐘前比，族群往前 3 名以上
+    const old = ev.ranks.find(r => Date.now() - r.at >= 55000);
+    if (old) {
+      groups.forEach((g, k) => {
+        const was = old.ranks[g];
+        if (k > 0 && k < 5 && (was == null || was - k >= 3)) evPush('gup|' + g, t, g + ' 升到族群第 ' + (k + 1) + (was == null ? '' : '（+' + (was - k) + ' 名）'), {group: g});
+      });
+    }
+  }
+  ev.prev = {top5, lim, surge, groups};
+  const ranks = {};
+  groups.forEach((g, k) => { ranks[g] = k; });
+  ev.ranks.unshift({at: Date.now(), ranks});
+  ev.ranks = ev.ranks.filter(r => Date.now() - r.at < 120000);
+}
 
 // 連動用的序列：每 3 分鐘一個點（開盤後補的資料就是 3 分鐘一個），加上最新一份
 function corrSeries() {
@@ -98,7 +276,7 @@ function corrSeries() {
 
 // 30 分鐘前的排名，用來標「轉強」
 function oldRanks() {
-  const last = latest();
+  const last = current();
   const old = st.series.filter(x => x.m <= last.m - 30).pop();
   if (!old) return null;
   const rows = core.groupStats(st.U, st.ref, old);
@@ -108,7 +286,7 @@ function oldRanks() {
 }
 
 function ranking() {
-  const snap = latest();
+  const snap = current();
   const rows = core.groupStats(st.U, st.ref, snap);
   const old = oldRanks();
   rows.forEach((r, k) => { r.rank = k; r.rise = old && old[r.name] != null ? old[r.name] - k : null; });
@@ -121,12 +299,23 @@ const signed = (v, d, s) => (UI.signed ? UI.signed(v, d, s) : (v > 0 ? '+' : '')
 const dir = v => (v > 0 ? 'up' : v < 0 ? 'down' : '');
 
 function stamp() {
+  const lf = liveFrame();
+  if (lf) return '即時 ' + lf.t + '（永豐金）';
   const last = latest();
   if (!last) return '';
   const n = taipei();
   const lag = st.date === n.date && marketOpen() ? n.minute - last.m : 0;
   const day = st.date && st.date !== n.date ? st.date.slice(4, 6) + '/' + st.date.slice(6) + ' ' : '';
   return day + (last.t || core.hhmm(last.m)) + (lag >= 3 ? ' · 資料延遲 ' + lag + ' 分鐘' : ' 更新');
+}
+
+// 盤中但沒有即時資料時的說明；有即時、或不在盤中就是空字串
+function liveNote() {
+  if (liveFrame() || !liveWanted()) return '';
+  if (live.state === 'error') return '即時暫停：' + live.why + '（改用每分鐘資料）';
+  if (live.state === 'connecting') return '連線即時資料中…';
+  if (live.state === 'live' && live.date !== st.date) return '即時資料等待今天第一份每分鐘快照';
+  return '即時暫停：目前沒有永豐金即時資料（改用每分鐘資料）';
 }
 
 function tags(r) {
@@ -192,11 +381,12 @@ function price(v) {
 function detail(r) {
   const box = el('div', 'lv-detail');
   // 同一個族群的線共用橫軸：09:00 到最新一份（開盤頭半小時至少留 30 分鐘寬，線才不會擠成一團）
-  const end = Math.max(30, Math.min(270, latest().m));
-  const line = core.groupLine(st.U, st.ref, st.series, r.gi);
-  const gpts = st.series.map((s, k) => [s.m, line[k]]).filter(q => q[1] != null);
+  const ser = seriesNow();
+  const end = Math.max(30, Math.min(270, current().m));
+  const line = core.groupLine(st.U, st.ref, ser, r.gi);
+  const gpts = ser.map((s, k) => [s.m, line[k]]).filter(q => q[1] != null);
   if (gpts.length > 1) box.appendChild(lineSvg(gpts, 0, 300, 46, 'lv-gline', end));
-  const mem = core.members(st.U, st.ref, latest(), r.gi, corrSeries());
+  const mem = core.members(st.U, st.ref, current(), r.gi, corrSeries());
   const t = el('div', 'lv-mem');
   const head = el('div', 'lv-m lv-m-h');
   ['股票', '今日走勢', '價格・漲幅'].forEach(x => head.appendChild(el('span', null, x)));
@@ -216,7 +406,7 @@ function detail(r) {
                                           '　連動 ' + (m.corr == null ? '—' : m.corr.toFixed(2))));
     row.appendChild(info);
     // 中：今日走勢（虛線＝昨收）
-    const pts = st.series.filter(s => s.p[m.i] != null).map(s => [s.m, s.p[m.i]]);
+    const pts = ser.filter(s => s.p[m.i] != null).map(s => [s.m, s.p[m.i]]);
     row.appendChild(lineSvg(pts, st.ref.y[m.i], 64, 26, 'lv-mline', end));
     // 右：目前價格、漲幅
     const q = el('span', 'lv-mq ' + dir(m.chg));
@@ -279,12 +469,30 @@ function renderPane() {
     body.appendChild(el('p', 'ov-empty', st.empty ? '盤中服務還沒有資料：開盤後每分鐘會收一次。' : '載入中…'));
     return;
   }
-  const last = latest();
+  const last = current();
   const b = core.breadth(st.U, st.ref, last);
   const rows = ranking();
   const hotN = rows.filter(r => r.hot).length;
   body.appendChild(el('p', 'ov-asof', stamp() + '　·　名單內上漲 ' + b.up + '／下跌 ' + b.down +
                                       '　·　強勢族群 ' + hotN + ' 個'));
+  const why = liveNote();
+  if (why) body.appendChild(el('p', 'lv-paused', why));
+  if (ev.list.length) {
+    const box = el('div', 'lv-events ov-card');
+    box.appendChild(el('h4', null, '剛剛發生'));
+    ev.list.slice(0, 8).forEach(x => {
+      const b2 = el('button', 'lv-ev');
+      b2.type = 'button';
+      b2.appendChild(el('span', 'num', x.t));
+      b2.appendChild(el('span', null, x.text));
+      b2.addEventListener('click', () => {
+        if (x.target.code) { if (UI.openStock) UI.openStock(x.target.code); }
+        else { st.open = x.target.group; st.memAll = null; renderPane(); }
+      });
+      box.appendChild(b2);
+    });
+    body.appendChild(box);
+  }
   const risers = rows.filter(r => r.rise != null && r.rise >= 5).sort((a, c) => c.rise - a.rise).slice(0, 3);
   if (risers.length) {
     const p = el('p', 'lv-risers');
@@ -316,7 +524,8 @@ function renderPane() {
 }
 
 // ── 強勢股動畫（排行賽跑）──
-// 每 3 分鐘一格（加上最新一份），條形滑動換位；可播放、拖時間軸、換日期（Cloudflare 留最近 5 天的每分鐘資料）。
+// 兩種檢視：即時（預設；畫面開著就跟著即時這一格自己動，有永豐金資料時每 5 秒、沒有時每分鐘）、
+// 回放（每 3 分鐘一格，可播放、拖時間軸、換日期；Cloudflare 留最近 5 天的每分鐘資料）。
 // 兩種看法：
 //   個股  依漲幅排前 RACE_N 名（範圍：全部／自選股／某個族群）
 //   族群  上層：最強的 RACE_G 個族群（強度＝漲幅、上漲比例、強勢成員數、量比，和盤中排行一樣）；
@@ -325,8 +534,8 @@ function renderPane() {
 const RACE_N = 15, RACE_G = 8, RACE_M = 10;
 const RACE_ROW = 38;                       // 每列高度（px），和 CSS .rc-row 一致
 const RACE_SPEEDS = [['1×', 600], ['4×', 150], ['10×', 60]];   // 每格幾毫秒（一格＝3 分鐘）
-const race = {date: null, data: null, frames: [], idx: -1, playing: false, timer: null, speed: 600, scope: 'all',
-              mode: 'stock', pin: null, lists: {}, groupOf: null};
+const race = {view: 'live', date: null, data: null, frames: [], idx: -1, playing: false, timer: null, speed: 600,
+              scope: 'all', mode: 'stock', pin: null, lists: {}, groupOf: null};
 
 function raceSource() {
   if (race.date && race.data) return race.data;
@@ -374,7 +583,7 @@ function raceStocks(src, snap, idx, n, sub) {
   return out.slice(0, n).map(({i, chg}) => {
     const tv = snap.v[i] != null ? snap.v[i] * snap.p[i] * 1000 / 1e8 : null;
     const vr = tv != null && src.U.avg[i] ? tv / (src.U.avg[i] * frac) : null;
-    return {key: 's' + i, name: src.U.names[i] || src.U.codes[i], chg,
+    return {key: 's' + i, name: src.U.names[i] || src.U.codes[i], chg, price: snap.p[i],
             lim: !!(src.ref.u[i] && snap.p[i] >= src.ref.u[i]),
             sub: [sub ? race.groupOf[i] : '', vr == null ? '' : '量比 ' + vr.toFixed(1)].filter(Boolean).join('・'),
             onClick: () => UI.openStock && UI.openStock(src.U.codes[i])};
@@ -394,7 +603,7 @@ function racePaint(list, items) {
       row = el('button', 'rc-row');
       row.type = 'button';
       row.innerHTML = '<span class="rc-rank"></span><span class="rc-name"><b></b><small></small></span>' +
-                      '<span class="rc-bar"><i></i></span><span class="rc-chg"></span>';
+                      '<span class="rc-bar"><i></i></span><span class="rc-chg"><b></b><small></small></span>';
       row.style.transform = 'translateY(' + (max * RACE_ROW) + 'px)';
       row.addEventListener('click', () => row._click && row._click());
       list.appendChild(row);
@@ -410,7 +619,9 @@ function racePaint(list, items) {
     row.querySelector('.rc-name b').textContent = it.name;
     row.querySelector('.rc-name small').textContent = it.sub || '';
     row.querySelector('.rc-bar i').style.width = Math.min(Math.abs(it.chg), 10) * 10 + '%';
-    row.querySelector('.rc-chg').textContent = signed(it.chg, 1, '%') + (it.lim ? ' 漲停' : '');
+    const pc = signed(it.chg, 1, '%') + (it.lim ? ' 漲停' : '');
+    row.querySelector('.rc-chg b').textContent = it.price != null ? price(it.price) : pc;
+    row.querySelector('.rc-chg small').textContent = it.price != null ? pc : '';
   });
   L.nodes.forEach((row, key) => {
     if (seen.has(key)) return;
@@ -429,9 +640,19 @@ function raceDraw() {
   const box = document.querySelector('.lv-race');
   const src = raceSource();
   if (!box || !src || !race.frames.length) return;
-  const snap = race.frames[race.idx];
+  const isLive = race.view === 'live';
+  const snap = isLive ? current() : race.frames[race.idx];
+  if (!snap) return;
   box.querySelector('.rc-time').textContent = snap.t || core.hhmm(snap.m).replace(/^(..)/, '$1:');
   box.querySelector('.rc-slider').value = String(race.idx);
+  box.querySelectorAll('.rc-replay').forEach(x => { x.hidden = isLive; });
+  const note = box.querySelector('.rc-livenote');
+  note.hidden = !isLive;
+  if (isLive) {
+    const lf = liveFrame();
+    note.textContent = lf ? '● 即時（永豐金，約 5 秒一次）' : '每分鐘資料' + (liveNote() ? '：' + liveNote() : '');
+    note.classList.toggle('is-live', !!lf);
+  }
   const byStock = race.mode === 'stock';
   box.querySelector('.rc-stock').hidden = !byStock;
   box.querySelector('.rc-group').hidden = byStock;
@@ -508,6 +729,9 @@ function raceScopes(src) {
     .concat(core.dedupe(src.U, core.groupStats(src.U, src.ref, src.series[src.series.length - 1]), 20)
       .map(r => ['g:' + r.name, r.name]));
   if (!want.some(x => x[0] === race.scope)) race.scope = 'all';
+  const sig = want.map(x => x[0]).join('|');
+  if (sel.dataset.sig === sig) { sel.value = race.scope; return; }
+  sel.dataset.sig = sig;
   sel.textContent = '';
   want.forEach(([v, t]) => {
     const o = el('option', null, t);
@@ -581,10 +805,12 @@ function setupRace() {
   const list = (name, max) => '<div class="rc-list" data-list="' + name + '" data-max="' + max + '"></div>';
   box.innerHTML =
     '<div class="rc-head"><h3>強勢股動畫</h3><span class="rc-time num"></span></div>' +
-    '<div class="rc-days"></div>' +
-    '<div class="rc-ctrl"><span class="rc-mode"></span><button type="button" class="rc-play chip">▶ 播放</button>' +
-    '<span class="rc-speed"></span><select class="rc-scope" aria-label="範圍"></select></div>' +
-    '<input type="range" class="rc-slider" min="0" max="0" value="0" aria-label="時間">' +
+    '<div class="rc-ctrl"><span class="rc-view"></span><span class="rc-mode"></span>' +
+    '<select class="rc-scope" aria-label="範圍"></select></div>' +
+    '<p class="rc-livenote sd-note"></p>' +
+    '<div class="rc-days rc-replay"></div>' +
+    '<div class="rc-ctrl rc-replay"><button type="button" class="rc-play chip">▶ 播放</button><span class="rc-speed"></span></div>' +
+    '<input type="range" class="rc-slider rc-replay" min="0" max="0" value="0" aria-label="時間">' +
     '<p class="rc-msg sd-note"></p>' +
     '<div class="rc-stock"><p class="rc-empty ov-empty" hidden>這個範圍沒有股票。</p>' + list('s', RACE_N) +
     '<p class="sd-note">依當下漲幅排前 ' + RACE_N + ' 名；名字下面是所屬族群（今天排名最前的那個）與量比。點股票看個股頁。</p></div>' +
@@ -592,7 +818,7 @@ function setupRace() {
     '<h4 class="rc-sub rc-mhead"></h4>' + list('m', RACE_M).replace('rc-list', 'rc-list rc-mlist') +
     '<p class="sd-note">族群依強度排名（漲幅、上漲比例、強勢成員數、量比，和下面的盤中排行一樣，重疊太多的只留一個）；' +
     '條形是族群的加權漲幅。點族群固定看它的內部排名，點個股看個股頁。</p></div>' +
-    '<p class="sd-note">每格 3 分鐘。</p>';
+    '<p class="sd-note rc-replay">回放每格 3 分鐘。</p>';
   pane.insertBefore(box, pane.querySelector('.lv-body'));
   const days = box.querySelector('.rc-days');
   raceDays().forEach((d, k) => {
@@ -601,6 +827,17 @@ function setupRace() {
     b.dataset.date = d;
     b.addEventListener('click', () => raceDate(d));
     days.appendChild(b);
+  });
+  chipGroup(box.querySelector('.rc-view'), [['即時', 'live'], ['回放', 'replay']], v => v === race.view, v => {
+    race.view = v;
+    raceStop();
+    if (v === 'live' && race.date) {            // 回到即時：換回今天的資料
+      race.date = null; race.data = null;
+      raceClear();
+      raceReset(false);
+      box.querySelectorAll('.rc-day').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.date === st.date)));
+    }
+    raceDraw();
   });
   chipGroup(box.querySelector('.rc-mode'), [['個股', 'stock'], ['族群', 'group']], v => v === race.mode, v => {
     race.mode = v;
@@ -637,6 +874,7 @@ function renderRace() {
 }
 
 function render() {
+  evalEvents();
   renderCard();
   renderPane();
   renderRace();
@@ -677,6 +915,7 @@ function setupSettings() {
       return;
     }
     cfg = {url: u ? u.origin : '', code: code.value.trim()};
+    liveClose('off');
     url.value = cfg.url;
     saveCfg(cfg);
     if (!configured()) { msg.textContent = '已清除：盤中功能關閉'; setupTab(); render(); return; }
@@ -686,6 +925,7 @@ function setupSettings() {
       msg.textContent = '連線成功' + (s.latest ? '（最近資料 ' + s.latest.slice(4, 6) + '/' + s.latest.slice(6) + '）' : '（還沒有資料，開盤後會開始收）');
       setupTab();
       refresh(true);
+      liveSync();
     } catch (e) {
       msg.textContent = '連線失敗：' + e.message;
     }
@@ -694,6 +934,8 @@ function setupSettings() {
 
 // 每分鐘一次：盤中抓新快照；收盤後第一次回到頁面補到 13:33；其他時候只重畫（14:30 收起今日卡、更新時間標示）
 function tick() {
+  if (live.ws && Date.now() - live.seen > LIVE_DEAD_MS) liveClose('idle');   // 半開的連線
+  liveSync();
   if (document.hidden || !configured()) return;
   const n = taipei();
   if (marketOpen()) { refresh(false); return; }
@@ -710,6 +952,7 @@ function start() {
   setupSettings();
   setupTab();
   if (configured()) refresh(true);
+  liveSync();
   // 對齊到每分鐘第 30 秒左右：Worker 的快照大約第 15 秒才寫好
   setTimeout(() => { tick(); setInterval(tick, POLL_MS); }, ((90 - new Date().getSeconds()) % 60) * 1000);
   document.addEventListener('visibilitychange', tick);

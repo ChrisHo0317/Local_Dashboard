@@ -979,7 +979,10 @@
               transition:width var(--rc-dur) ease; }
   .rc-row.down .rc-bar i { background:var(--down); }
   .rc-row.is-lim .rc-bar i { opacity:1; }
-  .rc-chg { text-align:right; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .rc-chg { display:flex; flex-direction:column; align-items:flex-end; line-height:1.2; font-variant-numeric:tabular-nums;
+            white-space:nowrap; }
+  .rc-chg b { font-size:13.5px; font-weight:700; }
+  .rc-chg small { font-size:11.5px; font-weight:600; }
   .rc-row.up .rc-chg { color:var(--up); } .rc-row.down .rc-chg { color:var(--down); }
   .rc-glist .rc-row { grid-template-columns:18px minmax(0, 10.8em) minmax(0, 1fr) 4.4em; }
   .rc-row.is-sel { background:var(--hover); border-radius:6px; }
@@ -988,6 +991,17 @@
   .rc-sub { font-size:12.5px; margin:10px 0 2px; color:var(--muted); font-weight:600; }
   .rc-mhead:empty { display:none; }
   .rc-row.is-new { animation:rc-new 1.2s ease; }
+  .rc-view { display:inline-flex; gap:2px; margin-right:4px; }
+  .rc-livenote { margin:6px 0 0; }
+  .rc-livenote.is-live { color:var(--up); font-weight:600; }
+  /* 即時狀態、事件快訊 */
+  .lv-paused { font-size:12.5px; color:var(--warn); margin:0 0 8px; }
+  .lv-events { padding:10px 12px; margin-bottom:12px; display:flex; flex-direction:column; gap:2px; }
+  .lv-events h4 { margin:0 0 4px; font-size:13px; }
+  .lv-ev { display:grid; grid-template-columns:3.4em minmax(0, 1fr); gap:8px; border:0; background:none; font:inherit;
+           font-size:13px; color:var(--fg); text-align:left; padding:3px 0; cursor:pointer; }
+  .lv-ev span:first-child { color:var(--muted); font-size:12px; }
+  .lv-ev:hover span:last-child { text-decoration:underline; }
   @keyframes rc-new { 0% { background:var(--warn-bg); } 100% { background:transparent; } }
   .lv-err { font-size:13px; color:var(--danger); margin:0 0 8px; }
   .live-field { display:flex; flex-direction:column; gap:4px; font-size:13px; margin:8px 0; }

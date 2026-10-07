@@ -1,0 +1,2 @@
+shioaji==1.7.7
+websockets>=14,<16

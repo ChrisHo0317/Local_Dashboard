@@ -12,6 +12,8 @@
 // 這兩個字串要和 wrangler.toml 的 crons 一字不差（scheduled 靠它分辨是哪一個 cron）
 export const NEWS_CRON = '3,13,23,33,43,53 * * * *';
 export const SLOT_CRON = '0,10,30,40 0,1,9,13 * * *';
+// 盤中推播檢查（worker.js 的 pushCheck）：每 5 分鐘的第 2 分，讀上一分鐘（1、6、11…分）的快照
+export const PUSH_CRON = '2,7,12,17,22,27,32,37,42,47,52,57 1-5 * * mon-fri';
 
 // UTC 時:分 → [update.yml 的時段（它的 cron 字串）, 只在週一～五]
 export const SLOTS = {

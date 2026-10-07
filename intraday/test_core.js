@@ -2,8 +2,9 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as core from './core.js';
-import worker, { collect, pushCheck, PUSH_CRON } from './worker.js';
-import { dispatch, plan, NEWS_CRON, SLOT_CRON, SLOTS } from './dispatch.js';
+import worker, { collect, pushCheck, LiveHub } from './worker.js';
+import * as mainModule from './worker.js';
+import { dispatch, plan, NEWS_CRON, SLOT_CRON, SLOTS, PUSH_CRON } from './dispatch.js';
 
 // ── 計算 ──
 const U = {
@@ -195,5 +196,52 @@ await Promise.all(waits);
 assert.deepEqual(calls.map(c => c[1]), [{ref: 'main', inputs: {slot: '10 0 * * 1-5'}}]);
 r = await worker.fetch(new Request('https://w/status', {headers: {Authorization: 'Bearer secret'}}), {...genv, ACCESS_CODE: 'secret'});
 assert.equal((await r.json()).dispatch.slot, '10 0 * * 1-5');
+
+// ── 即時轉播站（livehub.js）：訊息處理（WebSocket 連線本身要在 Cloudflare 上才有，這裡用假的） ──
+class FakeWS {
+  constructor() { this.sent = []; this.att = null; this.closed = null; }
+  send(t) { this.sent.push(JSON.parse(t)); }
+  close(code, why) { this.closed = [code, why]; }
+  serializeAttachment(a) { this.att = a; }
+  deserializeAttachment() { return this.att; }
+}
+const hubState = {socks: [], getWebSockets(tag) { return this.socks.filter(s => s.tag === tag).map(s => s.ws); }};
+const join = (tag, ok) => { const ws = new FakeWS(); ws.att = {role: tag, ok}; hubState.socks.push({tag, ws}); return ws; };
+const hubObj = new LiveHub(hubState, {ACCESS_CODE: 'secret', FEED_TOKEN: 'ft'});
+const feedWs = join('feed', true), bad = join('view', false), v1 = join('view', false);
+await hubObj.webSocketMessage(bad, JSON.stringify({auth: 'nope'}));
+assert.equal(bad.closed[0], 4001);
+await hubObj.webSocketMessage(v1, JSON.stringify({auth: 'secret'}));
+assert.equal(v1.sent[0].type, 'idle');                                // 還沒有資料
+await hubObj.webSocketMessage(feedWs, JSON.stringify({type: 'full', date: '20261007', t: '10:00:00', ts: 1,
+                                                      q: {'2330': [2585, 1000, 2580, 2585, 25.8, 1]}}));
+assert.equal(v1.sent[1].type, 'full'); assert.equal(bad.sent.length, 0);   // 沒過存取碼的收不到
+await hubObj.webSocketMessage(feedWs, JSON.stringify({type: 'delta', date: '20261007', t: '10:00:05', ts: 2,
+                                                      q: {'2317': [256, 900, 255.5, 256, 2.3, 2]}}));
+const v2 = join('view', false);
+await hubObj.webSocketMessage(v2, JSON.stringify({auth: 'secret'}));
+assert.deepEqual(Object.keys(v2.sent[0].q).sort(), ['2317', '2330']);     // 後連上的拿到合併後的全部
+assert.equal(v2.sent[0].t, '10:00:05');
+await hubObj.webSocketMessage(feedWs, JSON.stringify({type: 'hb', date: '20261007', t: '10:00:10', ts: 3}));
+assert.equal(hubObj.status().time, '10:00:10'); assert.equal(hubObj.status().viewers, 2);
+assert.equal(hubObj.status().codes, 2); assert.equal(hubObj.status().feed_connected, true);
+// 換日：delta 先記著（標 partial），等 full
+await hubObj.webSocketMessage(feedWs, JSON.stringify({type: 'delta', date: '20261008', t: '09:00:05', ts: 4, q: {'2330': [2600, 10, 0, 0, 0.3, 1]}}));
+assert.equal(hubObj.latest.partial, true); assert.equal(Object.keys(hubObj.latest.q).length, 1);
+// 行情程式斷線：還有另一個行情程式連著就不通知；最後一個斷了才通知網站
+const feed2 = join('feed', true);
+const n0 = v1.sent.length;
+await hubObj.webSocketClose(feedWs, 1006);
+assert.equal(v1.sent.length, n0);
+assert.equal(feedWs.closed[0], 1000);                                     // 有回覆關閉
+hubState.socks = hubState.socks.filter(x => x.ws !== feedWs);
+await hubObj.webSocketClose(feed2, 1000);
+assert.equal(v1.sent[v1.sent.length - 1].type, 'idle');
+// Worker 轉給轉播站：沒有 HUB 綁定時回 503
+r = await worker.fetch(new Request('https://w/stream'), {...env});
+assert.equal(r.status, 503);
+
+// 主程式的具名匯出只能是函式或類別（Workers 會把它們當進入點；匯出字串會無法啟動）
+for (const [k, v] of Object.entries(mainModule)) if (k !== 'default') assert.equal(typeof v, 'function', '主程式匯出了非函式：' + k);
 
 console.log('intraday tests ok');

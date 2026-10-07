@@ -1,0 +1,117 @@
+name: Deploy feeder
+
+# 盤中即時行情程式（feeder/，永豐金 Shioaji）部署到雲端小主機。改了 feeder/ 就自動部署，也可以手動執行。
+# 每次部署最後都會做一次登入測試（連一次 Cloudflare 即時轉播站、登入永豐金、查一檔快照），結果在執行紀錄裡。
+#
+# 需要的 GitHub Secrets（缺任何一個：push 觸發只跑測試，手動執行直接失敗並列出缺哪個）：
+#   VM_HOST              主機的外部 IP
+#   VM_USER              登入主機的使用者（SSH 公鑰最後那段名字）
+#   VM_SSH_KEY           部署用 SSH 私鑰（整段，含 BEGIN／END 那兩行）
+#   SHIOAJI_API_KEY      永豐金 API Key（只開「行情／資料」權限）
+#   SHIOAJI_SECRET_KEY   永豐金 Secret Key
+#   FEED_TOKEN           行情程式連轉播站的密鑰（Cloudflare 那邊由 intraday.yml 設成同一組）
+#   VM_KNOWN_HOSTS       選填但建議：主機的 SSH 公開金鑰（第一次部署的紀錄會印出來，複製存成這個 Secret），
+#                        有它就只連真正的那台主機；主機換 IP 被別人拿到時，金鑰不會被送過去
+# 金鑰只透過標準輸入寫進主機上權限 600 的 feeder.env，不會出現在指令列或執行紀錄。
+on:
+  push:
+    branches: [main]
+    paths: ["feeder/**", ".github/workflows/feeder.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-feeder
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Test
+        run: |
+          pip install -q pytest
+          python -m pytest -q tests/test_feeder.py
+
+      - name: Check secrets
+        id: chk
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          SHIOAJI_API_KEY: ${{ secrets.SHIOAJI_API_KEY }}
+          SHIOAJI_SECRET_KEY: ${{ secrets.SHIOAJI_SECRET_KEY }}
+          FEED_TOKEN: ${{ secrets.FEED_TOKEN }}
+        run: |
+          missing=""
+          for k in VM_HOST VM_USER VM_SSH_KEY SHIOAJI_API_KEY SHIOAJI_SECRET_KEY FEED_TOKEN; do
+            [ -n "${!k}" ] || missing="$missing $k"
+          done
+          if [ -n "$missing" ]; then
+            msg="缺少 GitHub Secret：$missing"
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then echo "::error::$msg"; exit 1; fi
+            echo "::notice::$msg，只跑測試、不部署"
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy
+        if: steps.chk.outputs.skip != '1'
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          VM_KNOWN_HOSTS: ${{ secrets.VM_KNOWN_HOSTS }}
+          SHIOAJI_API_KEY: ${{ secrets.SHIOAJI_API_KEY }}
+          SHIOAJI_SECRET_KEY: ${{ secrets.SHIOAJI_SECRET_KEY }}
+          FEED_TOKEN: ${{ secrets.FEED_TOKEN }}
+          INTRADAY_URL: ${{ secrets.INTRADAY_URL }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VM_SSH_KEY" > ~/.ssh/vm && chmod 600 ~/.ssh/vm
+          # 主機身分：有 VM_KNOWN_HOSTS 就只認它；沒有的話第一次照收，並把主機金鑰印出來讓你存成 Secret
+          if [ -n "$VM_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$VM_KNOWN_HOSTS" > ~/.ssh/known_hosts
+            check=yes
+          else
+            ssh-keyscan -T 15 -t ed25519 "$VM_HOST" 2>/dev/null > ~/.ssh/known_hosts || true
+            echo "::warning::還沒設定 VM_KNOWN_HOSTS。這次照收主機金鑰；建議把下一行存成 GitHub Secret VM_KNOWN_HOSTS："
+            echo "::notice::$(cat ~/.ssh/known_hosts)"
+            check=yes
+          fi
+          SSH="ssh -i $HOME/.ssh/vm -o StrictHostKeyChecking=$check -o ConnectTimeout=20"
+          target="$VM_USER@$VM_HOST"
+          # 轉播站網址：有 INTRADAY_URL 就用它（https → wss），沒有就用預設的 workers.dev 網址
+          base="${INTRADAY_URL:-https://local-dash-intraday.chrisdashboard.workers.dev}"
+          feed_url="$(printf '%s' "${base%/}" | sed 's#^https://#wss://#; s#^http://#ws://#')/feed"
+          $SSH "$target" 'mkdir -p ~/local-dash-feeder'
+          scp -i ~/.ssh/vm -o StrictHostKeyChecking=yes feeder/feeder.py feeder/requirements.txt feeder/install.sh \
+              "$target:local-dash-feeder/"
+          # 設定檔從標準輸入寫入（umask 077 → 權限 600），金鑰不進指令列
+          printf 'SHIOAJI_API_KEY=%s\nSHIOAJI_SECRET_KEY=%s\nFEED_TOKEN=%s\nFEED_URL=%s\n' \
+              "$SHIOAJI_API_KEY" "$SHIOAJI_SECRET_KEY" "$FEED_TOKEN" "$feed_url" \
+            | $SSH "$target" 'umask 077 && cat > ~/local-dash-feeder/feeder.env'
+          $SSH "$target" 'bash ~/local-dash-feeder/install.sh'
+
+      - name: Login test
+        if: steps.chk.outputs.skip != '1'
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          ssh -i ~/.ssh/vm -o StrictHostKeyChecking=yes "$VM_USER@$VM_HOST" \
+            'cd ~/local-dash-feeder && venv/bin/python feeder.py --check --env feeder.env'
+
+      - name: Clean up
+        if: always()
+        run: rm -f ~/.ssh/vm ~/.ssh/known_hosts

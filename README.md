@@ -274,6 +274,17 @@ python -m pytest -q            # 測試
 - 同一族群（含成員重疊的）一天只推一次；Bark 沒確認收到的，5 分鐘後再試。
 - `https://…workers.dev/health` 不用存取碼，看得到今天有沒有在收、最新一份的時間、推過哪些族群、最後一次推播結果（不含任何價格）。
 
+即時資料（選用；永豐金 Shioaji，約 5 秒一次）：
+- 雲端小主機上的 `feeder/feeder.py` 平日 08:45 啟動、13:36 結束，每 5 秒查名單內全部股票的快照，只把變動送到
+  Cloudflare 即時轉播站（`intraday/livehub.js`，Durable Object），網站盤中頁開著時用 WebSocket 連上去收。
+- 網站把即時價量蓋在最新一分鐘的快照上（「即時這一格」），今日卡、族群排行、強勢股動畫（即時檢視）、事件快訊都用它；
+  30 秒沒有即時資料就自動退回每分鐘資料。
+- 部署：`.github/workflows/feeder.yml`（改了 `feeder/` 自動跑，也可以手動）用 SSH 把程式裝到主機、
+  把 GitHub Secrets 裡的金鑰寫進主機上權限 600 的 `feeder.env`，最後做一次登入測試（結果在執行紀錄）。
+- 需要的 GitHub Secrets：`SHIOAJI_API_KEY`、`SHIOAJI_SECRET_KEY`（只開「行情／資料」權限）、`FEED_TOKEN`、
+  `VM_HOST`、`VM_USER`、`VM_SSH_KEY`；設好 `FEED_TOKEN` 後要再跑一次「Deploy intraday worker」讓轉播站拿到同一組。
+- `/health` 的 `live` 欄位：行情程式有沒有連上、最後一份的時間與檔數。
+
 第一次設定（只要做一次）：
 1. 註冊 Cloudflare（免費），在 Workers & Pages 設定 workers.dev 子網域。
 2. 建立 API token（範本「Edit Cloudflare Workers」），記下帳號 ID。

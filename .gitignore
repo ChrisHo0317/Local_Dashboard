@@ -21,3 +21,8 @@ site/
 
 # pytest
 .pytest_cache/
+
+# 盤中即時：本機測試用的 Cloudflare 密鑰、主機上的行情程式設定（不能進 repo）
+.dev.vars
+feeder/feeder.env
+.wrangler/
