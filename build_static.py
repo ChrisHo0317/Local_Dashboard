@@ -574,11 +574,11 @@ TPL = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>市場走勢</title>
 
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=2">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#161a2b">
-<meta name="description" content="DRAM 現貨報價與美國公債殖利率走勢，每日自動更新。">
+<meta name="description" content="台股市場熱度、族群強弱、個股走勢與盤中即時，每日自動更新。">
 
 <!-- iOS 加入主畫面：圖示標題與獨立視窗模式 -->
 <meta name="apple-mobile-web-app-title" content="市場走勢">

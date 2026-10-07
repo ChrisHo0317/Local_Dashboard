@@ -146,7 +146,7 @@ assert.equal(await pushCheck(benv, pnow), '光通訊:200');
 assert.deepEqual(JSON.parse(env.KV.m.get('b:20261005')), ['光通訊']);
 assert.equal(await pushCheck(benv, pnow), 'none');                        // 同一族群一天一次
 assert.equal(barkCalls.length, 2);
-assert.ok(barkCalls[0].includes('icon=' + encodeURIComponent('https://site/icon-180.png')));   // 通知圖示＝網站 App 圖示
+assert.ok(barkCalls[0].includes('icon=' + encodeURIComponent('https://site/icon-180.png?v=')));   // 通知圖示＝網站 App 圖示
 assert.equal(await pushCheck(benv, {...pnow, minute: 10}), 'closed');      // 09:15 以前不推
 // 健康檢查：不用存取碼、不含價格
 r = await worker.fetch(new Request('https://w/health'), env);

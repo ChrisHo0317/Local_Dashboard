@@ -18,7 +18,7 @@
 
 import { misBatches, fromMis, groupStats, dedupe, seen, hhmm, MIN_STRONG } from './core.js';
 // 主程式只能匯出處理函式與類別（Workers 會把每個具名匯出當成進入點，匯出字串會讓它無法啟動），所以常數放在 dispatch.js
-import { dispatch, NEWS_CRON, SLOT_CRON, PUSH_CRON } from './dispatch.js';
+import { dispatch, ICON, NEWS_CRON, SLOT_CRON, PUSH_CRON } from './dispatch.js';
 import { LiveHub } from './livehub.js';
 
 export { LiveHub };              // Durable Object 的類別要從主程式匯出
@@ -128,7 +128,7 @@ async function push(env, U, ref, snap, date) {
     const url = 'https://api.day.app/' + encodeURIComponent(env.BARK_KEY) + '/' + encodeURIComponent(title) + '/' +
                 encodeURIComponent(body) + '?group=' + encodeURIComponent('盤中族群') +
                 (env.SITE_URL ? '&url=' + encodeURIComponent(env.SITE_URL) +
-                                '&icon=' + encodeURIComponent(env.SITE_URL + 'icon-180.png') : '');   // 圖示＝網站 App 圖示
+                                '&icon=' + encodeURIComponent(env.SITE_URL + ICON) : '');   // 圖示＝網站 App 圖示
     let status = 0;
     try {
       const res = await fetch(url);

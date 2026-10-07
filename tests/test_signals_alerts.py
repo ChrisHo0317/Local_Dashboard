@@ -145,4 +145,4 @@ def test_send_uses_app_icon(monkeypatch):
 
     monkeypatch.setattr(alerts.cffi_requests, "post", lambda url, json, timeout: got.update(json) or Resp())
     assert alerts.send({"title": "t", "body": "b"}, "k", "https://api.day.app")
-    assert got["icon"] == alerts.SITE_URL + "icon-180.png"     # 通知圖示＝網站 App 圖示
+    assert got["icon"] == alerts.ICON_URL and alerts.ICON_URL.startswith(alerts.SITE_URL + "icon-180.png")

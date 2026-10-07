@@ -41,8 +41,9 @@ from watchlist import load_watchlist
 BASE_DIR = Path(__file__).resolve().parent
 SENT_PATH = BASE_DIR / "data" / "alerts_sent.csv"
 SITE_URL = "https://chrisho0317.github.io/Local_Dashboard/"
-# 通知圖示：和網站 App 圖示（加到 iPhone 主畫面的那個 apple-touch-icon）同一張；Bark 需要 iOS 15 以上
-ICON_URL = SITE_URL + "icon-180.png"
+# 通知圖示：和網站 App 圖示（加到 iPhone 主畫面的那個 apple-touch-icon）同一張；Bark 需要 iOS 15 以上。
+# ?v= 是圖示版本：Bark 依網址快取圖片，換了圖示要跟著加一（make_icons.py、worker.js、dispatch.js 同步）
+ICON_URL = SITE_URL + "icon-180.png?v=2"
 GROUP = "台股情報"
 KEEP_DAYS = 120
 

@@ -1,88 +1,62 @@
 """
-產生網站圖示（favicon / iOS 加入主畫面用）
+產生網站圖示（favicon / iOS 加入主畫面用 / Bark 通知圖示）
 
     python make_icons.py
 
-輸出到 web/：icon-180.png（iOS apple-touch-icon）、icon-192.png、
+輸出到 web/：icon-180.png（iOS apple-touch-icon，Bark 通知也用這張）、icon-192.png、
 icon-512.png（Android / manifest）、favicon-32.png。
 
-只在需要重做圖示時執行；平常不會用到。需要 Pillow：
-    pip install pillow
+只在需要重做圖示時執行；平常不會用到。需要 Pillow、numpy：
+    pip install pillow numpy
 
-圖示內容：K 線（漲跌燭身）＋上升折線，底色與 dashboard 深色主題一致。
-這個 app 涵蓋 DRAM、美債、黃金、財經行事曆，所以用通用的財金意象，
-不再用特定商品（原本是 DRAM 記憶體模組）。
+圖示內容（2026-10-07 使用者選的「熱力矩陣」）：深藍到深紫的斜向漸層底，
+4×4 的圓角方格從左下（冷，天藍）到右上（熱，紅）斜向漸變，右上最強的一格加白框，
+呼應網站的市場熱度與族群強度熱圖；不放文字（主畫面下方本來就有名稱）。
 
 iOS 會自行套用圓角遮罩，因此畫面必須是「不透明的整個正方形」，
 且內容要留在中央安全區內，避免被切掉。
 """
 from pathlib import Path
 
+import numpy as np
 from PIL import Image, ImageDraw
 
 OUT_DIR = Path(__file__).resolve().parent / "web"   # 建置時原樣複製到 site/
 
-BG   = (22, 26, 43)       # #161a2b 深藍底（與 chart 深色主題同調）
-UP   = (61, 220, 151)     # 上漲燭身（薄荷綠）
-DOWN = (255, 107, 94)     # 下跌燭身（珊瑚紅）
-LINE = (232, 236, 244)    # 趨勢線（近白）
-AXIS = (60, 68, 96)       # 基準線
+BG_FROM = (15, 23, 42)     # #0f172a 左下
+BG_TO   = (59, 7, 100)     # #3b0764 右上
+FRAME   = (255, 255, 255)  # 最強那格的白框
 
-S = 1024  # 先畫大張再縮小，得到平滑邊緣
+# 冷 → 熱：方格顏色依「欄 + (3 - 列)」取，左下 0、右上 6
+RAMP = ["#38bdf8", "#60a5fa", "#818cf8", "#a78bfa", "#f472b6", "#fb7185", "#ef4444"]
 
-# 每根 K 棒：(低, 高, 開, 收) 皆為 0~1 的相對高度，1 = 最上緣
-# 整體呈上升趨勢，中間夾一根下跌棒，一眼就看得出是行情圖
-CANDLES = [
-    (0.12, 0.42, 0.18, 0.36),
-    (0.28, 0.62, 0.34, 0.56),
-    (0.44, 0.70, 0.66, 0.50),   # 下跌
-    (0.52, 0.90, 0.58, 0.84),
-]
+S = 2048  # 先畫大張再縮小，得到平滑邊緣（座標以 100 為一邊來寫，乘上 U）
+U = S / 100
+
+
+def hex_rgb(h: str) -> tuple:
+    return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def background() -> Image.Image:
+    # 左下到右上的斜向漸層：t ＝ (x + (1 − y)) / 2
+    xs = np.linspace(0, 1, S)
+    t = (xs[None, :] + (1 - xs[:, None])) / 2
+    a, b = np.array(BG_FROM, float), np.array(BG_TO, float)
+    rgb = a + (b - a) * t[..., None]
+    return Image.fromarray(rgb.round().astype(np.uint8), "RGB")
 
 
 def draw_icon() -> Image.Image:
-    img = Image.new("RGB", (S, S), BG)
+    img = background()
     d = ImageDraw.Draw(img)
-
-    left, right = 0.13 * S, 0.87 * S
-    bottom, top = 0.775 * S, 0.13 * S
-    span = bottom - top
-
-    def y(v: float) -> float:
-        return bottom - v * span
-
-    # 底部基準線
-    d.rounded_rectangle([left - 0.03 * S, bottom, right + 0.03 * S, bottom + 0.018 * S],
-                        radius=0.009 * S, fill=AXIS)
-
-    n = len(CANDLES)
-    slot = (right - left) / n
-    body_w = slot * 0.52
-    wick_w = max(2.0, slot * 0.10)
-
-    centers = []
-    for i, (lo, hi, op, cl) in enumerate(CANDLES):
-        cx = left + slot * (i + 0.5)
-        centers.append((cx, y(cl)))
-        color = UP if cl >= op else DOWN
-
-        # 影線
-        d.rounded_rectangle([cx - wick_w / 2, y(hi), cx + wick_w / 2, y(lo)],
-                            radius=wick_w / 2, fill=color)
-        # 燭身
-        b0, b1 = sorted((y(op), y(cl)))
-        if b1 - b0 < 0.03 * S:            # 開收太接近時給個最小厚度
-            mid = (b0 + b1) / 2
-            b0, b1 = mid - 0.015 * S, mid + 0.015 * S
-        d.rounded_rectangle([cx - body_w / 2, b0, cx + body_w / 2, b1],
-                            radius=0.016 * S, fill=color)
-
-    # 貫穿的上升趨勢線（沿各棒收盤價）
-    d.line(centers, fill=LINE, width=int(0.024 * S), joint="curve")
-    r = 0.026 * S
-    hx, hy = centers[-1]
-    d.ellipse([hx - r, hy - r, hx + r, hy + r], fill=LINE)
-
+    for c in range(4):
+        for r in range(4):
+            x, y = 19.5 + 16 * c, 19.5 + 16 * r
+            d.rounded_rectangle([x * U, y * U, (x + 13) * U, (y + 13) * U], radius=3 * U,
+                                fill=hex_rgb(RAMP[c + (3 - r)]))
+    # 右上最強的一格：外面一圈白框（框寬 2、和方格留 1 的空隙）
+    d.rounded_rectangle([65 * U, 17 * U, 83 * U, 35 * U], radius=4.6 * U, outline=FRAME, width=round(2 * U))
     return img
 
 
@@ -90,7 +64,7 @@ def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     icon = draw_icon()
     for size, name in [
-        (180, "icon-180.png"),   # iOS apple-touch-icon
+        (180, "icon-180.png"),   # iOS apple-touch-icon、Bark 通知圖示
         (192, "icon-192.png"),   # Android
         (512, "icon-512.png"),   # manifest / 高解析
         (32,  "favicon-32.png"), # 瀏覽器分頁

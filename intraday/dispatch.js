@@ -10,6 +10,8 @@
 // 結果記在 KV 的 g:last（/status 看得到）；token 失效時，有 BARK_KEY 就一天推播一次。
 
 // 這兩個字串要和 wrangler.toml 的 crons 一字不差（scheduled 靠它分辨是哪一個 cron）
+// Bark 通知圖示（網站 App 圖示）；?v= 是圖示版本，Bark 依網址快取，換圖示要加一（和 alerts.py 的 ICON_URL 同步）
+export const ICON = 'icon-180.png?v=2';
 export const NEWS_CRON = '3,13,23,33,43,53 * * * *';
 export const SLOT_CRON = '0,10,30,40 0,1,9,13 * * *';
 // 盤中推播檢查（worker.js 的 pushCheck）：每 5 分鐘的第 2 分，讀上一分鐘（1、6、11…分）的快照
@@ -78,6 +80,6 @@ async function warn(env, ts, status) {
   try {
     await fetch('https://api.day.app/' + encodeURIComponent(env.BARK_KEY) + '/' + encodeURIComponent(title) + '/' +
                 encodeURIComponent(body) + '?group=' + encodeURIComponent('排程') +
-                (env.SITE_URL ? '&icon=' + encodeURIComponent(env.SITE_URL + 'icon-180.png') : ''));   // 圖示＝網站 App 圖示
+                (env.SITE_URL ? '&icon=' + encodeURIComponent(env.SITE_URL + ICON) : ''));   // 圖示＝網站 App 圖示
   } catch (e) { /* 推播失敗就算了 */ }
 }
