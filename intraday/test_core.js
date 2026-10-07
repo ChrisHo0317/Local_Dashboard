@@ -93,6 +93,7 @@ globalThis.fetch = async (url) => {
   if (url.startsWith('https://example/u.json')) return new Response(JSON.stringify(U));
   if (url.startsWith('https://mis.twse.com.tw')) {
     const msg = U.codes.map((c, i) => ({c, z: String(snap.p[i]), v: String(snap.v[i]), y: '100', u: '110',
+                                        o: '100', h: String(snap.p[i] + 1), l: '-',
                                         d: '20261005', t: '10:30:00'})).filter(r => !misSkip.has(r.c));
     return new Response('\n\n' + JSON.stringify({msgArray: msg}));
   }
@@ -116,6 +117,9 @@ assert.equal(r.status, 401);
 r = await worker.fetch(new Request('https://w/day?date=20261005&u=1', {headers: {Authorization: 'Bearer secret'}}), env);
 const d = await r.json();
 assert.equal(d.date, '20261005'); assert.equal(d.snaps.length, 2); assert.equal(d.snaps[1].m, 90);
+// 開高低只有最新一份帶（個股頁的盤中 K 棒用），其他的切掉
+assert.ok(!('o' in d.snaps[0]) && !('h' in d.snaps[0]));
+assert.deepEqual(d.snaps[1].h, snap.p.map(x => x + 1)); assert.equal(d.snaps[1].o[0], 100); assert.equal(d.snaps[1].l[0], null);
 assert.deepEqual(d.universe.codes, U.codes); assert.equal(d.ref.y.length, 7);
 assert.equal(r.headers.get('Access-Control-Allow-Origin'), '*');
 // KV 出錯（例如額度用完）：回 503，一樣帶 CORS

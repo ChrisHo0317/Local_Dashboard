@@ -40,7 +40,7 @@ function num(x) {
 
 function first(x) { return typeof x === 'string' ? num(x.split('_')[0]) : null; }
 
-// MIS 的 msgArray 轉成 價／量／昨收／漲停價（依 U.codes 的順序）。
+// MIS 的 msgArray 轉成 價／量／昨收／漲停價／當天開高低（依 U.codes 的順序）。
 // date 給了就只收那一天的列（開盤前還沒換日的舊資料不要）。
 // z（成交價）是 "-" 時（最近一次揭示沒有成交），prev（上一分鐘的快照）有的話：
 //   成交量沒變，或上一分鐘的價還在買賣價之間 → 沿用上一分鐘的價
@@ -50,7 +50,8 @@ export function fromMis(U, rows, date, prev) {
   const at = new Map(U.codes.map((c, i) => [c, i]));
   const n = U.codes.length;
   const out = {p: new Array(n).fill(null), v: new Array(n).fill(null), y: new Array(n).fill(null),
-               u: new Array(n).fill(null), date: '', time: ''};
+               u: new Array(n).fill(null), o: new Array(n).fill(null), h: new Array(n).fill(null),
+               l: new Array(n).fill(null), date: '', time: ''};
   for (const r of rows || []) {
     const i = at.get(r.c);
     if (i === undefined || (date && r.d !== date)) continue;
@@ -69,6 +70,9 @@ export function fromMis(U, rows, date, prev) {
     out.v[i] = v;
     out.y[i] = num(r.y);
     out.u[i] = num(r.u);
+    out.o[i] = num(r.o);
+    out.h[i] = num(r.h);
+    out.l[i] = num(r.l);
     if (r.d && r.d > out.date) out.date = r.d;
     if (r.t && r.t > out.time) out.time = r.t;
   }

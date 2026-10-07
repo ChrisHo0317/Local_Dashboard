@@ -3664,7 +3664,8 @@
       return !!visible;
     }
 
-    function drawPrice(s) {
+    // keep：盤中更新時保留使用者正在看的範圍；原本看到最後一天的，多一根 K 棒就跟著往右移
+    function drawPrice(s, keep) {
       var c = palette(), d = s.d;
       var up = d.c.map(function (v, i) { return i && d.c[i - 1] != null ? v >= d.c[i - 1] : true; });
       var L = layout({
@@ -3710,6 +3711,15 @@
          line: {color: c.blue, width: 1.5}, hovertemplate: '%{y:,.0f} 張<extra>融資</extra>'}
       ];
       var n = d.t.length, rescale = priceRescale(d), w = windowFor(n, days);
+      var gd = document.getElementById('sd-price');
+      if (keep && gd && gd._fullLayout && gd._n) {
+        var r = gd._fullLayout.xaxis.range;
+        var from = Math.max(0, Math.ceil(r[0])), to = Math.min(gd._n - 1, Math.floor(r[1]));
+        if (to >= from) {
+          if (to >= gd._n - 1) { from += n - gd._n; to = n - 1; }
+          w = {from: Math.max(0, from), to: to};
+        }
+      }
       var init = rescale(w.from, w.to);
       L.xaxis.range = [w.from - 0.5, w.to + 0.5];
       ['yaxis', 'yaxis2', 'yaxis3', 'yaxis4'].forEach(function (k) {
@@ -3846,25 +3856,57 @@
       });
     }
 
-    function render(s) {
+    // ── 盤中：今天的 K 棒接在最後（均線跟著算），每分鐘更新，有永豐金即時就每幾秒 ──
+    // 資料來自盤中服務（web/intraday.js 的 window.DashLive）；當天的日資料進來（asof＝今天）就不再接
+    function liveQuote(s) {
+      var q = window.DashLive ? window.DashLive.quote(s.code) : null;
+      if (!q || q.state === 'off' || q.state === 'wait') return null;
+      if (q.state === 'ok') {
+        q.day = q.date.slice(0, 4) + '-' + q.date.slice(4, 6) + '-' + q.date.slice(6, 8);
+        if (s.asof >= q.day) return null;
+      }
+      return q;
+    }
+
+    function withLive(s, q) {
+      if (!q || q.state !== 'ok') return s;
+      var d = {};
+      Object.keys(s.d).forEach(function (k) { d[k] = s.d[k].concat([null]); });
+      var i = d.t.length - 1;
+      d.t[i] = q.day; d.o[i] = q.o; d.h[i] = q.h; d.l[i] = q.l; d.c[i] = q.c; d.v[i] = q.v;
+      var out = {};
+      Object.keys(s).forEach(function (k) { out[k] = s[k]; });
+      out.d = d;
+      return out;
+    }
+
+    function liveSig(q) {
+      return q ? [q.state, q.date, q.t, q.o, q.h, q.l, q.c, q.v, q.y].join('|') : '';
+    }
+
+    // 名稱、說明列、數字列：盤中的成交價、漲跌（和參考價比）、累計量；法人還是前一天的，標日期
+    function renderHead(s, q) {
       var d = s.d, n = d.t.length;
-      var last = d.c[n - 1], prev = n > 1 ? d.c[n - 2] : null;
+      var ok = q && q.state === 'ok';
+      var last = ok ? q.c : d.c[n - 1];
+      var prev = ok ? (q.y || d.c[n - 1]) : (n > 1 ? d.c[n - 2] : null);
       var chg = last != null && prev ? last - prev : null;
+      var when = ok ? q.t.slice(0, 5) : '';
       pane.querySelector('.sq-name').textContent = s.code + '　' + s.name;
       pane.querySelector('.sd-sub').textContent =
         (s.market === 'tpex' ? '上櫃' : '上市') + (s.industry ? '　·　' + s.industry : '') +
-        '　·　資料日期 ' + s.asof;
-      sdTags(pane.querySelector('.sd-tags'), s.code);
-      pane.querySelector('.sd-edit').href = EDIT_URL;
-      zoomHint(pane.querySelector('.zoom-hint'));
+        '　·　資料日期 ' + s.asof +
+        (ok ? '　·　今天 ' + q.t + (q.live ? ' 即時' : ' 每分鐘更新') + '（最後一根 K 棒是盤中）'
+            : q && q.state === 'none' ? '　·　盤中即時只涵蓋近 20 日平均成交值 0.3 億以上的股票與自選股' : '');
       var st = pane.querySelector('.sq-stats');
       st.textContent = '';
-      st.appendChild(stat('收盤', fmt(last, 2)));
+      st.appendChild(stat(ok ? '成交 ' + when : '收盤', fmt(last, 2)));
       st.appendChild(stat('漲跌', chg == null ? '—' :
                           signed(chg, 2) + '（' + signed(chg / prev * 100, 2, '%') + '）', dir(chg)));
-      st.appendChild(stat('成交量', fmt(d.v[n - 1], 0) + ' 張'));
-      st.appendChild(stat('外資', signed(d.fi[n - 1], 0) + ' 張', dir(d.fi[n - 1])));
-      st.appendChild(stat('投信', signed(d.tr[n - 1], 0) + ' 張', dir(d.tr[n - 1])));
+      st.appendChild(stat('成交量', fmt(ok ? q.v : d.v[n - 1], 0) + ' 張'));
+      var on = ok ? ' ' + s.asof.slice(5).replace('-', '/') : '';
+      st.appendChild(stat('外資' + on, signed(d.fi[n - 1], 0) + ' 張', dir(d.fi[n - 1])));
+      st.appendChild(stat('投信' + on, signed(d.tr[n - 1], 0) + ' 張', dir(d.tr[n - 1])));
       st.appendChild(stat('本益比', s.val && s.val.per ? fmt(s.val.per, 2) : '—'));
       st.appendChild(stat('殖利率', s.val && s.val.yield != null ? fmt(s.val.yield, 2) + '%' : '—'));
       st.appendChild(stat('股價淨值比', s.val && s.val.pbr ? fmt(s.val.pbr, 2) : '—'));
@@ -3884,7 +3926,17 @@
                             s.flag[0] === '處置' ? md(s.flag[1]) + '～' + md(s.flag[2]) : md(s.flag[1]),
                             null));
       }
-      drawPrice(s);
+    }
+
+    var shownSig = '';
+    function render(s) {
+      var q = liveQuote(s);
+      shownSig = liveSig(q);
+      renderHead(s, q);
+      sdTags(pane.querySelector('.sd-tags'), s.code);
+      pane.querySelector('.sd-edit').href = EDIT_URL;
+      zoomHint(pane.querySelector('.zoom-hint'));
+      drawPrice(withLive(s, q));
       drawRevenue(s);
       drawEps(s);
       drawPe(s);
@@ -3928,6 +3980,15 @@
 
     window.addEventListener('dash-theme', function () {
       if (current && shown(box)) render(current);
+    });
+    // 盤中資料更新（intraday.js 每次重畫都會發）：價量有變才重畫數字列和價量圖
+    window.addEventListener('dash-live', function () {
+      if (!current || !shown(box)) return;
+      var q = liveQuote(current), sig = liveSig(q);
+      if (sig === shownSig) return;
+      shownSig = sig;
+      renderHead(current, q);
+      drawPrice(withLive(current, q), true);
     });
 
     // 推播通知裡的連結：?stock=2330 直接打開那一檔

@@ -91,7 +91,9 @@ export async function collect(env, now = taipei()) {
     ref = JSON.stringify(R);
     await env.KV.put(refKey, ref, {expirationTtl: TTL});
   }
-  const snap = {t: (q.time || '').slice(0, 5), p: q.p.map(x => (x == null ? null : Math.round(x * 100) / 100)), v: q.v};
+  const r2 = a => a.map(x => (x == null ? null : Math.round(x * 100) / 100));
+  // 開高低放最後：個股頁的盤中 K 棒用，/day 只有最新一份帶（其他的切掉，下載量和原本一樣）
+  const snap = {t: (q.time || '').slice(0, 5), p: r2(q.p), v: q.v, o: r2(q.o), h: r2(q.h), l: r2(q.l)};
   await env.KV.put('s:' + now.date + ':' + hhmm(now.minute), JSON.stringify(snap), {expirationTtl: TTL});
   return 'ok:' + rows.length;
 }
@@ -198,7 +200,10 @@ async function day(env, url) {
   want.sort((a, b) => a - b);
   const texts = await Promise.all(want.map(m => env.KV.get('s:' + date + ':' + hhmm(m))));
   const snaps = [];
-  texts.forEach((t, k) => { if (t) snaps.push('{"m":' + want[k] + ',' + t.slice(1)); });
+  let lastK = -1;
+  texts.forEach((t, k) => { if (t) lastK = k; });
+  const slim = t => { const k = t.indexOf(',"o":'); return k < 0 ? t : t.slice(0, k) + '}'; };
+  texts.forEach((t, k) => { if (t) snaps.push('{"m":' + want[k] + ',' + (k === lastK ? t : slim(t)).slice(1)); });
   let out = '{"date":"' + date + '","ref":' + ref + ',"snaps":[' + snaps.join(',') + ']';
   if (url.searchParams.get('u') === '1') {
     const u = await env.KV.get('u:' + date);

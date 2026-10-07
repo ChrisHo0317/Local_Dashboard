@@ -57,11 +57,12 @@ def _num(v, nd=2):
 
 
 def row(s) -> list:
-    """一筆 Shioaji 快照 → [成交價, 累計量(張), 買價, 賣價, 成交金額(億), 內外盤]"""
+    """一筆 Shioaji 快照 → [成交價, 累計量(張), 買價, 賣價, 成交金額(億), 內外盤, 開盤, 最高, 最低]"""
     tt = getattr(s, "tick_type", None)
     tt = {"Buy": 1, "Sell": 2}.get(str(getattr(tt, "value", tt)), 0)
     return [_num(s.close), int(_num(getattr(s, "total_volume", 0), 0)), _num(getattr(s, "buy_price", 0)),
-            _num(getattr(s, "sell_price", 0)), _num(_num(getattr(s, "total_amount", 0), 0) / 1e8, 3), tt]
+            _num(getattr(s, "sell_price", 0)), _num(_num(getattr(s, "total_amount", 0), 0) / 1e8, 3), tt,
+            _num(getattr(s, "open", 0)), _num(getattr(s, "high", 0)), _num(getattr(s, "low", 0))]
 
 
 def is_today(s, today) -> bool:

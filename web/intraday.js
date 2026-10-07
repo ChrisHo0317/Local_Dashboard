@@ -58,8 +58,20 @@ async function load(path) {
   st.empty = !d.universe || !d.snaps || !d.snaps.length;
   if (!st.empty) {
     st.U = d.universe; st.ref = d.ref; st.date = d.date;
-    st.series = core.fillForward(d.snaps);
+    st.series = keepOhl(core.fillForward(d.snaps));
   }
+}
+
+// 開高低（個股頁的盤中 K 棒用）只留最新那一份的，其他的丟掉省記憶體
+function keepOhl(series) {
+  let found = false;
+  for (let k = series.length - 1; k >= 0; k--) {
+    const s = series[k];
+    if (!s.h) continue;
+    if (found) { delete s.o; delete s.h; delete s.l; }
+    found = true;
+  }
+  return series;
 }
 
 async function refresh(full) {
@@ -75,7 +87,7 @@ async function refresh(full) {
       const d = await api('/day?date=' + st.date + '&step=1&from=' + core.hhmm(last.m + 1));
       if (d.ref) st.ref = d.ref;          // Worker 會補上開盤時沒查到的昨收
       const fresh = (d.snaps || []).filter(s => s.m > last.m);
-      if (fresh.length) st.series = core.fillForward(st.series.concat(fresh));
+      if (fresh.length) st.series = keepOhl(core.fillForward(st.series.concat(fresh)));
     }
     st.error = null;
   } catch (e) {
@@ -1235,7 +1247,40 @@ function render() {
   renderCard();
   renderPane();
   renderRace();
+  window.dispatchEvent(new Event('dash-live'));        // 個股頁的盤中 K 棒跟著更新
 }
+
+// ── 個股頁的盤中 K 棒（intel.js 的個股深度頁讀 window.DashLive.quote）──
+// 今天這一檔的 開／高／低／成交價／累計量（張）：開高低用最新一份每分鐘快照裡證交所給的全天數字，
+// 再和現在的價（含永豐金即時）比；舊的快照沒有開高低時，用每分鐘的價推（可能漏掉瞬間的高低點）。
+// state：off 沒設定盤中服務、wait 今天還沒資料、none 不在今日名單或還沒成交、ok 有資料
+let quoteIdx = null, quoteU = null;
+function stockQuote(code) {
+  if (!configured()) return {state: 'off'};
+  if (!st.U || !st.ref || st.date !== taipei().date || !st.series.length) return {state: 'wait'};
+  if (quoteU !== st.U) { quoteIdx = new Map(st.U.codes.map((c, i) => [c, i])); quoteU = st.U; }
+  const i = quoteIdx.get(code);
+  const snap = current();
+  if (i === undefined || snap.p[i] == null) return {state: 'none'};
+  const c = snap.p[i];
+  let o = null, h = null, l = null, first = null, hi = -Infinity, lo = Infinity;
+  for (const s of st.series) {
+    const p = s.p[i];
+    if (p != null) { if (first == null) first = p; if (p > hi) hi = p; if (p < lo) lo = p; }
+    if (s.h) { o = s.o[i]; h = s.h[i]; l = s.l[i]; }
+  }
+  if (h == null || l == null) { h = hi; l = lo; }
+  if (o == null) o = first ?? c;
+  const a = snap.live ? live.q[code] : null;
+  if (a && a.length >= 9) {
+    if (a[6] > 0) o = a[6];
+    if (a[7] > 0) h = Math.max(h, a[7]);
+    if (a[8] > 0) l = Math.min(l, a[8]);
+  }
+  return {state: 'ok', date: st.date, t: snap.t || core.hhmm(snap.m), live: !!snap.live,
+          o, h: Math.max(h, c), l: Math.min(l, c), c, v: snap.v[i], y: st.ref.y[i]};
+}
+window.DashLive = {quote: stockQuote};
 
 // ── 子分頁、設定頁 ──
 // 設定好了：「盤中」排到市場的第一個子分頁；清除設定：藏起來、放回最後，選取狀態交給第一個看得到的

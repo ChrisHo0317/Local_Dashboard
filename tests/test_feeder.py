@@ -15,12 +15,13 @@ spec.loader.exec_module(fd)
 
 def _snap(code, close, vol, amt, tt="Buy"):
     return SimpleNamespace(code=code, close=close, total_volume=vol, buy_price=close - 0.5, sell_price=close,
-                           total_amount=amt, tick_type=SimpleNamespace(value=tt))
+                           total_amount=amt, tick_type=SimpleNamespace(value=tt),
+                           open=close - 5, high=close + 5, low=close - 10)
 
 
 def test_row_and_diff():
     r = fd.row(_snap("2330", 2585.0, 18343, 47_400_000_000))
-    assert r == [2585.0, 18343, 2584.5, 2585.0, 474.0, 1]
+    assert r == [2585.0, 18343, 2584.5, 2585.0, 474.0, 1, 2580.0, 2590.0, 2575.0]   # 最後三個是開高低
     assert fd.row(_snap("2330", 2585.0, 1, 0, "Sell"))[5] == 2                     # 1.7 的 tick_type 是字串
     assert fd.row(_snap("2330", 2585.0, 1, 0, "None"))[5] == 0
     assert fd.row(SimpleNamespace(code="X", close=None, tick_type="?"))[0] == 0     # 沒成交、欄位怪也不會壞
