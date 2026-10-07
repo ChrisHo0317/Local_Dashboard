@@ -825,6 +825,8 @@ def build(out_dir: Path) -> dict:
     # Worker 用 JSON.parse 讀，有 NaN 就整天收不到資料，所以寧可在這裡就失敗
     _dump(intraday_universe.build(panel, master, watch_codes, chain_tags, load_strong_history()),
           data_dir / "intraday_universe.json", allow_nan=False)
+    # 族群強度時間軸的收盤存檔：網站的強勢股動畫看超過 5 天前的日子用
+    intraday_universe.publish_heat(data_dir / "intraday")
     shards = write_stock_shards(data_dir, panel, master, pe, tdcc, exdiv, flags)
 
     results = signals.run(panel, load_revenue(), pe, tdcc, master)

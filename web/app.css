@@ -5,12 +5,17 @@
     /* 台股慣例：紅漲綠跌 */
     --up:#e03131; --down:#1f9d55;
     --warn:#b7791f; --warn-bg:rgba(245,159,0,.14); --tw:#7048e8;
+    /* 族群強度時間軸：強度用單一藍色由淺到深（不是漲跌，避開紅綠）；第 1 名用固定順序的分類色 */
+    --tl0:#eef0f3; --tl1:#cde2fb; --tl2:#9ec5f4; --tl3:#6da7ec; --tl4:#3987e5; --tl5:#256abf; --tl6:#184f95; --tl7:#0d366b;
+    --tc1:#2a78d6; --tc2:#eb6834; --tc3:#1baf7a; --tc4:#eda100; --tc5:#e87ba4; --tc-other:#b9c0cb;
   }
   html[data-theme="dark"] {
     --bg:#1e2130; --fg:#e8e8e8; --muted:#9aa0ac; --border:#333849; --hover:rgba(255,255,255,.07);
     --card:#242839; --bar-bg:rgba(42,47,69,.80); --bar-border:rgba(255,255,255,.10);
     --pill:rgba(255,255,255,.13); --tab-fg:#9aa0ac; --accent:#4dd4ac; --danger:#ff8a80;
     --up:#ff6b6b; --down:#51cf66; --warn:#fcc419; --warn-bg:rgba(252,196,25,.16); --tw:#b197fc;
+    --tl0:rgba(255,255,255,.05); --tl1:#13305a; --tl2:#184f95; --tl3:#1c5cab; --tl4:#2a78d6; --tl5:#5598e7; --tl6:#86b6ef; --tl7:#cde2fb;
+    --tc1:#3987e5; --tc2:#d95926; --tc3:#199e70; --tc4:#c98500; --tc5:#d55181; --tc-other:#4a5363;
   }
   * { box-sizing:border-box; }
   /* hidden 屬性的 UA 預設樣式會被元素自己的 display 規則蓋掉
@@ -991,6 +996,34 @@
   .rc-sub { font-size:12.5px; margin:10px 0 2px; color:var(--muted); font-weight:600; }
   .rc-mhead:empty { display:none; }
   .rc-row.is-new { animation:rc-new 1.2s ease; }
+  /* 族群強度時間軸（強勢股動畫上方） */
+  .rc-tl { position:relative; margin:10px 0 6px; padding:10px 0 4px; border-top:1px solid var(--border);
+           border-bottom:1px solid var(--border); }
+  .tl-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px; }
+  .tl-head h4 { margin:0; font-size:13.5px; }
+  .tl-seg { display:inline-flex; gap:2px; }
+  .tl-seg .chip { padding:3px 10px; }
+  .tl-sum { font-size:12.5px; line-height:1.6; margin:6px 0; }
+  .tl-sum p { margin:0; }
+  .tl-sum .num { font-variant-numeric:tabular-nums; }
+  .tl-body { display:flex; align-items:flex-start; }
+  .tl-names { flex:none; }
+  .tl-scroll { flex:1; min-width:0; overflow-x:auto; overscroll-behavior-x:contain; }
+  .tl-namesvg, .tl-svg { display:block; }
+  .tl-name { fill:var(--fg); font-size:11px; cursor:pointer; }
+  .tl-name.is-pin { font-weight:700; fill:var(--accent); }
+  .tl-tick { fill:var(--muted); font-size:9.5px; font-variant-numeric:tabular-nums; }
+  .tl-grid { stroke:var(--border); stroke-width:1; }
+  .tl-cursor { stroke:var(--fg); stroke-width:1.5; stroke-dasharray:3 2; }
+  .tl-svg rect { cursor:pointer; }
+  .tl-legend { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:11.5px; color:var(--muted); margin:6px 0 2px; }
+  .tl-key { display:inline-flex; align-items:center; gap:3px; }
+  .tl-key i { display:inline-block; width:12px; height:9px; border-radius:2px; }
+  .tl-tip { position:absolute; z-index:5; pointer-events:none; background:var(--bg); color:var(--fg);
+            border:1px solid var(--border); border-radius:8px; padding:5px 8px; font-size:12px; line-height:1.5;
+            box-shadow:0 4px 14px rgba(0,0,0,.14); white-space:nowrap; }
+  .rc-older { font:inherit; font-size:12.5px; padding:4px 6px; border-radius:8px; border:1px solid var(--border);
+              background:var(--bg); color:var(--fg); max-width:12em; }
   .rc-view { display:inline-flex; gap:2px; margin-right:4px; }
   .rc-livenote { margin:6px 0 0; }
   .rc-livenote.is-live { color:var(--up); font-weight:600; }

@@ -241,6 +241,41 @@ assert.equal(v1.sent[v1.sent.length - 1].type, 'idle');
 r = await worker.fetch(new Request('https://w/stream'), {...env});
 assert.equal(r.status, 503);
 
+// ── 族群強度時間軸：A 先強、後來換 E；A 和 A2 重疊算同一群 ──
+{
+  const n = 16;
+  const U2 = {codes: Array.from({length: n}, (_, i) => 'S' + i), names: Array.from({length: n}, (_, i) => '股' + i),
+              mk: new Array(n).fill('t'), avg: new Array(n).fill(1), profile: new Array(271).fill(1),
+              groups: [['A', 'x', [0, 1, 2]], ['A2', 'x', [0, 1, 2, 3]], ['B', 'x', [4, 5, 6]], ['C', 'x', [7, 8, 9]],
+                       ['D', 'x', [10, 11, 12]], ['E', 'x', [13, 14, 15]]]};
+  const ref2 = {y: new Array(n).fill(100), u: new Array(n).fill(110)};
+  const ser = [];
+  for (let k = 0; k <= 20; k++) {
+    const p = new Array(n).fill(100);
+    const a = k < 10 ? 6 : Math.max(-3, 6 - (k - 10) * 1.5), e = Math.max(0, (k - 6) * 0.9);
+    [0, 1, 2, 3].forEach(i => { p[i] = 100 + a; });
+    [4, 5, 6].forEach(i => { p[i] = 101; }); [7, 8, 9].forEach(i => { p[i] = 102; }); [10, 11, 12].forEach(i => { p[i] = 100.5; });
+    [13, 14, 15].forEach(i => { p[i] = 100 + e; });
+    ser.push({t: core.hhmm(k * 3).replace(/^(..)/, '$1:'), m: k * 3, p, v: new Array(n).fill(100)});
+  }
+  const cache = new Map();
+  const tl = core.timeline(U2, ref2, ser, {step: 3, rows: 15, cache});
+  assert.equal(tl.n, 21); assert.equal(tl.t[1], '09:03');
+  const names = tl.rows.map(r => r.name);
+  assert.equal(names.filter(x => x === 'A' || x === 'A2').length, 1);    // 重疊的併成一列
+  assert.equal(tl.rows.length, 5);
+  assert.ok(names[0] === 'A' || names[0] === 'A2');                       // 先進前 3 的排上面
+  assert.equal(tl.rows[tl.leader[0]].name, names[0]);                     // 開盤第 1 名是 A
+  assert.equal(tl.rows[tl.leader[20]].name, 'E');                         // 最後換 E
+  const notes = core.timelineNotes(tl);
+  assert.ok(notes.leads.length >= 2);
+  assert.ok(notes.weak.some(w => tl.rows[w.i].name === names[0]));        // A 轉弱有記到
+  assert.ok(notes.marks[tl.rows.findIndex(r => r.name === 'E')].some(x => x === 1));   // E 有轉強標記
+  // 快取：同一份資料再算一次，結果一樣（只重算最後一格）
+  const again = core.timeline(U2, ref2, ser, {step: 3, rows: 15, cache});
+  assert.deepEqual(again.rows.map(r => r.s), tl.rows.map(r => r.s));
+}
+
 // 主程式的具名匯出只能是函式或類別（Workers 會把它們當進入點；匯出字串會無法啟動）
 for (const [k, v] of Object.entries(mainModule)) if (k !== 'default') assert.equal(typeof v, 'function', '主程式匯出了非函式：' + k);
 

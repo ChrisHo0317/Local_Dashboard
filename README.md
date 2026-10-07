@@ -261,9 +261,9 @@ python -m pytest -q            # 測試
 | `intraday_universe.py` | 今日名單 site/data/intraday_universe.json：要追蹤的股票、族群成員、20 日均量、量能曲線、昨日強勢族群 |
 | `intraday/worker.js` | Cloudflare Worker：每分鐘向證交所即時行情（MIS）抓價量存進 KV；帶存取碼才讀得到；可選 Bark 推播 |
 | `intraday/core.js` | 族群強度、連動、領漲的計算（Worker 與網站共用；網站版是 site/intraday_core.js）|
-| `intraday/archive.js` | 收盤後把當天的族群排行存進 data/intraday/（之後校正量能曲線、回測用）|
+| `intraday/archive.js` | 收盤後把當天的族群排行存進 data/intraday/（校正量能曲線、回測、族群強度時間軸 heat；網站建置時 heat 抄到 site/data/intraday/）|
 | `intraday/dispatch.js` | 準時觸發 GitHub 的資料排程（見下方「自動更新」）|
-| `web/intraday.js` | 網站的盤中卡與盤中子分頁，每 60 秒讀一次；盤中子分頁上方的強勢股動畫（每 3 分鐘一格的排行賽跑；「個股」看漲幅前 15 名，可選全部／自選股／族群；「族群」上層看前 8 個族群的強度、下層看選定族群的內部排名；最近 5 天）|
+| `web/intraday.js` | 網站的盤中卡與盤中子分頁，每 60 秒讀一次；盤中子分頁上方的強勢股動畫（每 3 分鐘一格的排行賽跑；「個股」看漲幅前 15 名，可選全部／自選股／族群；「族群」上層看前 8 個族群的強度、下層看選定族群的內部排名；最近 5 天；上方的族群強度時間軸是族群 × 時間的熱圖，每 3 分鐘一格、最多 15 個族群，顏色越深名次越前面，附第 1 名條、誰最強／轉弱摘要、▲▼ 標記，可切換名次變化，點格子跳時間、點族群固定看它；更早的日子讀收盤存檔的 heat）|
 | `.github/workflows/intraday.yml` | 測試並部署 Worker（自動建立 KV 空間、設定存取碼） |
 
 證交所即時行情不能公開轉載，所以盤中資料要存取碼，網址與存取碼只存在自己裝置的瀏覽器裡。

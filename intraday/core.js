@@ -247,3 +247,108 @@ export function breadth(U, ref, snap) {
   });
   return {up, down};
 }
+
+
+// ── 族群強度時間軸（網站的強勢股動畫與收盤存檔共用）──
+// 每 step 分鐘一格；挑當天任何時候進過前 top 名的族群，成員重疊的併成一個（用全天強度最高的那個名字，整天固定），
+// 最多 rows 個。每一格記：強度（0～100，和族群排行同一套分數）、名次（重疊的算一個）、加權漲幅、強勢檔數、
+// 那一刻實際代表的族群名稱（重疊的另一個比較強時會是它）。
+// cache（Map，選填）：同一格的快照沒變就沿用上次的排行（即時資料每 5 秒只重算最新一格）。
+export function timeline(U, ref, series, opt = {}) {
+  const step = opt.step || 3, rows = opt.rows || 15, top = opt.top || 5, cache = opt.cache;
+  const last = series[series.length - 1];
+  if (!last) return null;
+  const nb = Math.floor(Math.min(270, last.m) / step) + 1;
+  const frames = [];
+  let j = 0;
+  for (let k = 0; k < nb; k++) {
+    const m = k * step;
+    while (j + 1 < series.length && series[j + 1].m <= m) j++;
+    frames.push(series[j].m <= m ? series[j] : null);
+  }
+  if (last.m > (nb - 1) * step) frames[nb - 1] = last;          // 最後一格用最新一份（含即時）
+  const bins = frames.map((f, k) => {
+    if (!f) return null;
+    const key = f.t + '|' + f.m;
+    const hit = cache && cache.get(k);
+    if (hit && hit.key === key) return hit.rows;
+    const r = dedupe(U, groupStats(U, ref, f), 30);
+    if (cache) cache.set(k, {key, rows: r});
+    return r;
+  });
+  // 代表的族群：依全天最高強度挑，和已經挑到的重疊就併進去
+  const peak = new Map();
+  bins.forEach(b => b && b.slice(0, top).forEach(r => peak.set(r.gi, Math.max(peak.get(r.gi) || 0, r.score))));
+  const reps = [];
+  for (const [gi] of [...peak].sort((a, b) => b[1] - a[1])) {
+    if (reps.length >= rows) break;
+    if (!reps.some(x => overlaps(U, x, gi))) reps.push(gi);
+  }
+  const same = new Map();                                         // 'rep|gi' → 是不是同一群
+  const isSame = (rep, gi) => {
+    if (rep === gi) return true;
+    const k = rep + '|' + gi;
+    if (!same.has(k)) same.set(k, overlaps(U, rep, gi));
+    return same.get(k);
+  };
+  const out = reps.map(gi => ({gi, name: U.groups[gi][0], s: [], r: [], c: [], st: [], act: []}));
+  bins.forEach((b, k) => {
+    out.forEach(row => {
+      const idx = b ? b.findIndex(x => isSame(row.gi, x.gi)) : -1;
+      const x = idx >= 0 ? b[idx] : null;
+      row.s[k] = x ? Math.round(x.score * 100) : null;
+      row.r[k] = x ? idx + 1 : null;
+      row.c[k] = x ? Math.round(x.chg * 100) / 100 : null;
+      row.st[k] = x ? x.strong : null;
+      row.act[k] = x && x.gi !== row.gi ? x.name : null;
+    });
+  });
+  // 排列：第一次進前 3 名的時間（同時間比全天最高強度）；沒進過前 3 的放後面
+  const firstTop = (row, n) => { const k = row.r.findIndex(r => r != null && r <= n); return k < 0 ? 1e9 : k; };
+  out.forEach(row => { row.first = firstTop(row, 3); row.first5 = firstTop(row, top); row.peak = Math.max(...row.s.map(v => v || 0)); });
+  out.sort((a, b) => (a.first - b.first) || (a.first5 - b.first5) || (b.peak - a.peak));
+  const leader = bins.map((b, k) => out.findIndex(row => row.r[k] === 1));
+  return {step, n: nb, t: Array.from({length: nb}, (_, k) => hhmm(k * step).replace(/^(..)/, '$1:')), rows: out, leader};
+}
+
+// 時間軸的文字摘要與轉強／轉弱：當第 1 名連續 2 格以上的時段（中間被打斷 2 格以內算同一段）；
+// 當過第 1 名的族群之後第一次掉出前 3 的時間；每格和 15 分鐘前比（只看和前 5 名有關的變化，後段班的名次晃動不算）：
+// 衝進前 3、或往前 3 名以上而且進到前 5，算轉強（1）；掉出前 3、或從前 5 往後 3 名以上，算轉弱（-1）。同一段只標第一格。
+// leads 依當第 1 名的總格數排（給顏色用）。
+export function timelineNotes(tl) {
+  const back = Math.max(1, Math.round(15 / tl.step));
+  const runs = [];
+  tl.leader.forEach((i, k) => {
+    const lastRun = runs[runs.length - 1];
+    if (i < 0) return;
+    if (lastRun && lastRun.i === i && lastRun.to === k - 1) lastRun.to = k;
+    else runs.push({i, from: k, to: k});
+  });
+  const leads = [];
+  runs.filter(x => x.to > x.from).forEach(x => {
+    const prev = leads[leads.length - 1];
+    if (prev && prev.i === x.i && x.from - prev.to <= 3) prev.to = x.to; else leads.push(Object.assign({}, x));
+  });
+  const total = new Map();
+  tl.leader.forEach(i => { if (i >= 0) total.set(i, (total.get(i) || 0) + 1); });
+  const byTime = [...total].sort((a, b) => b[1] - a[1]).map(x => x[0]);
+  const weak = [];
+  [...new Set(leads.map(x => x.i))].forEach(i => {
+    const row = tl.rows[i];
+    const firstEnd = leads.find(x => x.i === i).to;
+    const k = row.r.findIndex((r, kk) => kk > firstEnd && (r == null || r > 3));
+    if (k > 0) weak.push({i, k, r: row.r[k]});
+  });
+  const marks = tl.rows.map(row => {
+    const m = [];
+    for (let k = back; k < tl.n; k++) {
+      const a = row.r[k - back], b = row.r[k];
+      if (a == null || b == null) continue;
+      if ((a > 3 && b <= 3) || (a - b >= 3 && b <= 5)) m[k] = 1;
+      else if ((a <= 3 && b > 3) || (b - a >= 3 && a <= 5)) m[k] = -1;
+    }
+    for (let k = tl.n - 1; k > 0; k--) if (m[k] && m[k - 1] === m[k]) m[k] = 0;
+    return m;
+  });
+  return {leads, weak, marks, byTime};
+}

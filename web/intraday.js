@@ -538,6 +538,7 @@ const race = {view: 'live', date: null, data: null, frames: [], idx: -1, playing
               scope: 'all', mode: 'stock', pin: null, lists: {}, groupOf: null};
 
 function raceSource() {
+  if (race.data && race.data.archive) return null;          // 收盤存檔：只有族群時間軸
   if (race.date && race.data) return race.data;
   return st.U ? {U: st.U, ref: st.ref, series: st.series, date: st.date} : null;
 }
@@ -638,8 +639,18 @@ function raceClear() {
 
 function raceDraw() {
   const box = document.querySelector('.lv-race');
+  if (!box) return;
+  const archive = !!(race.data && race.data.archive);
+  box.querySelectorAll('.rc-stock, .rc-group, .rc-livenote, .rc-scope, .rc-mode').forEach(x => { if (archive) x.hidden = true; });
+  if (archive) {
+    box.querySelectorAll('.rc-replay').forEach(x => { x.hidden = !x.classList.contains('rc-days'); });
+    box.querySelector('.rc-time').textContent = '';
+    tlUpdate();
+    return;
+  }
+  box.querySelector('.rc-mode').hidden = false;
   const src = raceSource();
-  if (!box || !src || !race.frames.length) return;
+  if (!src || !race.frames.length) return;
   const isLive = race.view === 'live';
   const snap = isLive ? current() : race.frames[race.idx];
   if (!snap) return;
@@ -661,6 +672,7 @@ function raceDraw() {
     const items = raceStocks(src, snap, raceScopeIdx(src), RACE_N, true);
     racePaint(box.querySelector('.rc-stock .rc-list'), items);
     box.querySelector('.rc-stock .rc-empty').hidden = items.length > 0;
+    tlUpdate();
     return;
   }
   // 族群：上層強度排行，下層選定族群的成員
@@ -675,6 +687,7 @@ function raceDraw() {
   box.querySelector('.rc-mhead').textContent = !sel ? '' :
     sel + ' 內部排名' + (race.pin ? '（已固定，點同一個族群取消）' : '（跟著第 1 名，點上面的族群可以固定）');
   racePaint(box.querySelector('.rc-mlist'), g ? raceStocks(src, snap, g[2], RACE_M, false) : []);
+  tlUpdate();
 }
 
 function raceClearList(name) {
@@ -710,6 +723,7 @@ function raceReset(keepIdx) {
   const src = raceSource();
   const box = document.querySelector('.lv-race');
   if (!box) return;
+  if (race.data && race.data.archive) { box.hidden = false; raceDraw(); return; }
   box.hidden = !src || !src.series.length;
   if (box.hidden) return;
   const wasEnd = race.idx < 0 || race.idx >= race.frames.length - 1;
@@ -758,6 +772,9 @@ async function raceDate(date) {
   raceStop();
   const msg = document.querySelector('.lv-race .rc-msg');
   msg.textContent = '';
+  const older = document.querySelector('.lv-race .rc-older');
+  if (older) older.value = '';
+  if (race.data && race.data.archive) { race.date = null; race.data = null; }
   if (!date || date === st.date) {
     race.date = null; race.data = null;
   } else {
@@ -812,6 +829,10 @@ function setupRace() {
     '<div class="rc-ctrl rc-replay"><button type="button" class="rc-play chip">▶ 播放</button><span class="rc-speed"></span></div>' +
     '<input type="range" class="rc-slider rc-replay" min="0" max="0" value="0" aria-label="時間">' +
     '<p class="rc-msg sd-note"></p>' +
+    '<div class="rc-tl" hidden><div class="tl-head"><h4>族群強度時間軸</h4><span class="tl-seg"></span></div>' +
+    '<div class="tl-sum"></div><div class="tl-body"><div class="tl-names"></div><div class="tl-scroll"></div></div>' +
+    '<div class="tl-legend"></div><p class="sd-note">每 3 分鐘一格，顏色越深名次越前面（排名和盤中族群排行同一套：漲幅、上漲比例、' +
+    '強勢成員數、量比）。滑過格子看強度分數。點格子讓動畫跳到那個時間，點族群名稱讓動畫固定看它。</p><div class="tl-tip" hidden></div></div>' +
     '<div class="rc-stock"><p class="rc-empty ov-empty" hidden>這個範圍沒有股票。</p>' + list('s', RACE_N) +
     '<p class="sd-note">依當下漲幅排前 ' + RACE_N + ' 名；名字下面是所屬族群（今天排名最前的那個）與量比。點股票看個股頁。</p></div>' +
     '<div class="rc-group" hidden><h4 class="rc-sub">族群強度</h4>' + list('g', RACE_G).replace('rc-list', 'rc-list rc-glist') +
@@ -828,11 +849,23 @@ function setupRace() {
     b.addEventListener('click', () => raceDate(d));
     days.appendChild(b);
   });
+  const older = el('select', 'rc-older');
+  older.setAttribute('aria-label', '更早的日子');
+  older.addEventListener('change', () => { if (older.value) tlArchive(older.value); });
+  days.appendChild(older);
+  tlOlder(older);
+  chipGroup(box.querySelector('.tl-seg'), [['強度熱圖', 'heat'], ['名次變化', 'rank']], v => v === tl.view, v => {
+    tl.view = v;
+    tlTipHide();
+    tlUpdate();
+  });
   chipGroup(box.querySelector('.rc-view'), [['即時', 'live'], ['回放', 'replay']], v => v === race.view, v => {
     race.view = v;
     raceStop();
     if (v === 'live' && race.date) {            // 回到即時：換回今天的資料
       race.date = null; race.data = null;
+      const older = box.querySelector('.rc-older');
+      if (older) older.value = '';
       raceClear();
       raceReset(false);
       box.querySelectorAll('.rc-day').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.date === st.date)));
@@ -871,6 +904,307 @@ function renderRace() {
   if (race.date) return;
   box.querySelectorAll('.rc-day').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.date === st.date)));
   raceReset(true);
+}
+
+// ── 族群強度時間軸（強勢股動畫上方）──
+// 族群 × 時間的熱圖：每 3 分鐘一格、最多 15 個族群，顏色越深名次越前面（第 1 名最深；
+// 只看強度分數的話，列出來的都是當天最強的族群、全都很深，看不出起落）；滑過格子看強度分數；
+// 最上面一條是每個時段的第 1 名，下面一句摘要，▲ 轉強 ▼ 轉弱。可切換「名次變化」折線。
+// 和動畫連動：虛線是動畫目前的時間；點格子讓動畫跳到那個時間（回放），點族群名稱讓動畫切到「族群」固定看它。
+// 計算在 core.timeline（收盤存檔用同一套）；超過 5 天前的日子讀收盤存檔（data/intraday/{日期}.json 的 heat）。
+const TL_CW = 5, TL_RH = 18, TL_TOP = 22, TL_AX = 16, TL_NAME_W = 104, TL_LEADS = 5;
+const tl = {view: 'heat', cache: new Map(), key: null, data: null, notes: null, sig: '', index: null};
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+function svgEl(tag, attrs, text) {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+// 現在要畫的那份時間軸：收盤存檔的日子直接用存檔；其他用每分鐘資料（今天即時檢視再加上即時這一格）
+function tlCompute() {
+  if (race.data && race.data.archive) return race.data.heat ? Object.assign({n: race.data.heat.t.length}, race.data.heat) : null;
+  const src = raceSource();
+  if (!src || !src.series.length) return null;
+  const key = race.date || 'today:' + st.date;
+  if (tl.key !== key) { tl.key = key; tl.cache = new Map(); }
+  const series = !race.date && race.view === 'live' ? seriesNow() : src.series;
+  return core.timeline(src.U, src.ref, series, {step: 3, rows: 15, cache: tl.cache});
+}
+
+// 動畫目前在第幾格
+function tlCursorBin(d) {
+  if (race.data && race.data.archive) return null;
+  if (race.view === 'live' && !race.date) return d.n - 1;
+  const f = race.frames[race.idx];
+  return f ? Math.min(d.n - 1, Math.round(f.m / d.step)) : null;
+}
+
+// 當過第 1 名的族群，依當第 1 名的總時間排（最久的用第一個顏色）
+function tlLeaders(d) {
+  if (d._leads) return d._leads;
+  const total = new Map();
+  d.leader.forEach(i => { if (i >= 0) total.set(i, (total.get(i) || 0) + 1); });
+  d._leads = [...total].sort((a, b) => b[1] - a[1]).map(x => x[0]);
+  return d._leads;
+}
+const tlColor = (d, i) => { const k = tlLeaders(d).indexOf(i); return k >= 0 && k < TL_LEADS ? 'var(--tc' + (k + 1) + ')' : 'var(--tc-other)'; };
+// 名次 → 顏色深淺：第 1 名最深，第 15 名以後最淺
+const tlStep = r => r == null ? 0 : r === 1 ? 7 : r === 2 ? 6 : r === 3 ? 5 : r <= 5 ? 4 : r <= 8 ? 3 : r <= 15 ? 2 : 1;
+
+function tlTip(ev, html) {
+  const box = document.querySelector('.rc-tl');
+  const tip = box.querySelector('.tl-tip');
+  tip.innerHTML = html;
+  tip.hidden = false;
+  const r = box.getBoundingClientRect();
+  const x = Math.min(ev.clientX - r.left + 12, r.width - tip.offsetWidth - 4);
+  tip.style.left = Math.max(4, x) + 'px';
+  tip.style.top = Math.max(0, ev.clientY - r.top - tip.offsetHeight - 10) + 'px';
+}
+function tlTipHide() { const t = document.querySelector('.rc-tl .tl-tip'); if (t) t.hidden = true; }
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+
+// 點格子：動畫跳到那個時間（即時檢視就切到回放）
+function tlJump(k, d) {
+  if (race.data && race.data.archive) return;
+  const m = k * d.step;
+  let best = 0;
+  race.frames.forEach((f, i) => { if (Math.abs(f.m - m) < Math.abs(race.frames[best].m - m)) best = i; });
+  raceStop();
+  if (race.view === 'live') {
+    race.view = 'replay';
+    document.querySelectorAll('.lv-race .rc-view .chip').forEach(b => b.setAttribute('aria-pressed', String(b.textContent === '回放')));
+  }
+  race.idx = best;
+  raceDraw();
+}
+
+// 點族群名稱：動畫切到「族群」、固定看它
+function tlPin(name) {
+  if (race.data && race.data.archive) return;
+  race.mode = 'group';
+  race.pin = name;
+  document.querySelectorAll('.lv-race .rc-mode .chip').forEach(b => b.setAttribute('aria-pressed', String(b.textContent === '族群')));
+  raceClearList('m');
+  raceDraw();
+}
+
+function tlSummary(d, notes) {
+  const out = [];
+  if (notes.leads.length) {
+    out.push('<b>誰最強：</b>' + notes.leads.map(x => '<span class="num">' + d.t[x.from] + '–' + d.t[x.to] + '</span> ' +
+                                                  esc(d.rows[x.i].name)).join(' → '));
+  }
+  if (notes.weak.length) {
+    out.push('<b>轉弱：</b>' + notes.weak.map(w => esc(d.rows[w.i].name) + ' <span class="num">' + d.t[w.k] + '</span> ' +
+                                                 (w.r == null ? '掉出排行' : '跌到第 ' + w.r)).join('；'));
+  }
+  return out.map(x => '<p>' + x + '</p>').join('') || '<p class="sd-note">還沒有足夠的資料（開盤後每 3 分鐘一格）。</p>';
+}
+
+function tlNames(d) {
+  const H = TL_TOP + d.rows.length * TL_RH + TL_AX;
+  const svg = svgEl('svg', {width: TL_NAME_W, height: H, viewBox: '0 0 ' + TL_NAME_W + ' ' + H, class: 'tl-namesvg'});
+  if (tl.view === 'rank') {
+    for (let r = 1; r <= d.rows.length; r++) {
+      svg.appendChild(svgEl('text', {x: TL_NAME_W - 6, y: TL_TOP + (r - 1) * TL_RH + 13, 'text-anchor': 'end', class: 'tl-tick'}, '第 ' + r));
+    }
+    return svg;
+  }
+  svg.appendChild(svgEl('text', {x: TL_NAME_W - 6, y: 14, 'text-anchor': 'end', class: 'tl-name'}, '第 1 名'));
+  const pinned = race.pin;
+  d.rows.forEach((row, i) => {
+    const y = TL_TOP + i * TL_RH;
+    if (tlLeaders(d).indexOf(i) >= 0) svg.appendChild(svgEl('rect', {x: 0, y: y + 5, width: 7, height: 7, rx: 2, fill: tlColor(d, i)}));
+    const name = row.name.length > 7 ? row.name.slice(0, 7) + '…' : row.name;
+    const t = svgEl('text', {x: TL_NAME_W - 6, y: y + 13, 'text-anchor': 'end',
+                             class: 'tl-name' + (pinned && (pinned === row.name) ? ' is-pin' : '')}, name);
+    t.appendChild(svgEl('title', {}, row.name));
+    t.addEventListener('click', () => tlPin(row.name));
+    svg.appendChild(t);
+  });
+  return svg;
+}
+
+function tlHeat(d, marks) {
+  const W = d.n * TL_CW + 6, H = TL_TOP + d.rows.length * TL_RH + TL_AX;
+  const svg = svgEl('svg', {width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, class: 'tl-svg'});
+  // 第 1 名條
+  let from = 0;
+  for (let k = 1; k <= d.n; k++) {
+    if (k < d.n && d.leader[k] === d.leader[from]) continue;
+    const i = d.leader[from];
+    if (i >= 0) {
+      const r = svgEl('rect', {x: from * TL_CW, y: 2, width: (k - from) * TL_CW - 1, height: 12, rx: 2, fill: tlColor(d, i)});
+      const a = from, b = k - 1;
+      r.addEventListener('pointermove', e => tlTip(e, '<b>' + esc(d.rows[i].name) + '</b> 第 1 名<br><span class="num">' + d.t[a] + '–' + d.t[b] + '</span>'));
+      r.addEventListener('pointerleave', tlTipHide);
+      svg.appendChild(r);
+    }
+    from = k;
+  }
+  d.rows.forEach((row, i) => {
+    const y = TL_TOP + i * TL_RH;
+    for (let k = 0; k < d.n; k++) {
+      const s = row.s[k];
+      const c = svgEl('rect', {x: k * TL_CW, y: y + 1, width: TL_CW - 1, height: TL_RH - 3,
+                               fill: s == null ? 'var(--tl0)' : 'var(--tl' + tlStep(row.r[k]) + ')'});
+      c.addEventListener('pointermove', e => tlTip(e, '<b>' + esc(row.name) + '</b>　<span class="num">' + d.t[k] + '</span><br>' +
+        (s == null ? '這一刻沒有排名' : '強度 ' + s + '・第 ' + row.r[k] + ' 名<br>漲幅 ' + signed(row.c[k], 2, '%') + '・強勢 ' + row.st[k] + ' 檔' +
+         (row.act && row.act[k] ? '<br>（以 ' + esc(row.act[k]) + ' 計）' : '') +
+         (marks[i][k] === 1 ? '<br>▲ 轉強' : marks[i][k] === -1 ? '<br>▼ 轉弱' : ''))));
+      c.addEventListener('pointerleave', tlTipHide);
+      c.addEventListener('click', () => tlJump(k, d));
+      svg.appendChild(c);
+      if (marks[i][k]) {
+        const cx = k * TL_CW + TL_CW / 2, cy = y + TL_RH / 2 - 1;
+        const pts = marks[i][k] === 1 ? [cx, cy - 3, cx - 3, cy + 2, cx + 3, cy + 2] : [cx, cy + 3, cx - 3, cy - 2, cx + 3, cy - 2];
+        svg.appendChild(svgEl('polygon', {points: pts.join(' '), fill: marks[i][k] === 1 ? 'var(--up)' : 'var(--down)',
+                                          stroke: 'var(--card)', 'stroke-width': 0.8, 'pointer-events': 'none'}));
+      }
+    }
+  });
+  tlAxis(svg, d, H);
+  return svg;
+}
+
+function tlRank(d) {
+  const W = d.n * TL_CW + 6, H = TL_TOP + d.rows.length * TL_RH + TL_AX;
+  const svg = svgEl('svg', {width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, class: 'tl-svg'});
+  const N = d.rows.length;
+  const yOf = r => TL_TOP + (Math.min(r, N) - 1) * TL_RH + TL_RH / 2;
+  for (let r = 1; r <= N; r++) svg.appendChild(svgEl('line', {x1: 0, x2: d.n * TL_CW, y1: yOf(r), y2: yOf(r), class: 'tl-grid'}));
+  const leads = tlLeaders(d);
+  const order = d.rows.map((_, i) => i).sort((a, b) => (leads.indexOf(a) >= 0) - (leads.indexOf(b) >= 0));
+  order.forEach(i => {
+    const row = d.rows[i];
+    let path = '', pen = false;
+    row.r.forEach((r, k) => {
+      if (r == null || r > N) { pen = false; return; }
+      path += (pen ? 'L' : 'M') + (k * TL_CW + TL_CW / 2) + ' ' + yOf(r);
+      pen = true;
+    });
+    if (!path) return;
+    const lead = leads.indexOf(i) >= 0;
+    svg.appendChild(svgEl('path', {d: path, fill: 'none', stroke: tlColor(d, i), 'stroke-width': lead ? 2 : 1.2,
+                                   'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'pointer-events': 'none'}));
+  });
+  // 整張圖一個感應區：顯示那一刻的前 3 名
+  const hit = svgEl('rect', {x: 0, y: 0, width: W, height: H - TL_AX, fill: 'transparent'});
+  const at = e => Math.max(0, Math.min(d.n - 1, Math.floor((e.clientX - svg.getBoundingClientRect().left) / TL_CW)));
+  hit.addEventListener('pointermove', e => {
+    const k = at(e);
+    const top = d.rows.map((row, i) => [row.r[k], i]).filter(x => x[0] != null && x[0] <= 3).sort((a, b) => a[0] - b[0]);
+    tlTip(e, '<span class="num">' + d.t[k] + '</span><br>' + (top.map(x => '第 ' + x[0] + ' ' + esc(d.rows[x[1]].name)).join('<br>') || '沒有排名'));
+  });
+  hit.addEventListener('pointerleave', tlTipHide);
+  hit.addEventListener('click', e => tlJump(at(e), d));
+  svg.appendChild(hit);
+  tlAxis(svg, d, H);
+  return svg;
+}
+
+function tlAxis(svg, d, H) {
+  for (let k = 0; k < d.n; k += 10) {
+    svg.appendChild(svgEl('text', {x: k * TL_CW, y: H - 3, class: 'tl-tick'}, d.t[k]));
+  }
+}
+
+function tlLegend(d) {
+  const leads = tlLeaders(d).slice(0, TL_LEADS);
+  const sw = i => '<span class="tl-key"><i style="background:' + tlColor(d, i) + '"></i>' + esc(d.rows[i].name) + '</span>';
+  if (tl.view === 'rank') return leads.map(sw).join('') + '<span class="tl-key"><i style="background:var(--tc-other)"></i>其他</span>';
+  return '<span class="tl-key">第 1 名 ' + [7, 6, 5, 4, 3, 2, 1].map(i => '<i style="background:var(--tl' + i + ')"></i>').join('') + ' 15 名後</span>' +
+         '<span class="tl-key">▲ 轉強　▼ 轉弱</span>' + leads.map(sw).join('');
+}
+
+// 畫（資料或看法變了才重畫），再把虛線移到動畫目前的時間
+function tlUpdate() {
+  const box = document.querySelector('.lv-race .rc-tl');
+  if (!box) return;
+  const d = tlCompute();
+  box.hidden = !d || !d.n;
+  if (box.hidden) return;
+  const sig = [tl.view, race.pin, d.n, d.t[d.n - 1], d.rows.map(r => r.name + ':' + r.s[d.n - 1]).join(',')].join('|');
+  if (sig !== tl.sig) {
+    tl.sig = sig;
+    tl.data = d;
+    const notes = core.timelineNotes(d);
+    box.querySelector('.tl-sum').innerHTML = tlSummary(d, notes);
+    const names = box.querySelector('.tl-names'), scroll = box.querySelector('.tl-scroll');
+    const left = scroll.scrollLeft;
+    names.textContent = '';
+    names.appendChild(tlNames(d));
+    scroll.textContent = '';
+    scroll.appendChild(tl.view === 'rank' ? tlRank(d) : tlHeat(d, notes.marks));
+    scroll.scrollLeft = left;
+    box.querySelector('.tl-legend').innerHTML = tlLegend(d);
+  }
+  // 虛線：動畫目前的時間；跑出畫面就捲過去
+  const scroll = box.querySelector('.tl-scroll');
+  const svg = scroll.querySelector('svg');
+  let line = svg.querySelector('.tl-cursor');
+  const k = tlCursorBin(tl.data);
+  if (k == null) { if (line) line.remove(); return; }
+  const x = k * TL_CW + TL_CW / 2;
+  if (!line) {
+    line = svgEl('line', {class: 'tl-cursor', y1: 0, y2: Number(svg.getAttribute('height')) - TL_AX + 2, 'pointer-events': 'none'});
+    svg.appendChild(line);
+  }
+  line.setAttribute('x1', x);
+  line.setAttribute('x2', x);
+  if (x < scroll.scrollLeft + 10 || x > scroll.scrollLeft + scroll.clientWidth - 10) {
+    scroll.scrollLeft = Math.max(0, x - scroll.clientWidth * 0.7);
+  }
+}
+
+// 收盤存檔的日期（網站的 data/intraday/index.json）；Cloudflare 那 5 天以外的才放進「更早」
+async function tlOlder(select) {
+  if (tl.index == null) {
+    try {
+      const r = await fetch('data/intraday/index.json', {cache: 'no-cache'});
+      tl.index = r.ok ? (await r.json()).dates || [] : [];
+    } catch (e) {
+      tl.index = [];
+    }
+  }
+  const recent = new Set(raceDays());
+  const list = tl.index.filter(d => !recent.has(d.replace(/-/g, '')));
+  select.textContent = '';
+  const first = el('option', null, list.length ? '更早的日子…' : '還沒有更早的存檔');
+  first.value = '';
+  select.appendChild(first);
+  list.forEach(d => {
+    const o = el('option', null, Number(d.slice(5, 7)) + '/' + Number(d.slice(8)) + '（' + d.slice(0, 4) + '）');
+    o.value = d;
+    select.appendChild(o);
+  });
+  select.disabled = !list.length;
+}
+
+// 讀一天的收盤存檔（只有族群時間軸，沒有個股）
+async function tlArchive(date) {
+  const msg = document.querySelector('.lv-race .rc-msg');
+  raceStop();
+  msg.textContent = '載入中…';
+  try {
+    const r = await fetch('data/intraday/' + date + '.json', {cache: 'no-cache'});
+    if (!r.ok) throw new Error('找不到 ' + date + ' 的存檔');
+    const d = await r.json();
+    race.date = date.replace(/-/g, '');
+    race.data = {archive: true, heat: d.heat, date: race.date};
+    msg.textContent = mdOf(race.date) + ' 只保留族群強度時間軸（個股的分時資料只留 5 天）';
+  } catch (e) {
+    msg.textContent = e.message || '讀取失敗';
+    return;
+  }
+  raceClear();
+  race.pin = null;
+  document.querySelectorAll('.lv-race .rc-day').forEach(b => b.setAttribute('aria-pressed', 'false'));
+  raceDraw();
 }
 
 function render() {

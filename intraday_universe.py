@@ -119,3 +119,30 @@ def build(panel: pd.DataFrame, master: pd.DataFrame, watch_codes: set,
         "watch": [index[c] for c in sorted(set(watch_codes)) if c in index],
         "profile": profile(),
     }
+
+
+HEAT_DAYS = 120          # 網站上族群強度時間軸能選的過去交易日
+
+
+def publish_heat(out_dir: Path, src: Path | None = None, days: int = HEAT_DAYS) -> list[str]:
+    """收盤存檔（data/intraday/{日期}.json）裡的 heat 抄到網站的 data/intraday/，只留這部分；
+    另寫 index.json（有時間軸的日期，新的在前）。回傳日期清單。"""
+    src = src or ARCHIVE_DIR
+    files = sorted(f for f in src.glob("*.json") if f.stem[:2] == "20")[-days:] if src.exists() else []
+    out_dir.mkdir(parents=True, exist_ok=True)
+    dates = []
+    for f in files:
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not d.get("heat"):
+            continue
+        date = d.get("date") or f.stem
+        (out_dir / f"{date}.json").write_text(
+            json.dumps({"date": date, "heat": d["heat"]}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        dates.append(date)
+    dates.sort(reverse=True)
+    (out_dir / "index.json").write_text(json.dumps({"dates": dates}, separators=(",", ":")), encoding="utf-8")
+    return dates
+

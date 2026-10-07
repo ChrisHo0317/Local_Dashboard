@@ -66,3 +66,16 @@ def test_profile_calibrates_from_archive(tmp_path, monkeypatch):
 def test_worker_and_core_in_node():
     r = subprocess.run(["node", "intraday/test_core.js"], cwd=ROOT, capture_output=True, text=True, timeout=120)
     assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_publish_heat(tmp_path):
+    src, out = tmp_path / "arch", tmp_path / "site"
+    src.mkdir()
+    heat = {"step": 3, "t": ["09:00"], "leader": [0], "rows": [{"name": "被動元件", "s": [90], "r": [1], "c": [5.2], "st": [9]}]}
+    (src / "2026-10-06.json").write_text(json.dumps({"date": "2026-10-06", "timeline": [], "groups": [], "heat": heat}), encoding="utf-8")
+    (src / "2026-10-05.json").write_text(json.dumps({"date": "2026-10-05", "timeline": [], "groups": []}), encoding="utf-8")   # 舊格式沒有 heat
+    assert iu.publish_heat(out, src) == ["2026-10-06"]
+    assert json.loads((out / "2026-10-06.json").read_text(encoding="utf-8")) == {"date": "2026-10-06", "heat": heat}
+    assert json.loads((out / "index.json").read_text(encoding="utf-8")) == {"dates": ["2026-10-06"]}
+    assert not (out / "2026-10-05.json").exists()
+
