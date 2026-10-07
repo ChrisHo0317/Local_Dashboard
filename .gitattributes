@@ -5,3 +5,5 @@
 *.txt     text eol=lf
 *.parquet binary
 *.png     binary
+# Shell 腳本在 Linux 上跑，一律用 LF（CRLF 會讓 bash 出錯）
+*.sh text eol=lf
