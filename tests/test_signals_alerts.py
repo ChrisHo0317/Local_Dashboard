@@ -132,3 +132,17 @@ def test_alerts_without_key_sends_nothing(sent_path, monkeypatch):
     monkeypatch.delenv("ALERTS_ENABLED", raising=False)
     assert alerts.main([]) == 0
     assert sent == [] and not path.exists()
+
+
+def test_send_uses_app_icon(monkeypatch):
+    got = {}
+
+    class Resp:
+        status_code = 200
+
+        def json(self):
+            return {"code": 200}
+
+    monkeypatch.setattr(alerts.cffi_requests, "post", lambda url, json, timeout: got.update(json) or Resp())
+    assert alerts.send({"title": "t", "body": "b"}, "k", "https://api.day.app")
+    assert got["icon"] == alerts.SITE_URL + "icon-180.png"     # 通知圖示＝網站 App 圖示

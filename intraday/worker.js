@@ -125,7 +125,8 @@ async function push(env, U, ref, snap, date) {
                  r.strong + ' 檔漲 3% 以上' + (r.limit ? '、' + r.limit + ' 檔漲停' : '') + '（' + snap.t + '）';
     const url = 'https://api.day.app/' + encodeURIComponent(env.BARK_KEY) + '/' + encodeURIComponent(title) + '/' +
                 encodeURIComponent(body) + '?group=' + encodeURIComponent('盤中族群') +
-                (env.SITE_URL ? '&url=' + encodeURIComponent(env.SITE_URL) : '');
+                (env.SITE_URL ? '&url=' + encodeURIComponent(env.SITE_URL) +
+                                '&icon=' + encodeURIComponent(env.SITE_URL + 'icon-180.png') : '');   // 圖示＝網站 App 圖示
     let status = 0;
     try {
       const res = await fetch(url);

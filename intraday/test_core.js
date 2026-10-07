@@ -128,7 +128,7 @@ assert.match((await r.json()).error, /429/);
 env.KV.m.set('s:20261005:1031', JSON.stringify({t: '10:31', p: [110, 106, 105, 104, 99, 100.5, 98], v: snap.v}));
 const pnow = {date: '20261005', minute: 92, dow: 1};
 assert.equal(await pushCheck(env, pnow), 'no-bark');
-const benv = {...env, BARK_KEY: 'bk'};
+const benv = {...env, BARK_KEY: 'bk', SITE_URL: 'https://site/'};
 let barkCode = 400;
 const barkCalls = [];
 globalThis.fetch = async (url) => {
@@ -142,6 +142,7 @@ assert.equal(await pushCheck(benv, pnow), '光通訊:200');
 assert.deepEqual(JSON.parse(env.KV.m.get('b:20261005')), ['光通訊']);
 assert.equal(await pushCheck(benv, pnow), 'none');                        // 同一族群一天一次
 assert.equal(barkCalls.length, 2);
+assert.ok(barkCalls[0].includes('icon=' + encodeURIComponent('https://site/icon-180.png')));   // 通知圖示＝網站 App 圖示
 assert.equal(await pushCheck(benv, {...pnow, minute: 10}), 'closed');      // 09:15 以前不推
 // 健康檢查：不用存取碼、不含價格
 r = await worker.fetch(new Request('https://w/health'), env);

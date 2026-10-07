@@ -41,6 +41,8 @@ from watchlist import load_watchlist
 BASE_DIR = Path(__file__).resolve().parent
 SENT_PATH = BASE_DIR / "data" / "alerts_sent.csv"
 SITE_URL = "https://chrisho0317.github.io/Local_Dashboard/"
+# 通知圖示：和網站 App 圖示（加到 iPhone 主畫面的那個 apple-touch-icon）同一張；Bark 需要 iOS 15 以上
+ICON_URL = SITE_URL + "icon-180.png"
 GROUP = "台股情報"
 KEEP_DAYS = 120
 
@@ -218,7 +220,7 @@ def send(msg: dict, key: str, server: str) -> bool:
             server.rstrip("/") + "/push",
             json={"device_key": key, "title": msg["title"], "body": msg["body"],
                   "group": GROUP, "level": msg.get("level", "active"),
-                  "url": msg.get("url", SITE_URL)},
+                  "url": msg.get("url", SITE_URL), "icon": msg.get("icon", ICON_URL)},
             timeout=30)
         ok = resp.status_code == 200 and resp.json().get("code") == 200
         if not ok:

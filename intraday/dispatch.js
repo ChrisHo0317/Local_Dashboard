@@ -77,6 +77,7 @@ async function warn(env, ts, status) {
   const body = 'GitHub 回應 ' + status + '：DISPATCH_TOKEN 可能過期或權限不足，資料更新會改靠 GitHub 自己的排程（會晚幾個小時）';
   try {
     await fetch('https://api.day.app/' + encodeURIComponent(env.BARK_KEY) + '/' + encodeURIComponent(title) + '/' +
-                encodeURIComponent(body) + '?group=' + encodeURIComponent('排程'));
+                encodeURIComponent(body) + '?group=' + encodeURIComponent('排程') +
+                (env.SITE_URL ? '&icon=' + encodeURIComponent(env.SITE_URL + 'icon-180.png') : ''));   // 圖示＝網站 App 圖示
   } catch (e) { /* 推播失敗就算了 */ }
 }
