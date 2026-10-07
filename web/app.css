@@ -14,7 +14,8 @@
     --card:#242839; --bar-bg:rgba(42,47,69,.80); --bar-border:rgba(255,255,255,.10);
     --pill:rgba(255,255,255,.13); --tab-fg:#9aa0ac; --accent:#4dd4ac; --danger:#ff8a80;
     --up:#ff6b6b; --down:#51cf66; --warn:#fcc419; --warn-bg:rgba(252,196,25,.16); --tw:#b197fc;
-    --tl0:rgba(255,255,255,.05); --tl1:#13305a; --tl2:#184f95; --tl3:#1c5cab; --tl4:#2a78d6; --tl5:#5598e7; --tl6:#86b6ef; --tl7:#cde2fb;
+    /* 深色模式也是「越深名次越前面」（和淺色一致）：第 1 名飽和深藍，往後越淺越灰；最深的也要和深色底分得開 */
+    --tl0:rgba(255,255,255,.05); --tl1:#dae2ee; --tl2:#c3d2e7; --tl3:#a9c0e4; --tl4:#8daee6; --tl5:#719be9; --tl6:#5687ec; --tl7:#3d72ea;
     --tc1:#3987e5; --tc2:#d95926; --tc3:#199e70; --tc4:#c98500; --tc5:#d55181; --tc-other:#4a5363;
   }
   * { box-sizing:border-box; }
