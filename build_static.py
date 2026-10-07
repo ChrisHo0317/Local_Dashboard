@@ -68,6 +68,7 @@ OUTPUT = SITE_DIR / "index.html"
 NEWS_DIR = SITE_DIR / "news"
 STOCK_DIR = SITE_DIR / "stock"
 CHART_DIR = SITE_DIR / "data" / "charts"
+LAST_UPDATE = BASE_DIR / "data" / "last_update.json"     # update.yml 每次跑完寫：行情排程最後一次跑完的時間
 
 # 走勢圖：總覽「走勢」子分頁裡的完整圖（原本是底部的「走勢圖」分頁）。
 # 各項目沿用原本各自的欄位定義。
@@ -613,6 +614,7 @@ TPL = """<!doctype html>
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">__SETTINGS_ICON__</svg>
       </button>
     </div>
+    __UPDATED__
     <div class="meta" id="page-meta"><span id="page-meta-text">__META0__</span>
       <span class="ver">__VERSION__</span></div>
   </header>
@@ -736,6 +738,16 @@ def _copy_web() -> None:
                 "'./intraday_core.js'", f"'./intraday_core.js?v={__version__}'"), encoding="utf-8")
 
 
+def _data_updated() -> str:
+    """頁首「資料更新」：行情排程最後一次跑完的時間，例如「10/7（三）02:41」；還沒有紀錄就不顯示。"""
+    try:
+        t = json.loads(LAST_UPDATE.read_text(encoding="utf-8"))["time"]
+        d = datetime.strptime(t, "%Y-%m-%d %H:%M")
+    except (OSError, ValueError, KeyError, TypeError):
+        return ""
+    return f"{d.month}/{d.day}（{'一二三四五六日'[d.weekday()]}）{d:%H:%M}"
+
+
 def build() -> Path:
     """讀各資料集、產生 site/，回傳 index.html 的路徑。"""
     charts = {}
@@ -817,6 +829,7 @@ def build() -> Path:
     head["settings"] = {"title": "設定", "meta": "外觀、資料集資訊與版本"}
 
     built = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M (UTC+8)")
+    updated = _data_updated()
     first = PANELS[0]
 
     html = (
@@ -835,6 +848,7 @@ def build() -> Path:
            .replace("__TITLE0__", head[first["id"]]["title"])
            .replace("__META0__", head[first["id"]]["meta"])
            .replace("__BUILT__", built)
+           .replace("__UPDATED__", f'<p class="head-upd">資料更新 {updated}</p>' if updated else "")
            .replace("__VERSION__", __version__)
     )
 

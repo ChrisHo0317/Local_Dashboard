@@ -117,7 +117,7 @@ def panes(data) -> list[str]:
         '        <h4 class="td-sub">接下來 7 天</h4>\n'
         '        <div class="td-events"></div>\n'
         '      </section>\n'
-        '      <section class="ov-card ck-groups td-d"><h3>主流族群</h3><div class="ov-body"></div></section>\n'
+        '      <section class="ov-card ck-groups td-d"><h3 class="ov-h2">主流族群<span class="ov-h2-when"></span></h3><div class="ov-body"></div></section>\n'
         '      <section class="ov-card td-kpi td-e"><h3>市場數字</h3><div class="ov-kpis"></div>\n'
         '        <button type="button" class="ck-more td-kpi-more" aria-expanded="false"></button></section>\n'
         '      <section class="ov-card ck-global td-f"><h3>國際市場</h3><div class="ov-body"></div></section>\n'

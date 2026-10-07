@@ -7,7 +7,11 @@ name: Update market data
 #   21:40  融資融券、重大訊息、月營收、財報
 # 強勢股新聞會呼叫 Claude（Secrets 的 ANTHROPIC_API_KEY）；沒設定就只用關鍵字規則。
 # 全市場日資料每次都回頭檢查幾天，缺什麼補什麼；公布時間晚了也會在下一次補上。
-# GitHub 的排程常延遲十幾分鐘到半小時，不影響盤後資料。
+#
+# 準時觸發：GitHub 自己的排程常晚好幾個小時（17:30 那次常常凌晨才跑），偶爾整次被丟掉。
+# 所以由盤中服務的 Cloudflare Worker 在上面四個時刻準時呼叫 workflow_dispatch（inputs.slot＝該時段的 cron 字串，
+# 見 intraday/dispatch.js）。下面的 schedule 留著當備援：晚到時看到 Cloudflare 已經跑過同一個時段就略過。
+run-name: ${{ inputs.slot && format('Update market data（準時觸發 {0}）', inputs.slot) || 'Update market data' }}
 on:
   schedule:
     - cron: "10 0 * * 1-5"
@@ -15,23 +19,66 @@ on:
     - cron: "30 9 * * 1-5"
     - cron: "40 13 * * 1-5"
   workflow_dispatch:
+    inputs:
+      slot:
+        description: "時段（上面某個 cron 字串，照那個時段的清單跑）；空白＝全部跑一次"
+        required: false
+        default: ""
 
 permissions:
   contents: write
   pages: write
   id-token: write
 
+# 一次只跑一輪，其餘排隊（queue: max）：預設只留一個排隊的，晚到的 GitHub 排程會把
+# 排隊中、Cloudflare 準時觸發的那一輪取消掉
 concurrency:
   group: update-market
   cancel-in-progress: false
+  queue: max
 
 jobs:
-  update:
+  check:
+    # GitHub 自己的排程晚到時：Cloudflare 近 20 小時內已經成功跑過同一個時段，就不再跑一次
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      run: ${{ steps.c.outputs.run }}
+    steps:
+      - id: c
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SLOT: ${{ github.event.schedule }}
+        run: |
+          run=true
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            since=$(date -u -d '20 hours ago' +%FT%TZ)
+            # 查詢失敗就當作沒跑過（寧可多跑一次）
+            n=$(gh run list -R "$GITHUB_REPOSITORY" --workflow update.yml --event workflow_dispatch --status success \
+                  --limit 50 --json displayTitle,createdAt \
+                  --jq "[.[] | select(.createdAt >= \"$since\" and (.displayTitle | contains(\"$SLOT\")))] | length" || echo 0)
+            if [ "${n:-0}" -gt 0 ] 2>/dev/null; then
+              echo "::notice::這個時段（$SLOT）Cloudflare 已經準時跑過，略過"
+              run=false
+            fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
+  update:
+    needs: check
+    if: needs.check.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    env:
+      # 哪個時段：GitHub 排程是 cron 字串，Cloudflare 準時觸發帶在 inputs.slot；手動執行是空白
+      SLOT: ${{ github.event.schedule || inputs.slot }}
     outputs:
       changed: ${{ steps.commit.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 排隊等過前一輪的話，要拿它推上去之後的最新資料，不是觸發當下的舊 commit
+          ref: main
 
       - uses: actions/setup-python@v5
         with:
@@ -53,9 +100,10 @@ jobs:
           BARK_KEY: ${{ secrets.BARK_KEY }}
           ALERTS_ENABLED: ${{ vars.ALERTS_ENABLED }}
         run: |
-          case "${{ github.event.schedule }}" in
+          case "$SLOT" in
             "10 0 * * 1-5")
-              python update_data.py xmarket bonds events stocknews digest hotnews ;;
+              # 熱門新聞不在這裡做：news.yml 08:03 已經準時做過 08:00 那個時段，兩邊同時做會重複推播、推送衝突
+              python update_data.py xmarket bonds events stocknews digest ;;
             "0 1 * * *")
               python update_data.py dram bonds gold btc calendar f1 f1standings spacex market chips xmarket options stock events backfill macro calls qfii chain hotnews ;;
             "30 9 * * 1-5")
@@ -85,11 +133,16 @@ jobs:
 
       - name: Intraday archive
         # 盤中強勢族群：收盤後把當天的族群排行存進 data/intraday/（沒設定盤中服務就自動略過）
-        if: github.event.schedule == '30 9 * * 1-5' || github.event.schedule == '40 13 * * 1-5'
+        if: env.SLOT == '30 9 * * 1-5' || env.SLOT == '40 13 * * 1-5'
         env:
           INTRADAY_URL: ${{ secrets.INTRADAY_URL }}
           INTRADAY_ACCESS_CODE: ${{ secrets.INTRADAY_ACCESS_CODE }}
         run: node intraday/archive.js
+
+      - name: Update time
+        # 頁首「資料更新」的時間：這次排程跑完的時刻（台北）。每次都會變，所以每次排程都會 commit、重新發布
+        run: |
+          printf '{"time": "%s", "slot": "%s"}\n' "$(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')" "$SLOT" > data/last_update.json
 
       - name: Commit if changed
         id: commit

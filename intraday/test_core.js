@@ -1,7 +1,9 @@
 // node intraday/test_core.js：盤中族群計算與 Worker 的測試（不連網路，fetch 與 KV 都是假的）
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import * as core from './core.js';
 import worker, { collect } from './worker.js';
+import { dispatch, plan, NEWS_CRON, SLOT_CRON, SLOTS } from './dispatch.js';
 
 // ── 計算 ──
 const U = {
@@ -120,5 +122,53 @@ r = await worker.fetch(new Request('https://w/status', {headers: {Authorization:
                        {...env, KV: {get: async () => { throw new Error('KV GET failed: 429'); }}});
 assert.equal(r.status, 503); assert.equal(r.headers.get('Access-Control-Allow-Origin'), '*');
 assert.match((await r.json()).error, /429/);
+
+// ── 準時觸發 GitHub 排程（dispatch.js）──
+// wrangler.toml 的 crons 要和程式裡的字串一字不差，不然 scheduled 分不出是哪一個
+const toml = fs.readFileSync(new URL('./wrangler.toml', import.meta.url), 'utf8');
+const crons = JSON.parse(/^crons\s*=\s*(\[.*\])/m.exec(toml)[1]);
+assert.ok(crons.includes(NEWS_CRON) && crons.includes(SLOT_CRON) && crons.length <= 5);
+const at = (iso) => Date.parse(iso);
+assert.deepEqual(plan(NEWS_CRON, at('2026-10-06T09:33:00Z')), [['news.yml', null]]);
+assert.deepEqual(plan(SLOT_CRON, at('2026-10-06T09:30:00Z')), [['update.yml', {slot: '30 9 * * 1-5'}]]);   // 週二 17:30
+assert.deepEqual(plan(SLOT_CRON, at('2026-10-06T09:40:00Z')), []);                                        // 不是時段
+assert.deepEqual(plan(SLOT_CRON, at('2026-10-10T09:30:00Z')), []);                                        // 週六不跑盤後
+assert.deepEqual(plan(SLOT_CRON, at('2026-10-10T01:00:00Z')), [['update.yml', {slot: '0 1 * * *'}]]);      // 09:00 每天
+assert.deepEqual(plan('* 1-5 * * mon-fri', at('2026-10-06T01:00:00Z')), []);
+// update.yml 的四個時段都有對應
+const yml = fs.readFileSync(new URL('../.github/workflows/update.yml', import.meta.url), 'utf8');
+for (const s of Object.values(SLOTS)) assert.ok(yml.includes('- cron: "' + s[0] + '"'), s[0]);
+
+const calls = [];
+const genv = {KV: new KV(), GH_REPO: 'me/repo', GH_TOKEN: 'tok', BARK_KEY: 'bk'};
+let ghStatus = 204;
+globalThis.fetch = async (url, opt = {}) => {
+  calls.push([String(url), opt.body ? JSON.parse(opt.body) : null, opt.headers || {}]);
+  return new Response(null, {status: String(url).startsWith('https://api.github.com') ? ghStatus : 200});
+};
+assert.equal(await dispatch({KV: new KV()}, NEWS_CRON, at('2026-10-06T09:33:00Z')), 'no-token');
+assert.equal(calls.length, 0);
+assert.equal(await dispatch(genv, SLOT_CRON, at('2026-10-06T09:30:00Z')), 'update.yml:204');
+assert.equal(calls[0][0], 'https://api.github.com/repos/me/repo/actions/workflows/update.yml/dispatches');
+assert.deepEqual(calls[0][1], {ref: 'main', inputs: {slot: '30 9 * * 1-5'}});
+assert.equal(calls[0][2].Authorization, 'Bearer tok'); assert.ok(calls[0][2]['User-Agent']);
+assert.equal(JSON.parse(genv.KV.m.get('g:last')).slot, '30 9 * * 1-5');
+// 新聞成功不寫 KV；token 失效：記下來、一天只推播一次
+genv.KV.m.delete('g:last');
+assert.equal(await dispatch(genv, NEWS_CRON, at('2026-10-06T09:33:00Z')), 'news.yml:204');
+assert.ok(!genv.KV.m.has('g:last'));
+ghStatus = 401; calls.length = 0;
+await dispatch(genv, NEWS_CRON, at('2026-10-06T09:43:00Z'));
+await dispatch(genv, NEWS_CRON, at('2026-10-06T09:53:00Z'));
+assert.equal(JSON.parse(genv.KV.m.get('g:last')).status, 401);
+assert.equal(calls.filter(c => c[0].startsWith('https://api.day.app/')).length, 1);
+// scheduled：依 cron 分派
+ghStatus = 204; calls.length = 0;
+const waits = [];
+await worker.scheduled({cron: SLOT_CRON, scheduledTime: at('2026-10-06T00:10:00Z')}, genv, {waitUntil: p => waits.push(p)});
+await Promise.all(waits);
+assert.deepEqual(calls.map(c => c[1]), [{ref: 'main', inputs: {slot: '10 0 * * 1-5'}}]);
+r = await worker.fetch(new Request('https://w/status', {headers: {Authorization: 'Bearer secret'}}), {...genv, ACCESS_CODE: 'secret'});
+assert.equal((await r.json()).dispatch.slot, '10 0 * * 1-5');
 
 console.log('intraday tests ok');

@@ -482,7 +482,13 @@
       }), {displayModeBar: false, responsive: true});
     }
 
-    function ckGroups(box, groups) {
+    // date：主流族群是哪天收盤的強勢紀錄；比首頁資料日期舊（那天的強勢紀錄還沒算好）就註明
+    function ckGroups(box, groups, date, asof) {
+      var when = box.parentNode.querySelector('.ov-h2-when');
+      if (when) {
+        when.textContent = date ? md(date) + '收盤' + (asof && date < asof ? '・' + md(asof) + '的稍後更新' : '') : '';
+        when.classList.toggle('is-stale', !!(date && asof && date < asof));
+      }
       box.textContent = '';
       if (!groups || !groups.length) {
         box.appendChild(el('p', 'ov-empty', '還沒有族群連動的紀錄。'));
@@ -648,7 +654,7 @@
     function cockpit(pane, d) {
       ckDigest(pane.querySelector('.ck-digest'), d.digest);
       ckTemp(pane, d.temp);
-      ckGroups(pane.querySelector('.ck-groups .ov-body'), d.groups);
+      ckGroups(pane.querySelector('.ck-groups .ov-body'), d.groups, d.groups_date, d.asof);
       ckAlerts(pane.querySelector('.td-alerts'), d.alerts);
       watch(pane.querySelector('.td-watch'), d);
       tdEvents(pane.querySelector('.td-events'), d.events);

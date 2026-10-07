@@ -263,6 +263,7 @@ python -m pytest -q            # 測試
 | `intraday/worker.js` | Cloudflare Worker：每分鐘向證交所即時行情（MIS）抓價量存進 KV；帶存取碼才讀得到；可選 Bark 推播 |
 | `intraday/core.js` | 族群強度、連動、領漲的計算（Worker 與網站共用；網站版是 site/intraday_core.js）|
 | `intraday/archive.js` | 收盤後把當天的族群排行存進 data/intraday/（之後校正量能曲線、回測用）|
+| `intraday/dispatch.js` | 準時觸發 GitHub 的資料排程（見下方「自動更新」）|
 | `web/intraday.js` | 網站的盤中卡與盤中子分頁，每 60 秒讀一次 |
 | `.github/workflows/intraday.yml` | 測試並部署 Worker（自動建立 KV 空間、設定存取碼） |
 
@@ -275,12 +276,13 @@ python -m pytest -q            # 測試
 4. Actions 手動執行「Deploy intraday worker」，執行結果會列出盤中服務網址。
 5. GitHub Secrets 再加 `INTRADAY_URL`（上一步的網址，收盤存檔用）。
 6. 網站設定頁「盤中服務」填網址與存取碼，按「儲存並測試」。
+7. 選用但建議：GitHub Secrets 加 `DISPATCH_TOKEN`（見下方「自動更新」），再手動執行一次「Deploy intraday worker」。
 
 ## 自動更新
 
 | Workflow | 頻率（台北時間）| 做什麼 |
 |----------|----------------|--------|
-| `update.yml` | 平日 08:10 | 國際行情、美債、事件、強勢股新聞、盤前摘要、熱門新聞 |
+| `update.yml` | 平日 08:10 | 國際行情、美債、事件、強勢股新聞、盤前摘要 |
 | `update.yml` | 09:00 | DRAM、美債、黃金、BTC、行事曆、F1、SpaceX、總經＋下面全部 |
 | `update.yml` | 平日 17:30、21:40 | 全市場日資料、集保、期貨、跨市場指數、個股清單與基本面、自選股推播（21:40 另更新行事曆公布值與總經）|
 | `news.yml` | 每 10 分鐘 | 只更新新聞 |
@@ -292,8 +294,13 @@ python -m pytest -q            # 測試
 
 測試失敗就不發布，線上維持上一版。
 
-> GitHub 的排程本來就不準，實際間隔可能是十幾分鐘到半小時；加上 Pages 的 CDN 快取
-> （約 10 分鐘），手機上看到的還會再晚一些。**在頁面最上方往下拉**會重新載入並繞過快取。
+> **準時觸發**：GitHub 自己的排程很不準——實測 17:30 那次常常隔天凌晨才跑，08:10／09:00 拖到下午，
+> 每 10 分鐘的新聞一天只跑五次左右，偶爾整次被丟掉。所以由盤中服務的 Cloudflare Worker（cron 是準時的）
+> 在上表的時刻呼叫 GitHub 的 workflow_dispatch（`intraday/dispatch.js`）；GitHub 自己的排程留著當備援，
+> 晚到時看到同一個時段已經跑過就略過。要啟用，到 GitHub 建一把 fine-grained token
+> （Repository access 只選這個 repo、Permissions 只開 Actions: Read and write），存成 Secret `DISPATCH_TOKEN`，
+> 再手動執行一次「Deploy intraday worker」。token 過期時（有設 BARK_KEY）會推播提醒，資料更新退回 GitHub 自己的排程。
+> 加上 Pages 的 CDN 快取（約 10 分鐘），手機上看到的還會再晚一些。**在頁面最上方往下拉**會重新載入並繞過快取。
 
 > GitHub Actions 使用資料中心 IP，TrendForce 的 Cloudflare 有可能擋下請求。抓不到資料時
 > 只印警告並正常結束，不會讓 workflow 變紅，也不會覆寫既有資料。

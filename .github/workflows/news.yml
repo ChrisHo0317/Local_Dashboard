@@ -3,8 +3,9 @@ name: Update news
 # 新聞跟行情不同，一天更新一次等於永遠在看昨天的頭條，所以獨立一個排程。
 # 只抓清單上新出現的文章的內文（看過的沿用 CSV），每次通常只有幾篇要抓。
 #
-# 注意：GitHub 的排程本來就不準，尤其這種高頻的 cron，實際間隔可能是
-# 十幾分鐘到半小時；加上 Pages 的 CDN 快取，手機上看到的還會再晚一些。
+# 注意：GitHub 的排程很不準，這種高頻的 cron 實測一天只跑五次左右。
+# 所以由盤中服務的 Cloudflare Worker 每 10 分鐘準時呼叫 workflow_dispatch（intraday/dispatch.js），
+# 下面的 schedule 留著當備援；兩邊都跑也沒關係，沒有新新聞就不會 commit。
 on:
   schedule:
     # 刻意避開整點與 10 的倍數：GitHub 的排程佇列在那些時刻最擠，
@@ -29,6 +30,9 @@ jobs:
       changed: ${{ steps.commit.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 排隊等過前一輪的話，要拿它推上去之後的最新資料（熱門新聞的時段紀錄），不是觸發當下的舊 commit
+          ref: main
 
       - uses: actions/setup-python@v5
         with:
@@ -87,13 +91,29 @@ jobs:
     needs: [news]
     if: failure()
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      # 每 10 分鐘一輪：上一輪也失敗就不再推，同一段故障只推第一次
+      - id: prev
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prev=$(gh run list -R "$GITHUB_REPOSITORY" --workflow news.yml --status completed --limit 5 \
+                   --json databaseId,conclusion \
+                   --jq '[.[] | select(.databaseId != ${{ github.run_id }})][0].conclusion // ""' || echo "")
+          echo "conclusion=$prev" >> "$GITHUB_OUTPUT"
+      - if: steps.prev.outputs.conclusion != 'failure'
+        uses: actions/checkout@v4
+      - if: steps.prev.outputs.conclusion != 'failure'
+        uses: actions/setup-python@v5
         with:
           python-version: "3.13"
           cache: pip
-      - run: pip install -r requirements.txt
-      - env:
+      - if: steps.prev.outputs.conclusion != 'failure'
+        run: pip install -r requirements.txt
+      - if: steps.prev.outputs.conclusion != 'failure'
+        env:
           BARK_KEY: ${{ secrets.BARK_KEY }}
         run: python alerts.py --failure "Update news"

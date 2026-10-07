@@ -571,9 +571,11 @@ def _momentum(panel: pd.DataFrame, master: pd.DataFrame, days: list, xm: pd.Data
             "bench": [_r(v) for v in bench]}
 
 
-def _top_groups() -> list:
+def _top_groups() -> dict:
+    """主流族群（最新一個強勢紀錄日）與那一天的日期：首頁卡片要標出是哪天收盤的。"""
     from market_digest import top_groups
-    return top_groups(load_strong_history())
+    hist = load_strong_history()
+    return {"date": str(hist["date"].max()) if not hist.empty else "", "list": top_groups(hist)}
 
 
 def _watch_alerts(codes: set) -> list:
@@ -828,6 +830,7 @@ def build(out_dir: Path) -> dict:
     quality = _quality()
     perf = signal_perf.build(panel, load_revenue(), master, load_strong_history(), names)
     glob = global_market.build()
+    main_groups = _top_groups()
     overview = {
         "asof": latest.strftime("%Y-%m-%d"),
         "kpi": _kpis(summary, xm, latest.strftime("%Y-%m-%d"),
@@ -846,7 +849,8 @@ def build(out_dir: Path) -> dict:
         "options": _options(),
         # 決策首頁
         "temp": breadth.summary(panel),
-        "groups": _top_groups(),
+        "groups": main_groups["list"],
+        "groups_date": main_groups["date"],
         "alerts": _watch_alerts(watch_codes),
         "digest": _digest(),
         "hot": _hot_summary(),

@@ -6,6 +6,7 @@
 //   3. 存一份快照到 KV：s:{日期}:{HHMM}；昨收與漲停價存在 r:{日期}（第一次收到就存，之後缺的再補）
 //   4. 每 5 分鐘（有設 BARK_KEY 時）算一次族群，新族群衝進前 3 名就推播
 // 計算幾乎都在網站端做（Worker 免費方案每次只有 10 毫秒 CPU）。
+// 另外兩個 cron 準時觸發 GitHub Actions 的資料排程（dispatch.js）。
 //
 // 讀取（網站用，要帶 Authorization: Bearer {ACCESS_CODE}）：
 //   GET /status                     服務狀態
@@ -14,6 +15,7 @@
 // 即時行情只給帶存取碼的人看（證交所即時行情不能公開轉載）。
 
 import { misBatches, fromMis, groupStats, dedupe, seen, hhmm, MIN_STRONG } from './core.js';
+import { dispatch, NEWS_CRON, SLOT_CRON } from './dispatch.js';
 
 const MIS = 'https://mis.twse.com.tw/stock/api/getStockInfo.jsp';
 const LAST_MINUTE = 273;          // 13:33：13:30 收盤集合競價的結果要幾十秒才出來
@@ -162,7 +164,9 @@ async function handle(request, env) {
   if (!env.ACCESS_CODE || auth !== 'Bearer ' + env.ACCESS_CODE) return reply(env, {error: '存取碼不對'}, 401);
   if (url.pathname === '/status') {
     const now = taipei();
-    return reply(env, {ok: true, date: now.date, minute: now.minute, latest: await latestDate(env, now)});
+    const g = await env.KV.get('g:last');
+    return reply(env, {ok: true, date: now.date, minute: now.minute, latest: await latestDate(env, now),
+                       dispatch: g ? JSON.parse(g) : null});
   }
   if (url.pathname === '/day') return day(env, url);
   // 手動觸發一次收集（測試用）：/collect
@@ -171,8 +175,10 @@ async function handle(request, env) {
 }
 
 export default {
+  // 每個 cron 各自觸發一次：叫 GitHub 跑排程的兩個交給 dispatch，其餘（每分鐘那個）收盤中行情
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(collect(env));
+    if (event.cron === NEWS_CRON || event.cron === SLOT_CRON) ctx.waitUntil(dispatch(env, event.cron, event.scheduledTime));
+    else ctx.waitUntil(collect(env));
   },
 
   async fetch(request, env) {

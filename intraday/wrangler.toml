@@ -4,10 +4,13 @@ name = "local-dash-intraday"
 main = "worker.js"
 compatibility_date = "2025-01-01"
 
-# UTC 01:00～05:59，週一到週五（台北 09:00～13:59）；程式裡只收 09:00～13:33。
-# 星期用英文縮寫：Cloudflare 的星期 1 是週日（和一般 cron 的 1＝週一不同），寫 1-5 會變成週日到週四。
+# 1. 收盤中行情：UTC 01:00～05:59，週一到週五（台北 09:00～13:59）；程式裡只收 09:00～13:33。
+#    星期用英文縮寫：Cloudflare 的星期 1 是週日（和一般 cron 的 1＝週一不同），寫 1-5 會變成週日到週四。
+# 2. 每 10 分鐘叫 GitHub 跑新聞（news.yml）
+# 3. 台北 08:10、09:00、17:30、21:40 叫 GitHub 跑資料更新（update.yml），哪幾個時刻由 dispatch.js 的 SLOTS 決定
+# 2、3 的字串要和 dispatch.js 的 NEWS_CRON、SLOT_CRON 一字不差。免費方案一個帳號最多 5 個 cron。
 [triggers]
-crons = ["* 1-5 * * mon-fri"]
+crons = ["* 1-5 * * mon-fri", "3,13,23,33,43,53 * * * *", "0,10,30,40 0,1,9,13 * * *"]
 
 [[kv_namespaces]]
 binding = "KV"
@@ -16,3 +19,4 @@ id = "__KV_ID__"
 [vars]
 UNIVERSE_URL = "https://chrisho0317.github.io/Local_Dashboard/data/intraday_universe.json"
 SITE_URL = "https://chrisho0317.github.io/Local_Dashboard/"
+GH_REPO = "ChrisHo0317/Local_Dashboard"
