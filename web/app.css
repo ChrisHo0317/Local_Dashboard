@@ -981,6 +981,12 @@
   .rc-row.is-lim .rc-bar i { opacity:1; }
   .rc-chg { text-align:right; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
   .rc-row.up .rc-chg { color:var(--up); } .rc-row.down .rc-chg { color:var(--down); }
+  .rc-glist .rc-row { grid-template-columns:18px minmax(0, 10.8em) minmax(0, 1fr) 4.4em; }
+  .rc-row.is-sel { background:var(--hover); border-radius:6px; }
+  .rc-row.is-sel .rc-name b { color:var(--accent); }
+  .rc-mode { display:inline-flex; gap:2px; margin-right:4px; }
+  .rc-sub { font-size:12.5px; margin:10px 0 2px; color:var(--muted); font-weight:600; }
+  .rc-mhead:empty { display:none; }
   .rc-row.is-new { animation:rc-new 1.2s ease; }
   @keyframes rc-new { 0% { background:var(--warn-bg); } 100% { background:transparent; } }
   .lv-err { font-size:13px; color:var(--danger); margin:0 0 8px; }

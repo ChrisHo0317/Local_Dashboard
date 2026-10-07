@@ -315,14 +315,18 @@ function renderPane() {
   }
 }
 
-// ── 今日強勢股動畫（排行賽跑）──
-// 每 3 分鐘一格（加上最新一份），每格依漲幅排前 RACE_N 名，條形滑動換位；可播放、拖時間軸、換範圍（全部／自選股／族群）、
-// 換日期（Cloudflare 留最近 5 天的每分鐘資料）。今天的資料跟著盤中輪詢更新，其他日子另外讀一次。
-const RACE_N = 15;
+// ── 強勢股動畫（排行賽跑）──
+// 每 3 分鐘一格（加上最新一份），條形滑動換位；可播放、拖時間軸、換日期（Cloudflare 留最近 5 天的每分鐘資料）。
+// 兩種看法：
+//   個股  依漲幅排前 RACE_N 名（範圍：全部／自選股／某個族群）
+//   族群  上層：最強的 RACE_G 個族群（強度＝漲幅、上漲比例、強勢成員數、量比，和盤中排行一樣）；
+//         下層：選定族群的成員依漲幅排前 RACE_M 名。預設跟著當下第 1 名，點族群可以固定看它。
+// 今天的資料跟著盤中輪詢更新，其他日子另外讀一次。
+const RACE_N = 15, RACE_G = 8, RACE_M = 10;
 const RACE_ROW = 38;                       // 每列高度（px），和 CSS .rc-row 一致
 const RACE_SPEEDS = [['1×', 600], ['4×', 150], ['10×', 60]];   // 每格幾毫秒（一格＝3 分鐘）
 const race = {date: null, data: null, frames: [], idx: -1, playing: false, timer: null, speed: 600, scope: 'all',
-              nodes: new Map(), prevTop: [], groupOf: null, days: null, loading: false};
+              mode: 'stock', pin: null, lists: {}, groupOf: null};
 
 function raceSource() {
   if (race.date && race.data) return race.data;
@@ -357,15 +361,68 @@ function raceScopeIdx(src) {
   return U.codes.map((_, i) => i);
 }
 
-function raceTop(src, snap, idx) {
+// 一群股票在這一格的漲幅、量比、漲停，依漲幅排前 n 名
+function raceStocks(src, snap, idx, n, sub) {
+  const frac = src.U.profile[Math.max(1, Math.min(270, snap.m))] || 1;
   const out = [];
   for (const i of idx) {
     const p = snap.p[i], y = src.ref.y[i];
     if (p == null || !y) continue;
-    out.push([i, (p / y - 1) * 100]);
+    out.push({i, chg: (p / y - 1) * 100});
   }
-  out.sort((a, b) => b[1] - a[1]);
-  return out.slice(0, RACE_N);
+  out.sort((a, b) => b.chg - a.chg);
+  return out.slice(0, n).map(({i, chg}) => {
+    const tv = snap.v[i] != null ? snap.v[i] * snap.p[i] * 1000 / 1e8 : null;
+    const vr = tv != null && src.U.avg[i] ? tv / (src.U.avg[i] * frac) : null;
+    return {key: 's' + i, name: src.U.names[i] || src.U.codes[i], chg,
+            lim: !!(src.ref.u[i] && snap.p[i] >= src.ref.u[i]),
+            sub: [sub ? race.groupOf[i] : '', vr == null ? '' : '量比 ' + vr.toFixed(1)].filter(Boolean).join('・'),
+            onClick: () => UI.openStock && UI.openStock(src.U.codes[i])};
+  });
+}
+
+// 一個清單畫一格：同一個 key 的列沿用同一個元素，換名次時用 transform 滑過去；掉出去的淡出
+function racePaint(list, items) {
+  const L = race.lists[list.dataset.list] || (race.lists[list.dataset.list] = {nodes: new Map(), prev: null});
+  const max = Number(list.dataset.max);
+  list.style.height = (Math.max(items.length, 1) * RACE_ROW) + 'px';
+  const seen = new Set();
+  items.forEach((it, k) => {
+    seen.add(it.key);
+    let row = L.nodes.get(it.key);
+    if (!row) {
+      row = el('button', 'rc-row');
+      row.type = 'button';
+      row.innerHTML = '<span class="rc-rank"></span><span class="rc-name"><b></b><small></small></span>' +
+                      '<span class="rc-bar"><i></i></span><span class="rc-chg"></span>';
+      row.style.transform = 'translateY(' + (max * RACE_ROW) + 'px)';
+      row.addEventListener('click', () => row._click && row._click());
+      list.appendChild(row);
+      L.nodes.set(it.key, row);
+      void row.offsetWidth;                               // 先停在底下，下一步才滑上來
+    }
+    row._click = it.onClick;
+    row.className = 'rc-row ' + dir(it.chg) + (it.lim ? ' is-lim' : '') + (it.sel ? ' is-sel' : '') +
+                    (L.prev && !L.prev.has(it.key) ? ' is-new' : '');
+    row.style.transform = 'translateY(' + (k * RACE_ROW) + 'px)';
+    row.style.opacity = '1';
+    row.querySelector('.rc-rank').textContent = String(k + 1);
+    row.querySelector('.rc-name b').textContent = it.name;
+    row.querySelector('.rc-name small').textContent = it.sub || '';
+    row.querySelector('.rc-bar i').style.width = Math.min(Math.abs(it.chg), 10) * 10 + '%';
+    row.querySelector('.rc-chg').textContent = signed(it.chg, 1, '%') + (it.lim ? ' 漲停' : '');
+  });
+  L.nodes.forEach((row, key) => {
+    if (seen.has(key)) return;
+    row.style.transform = 'translateY(' + (max * RACE_ROW) + 'px)';
+    row.style.opacity = '0';
+  });
+  L.prev = seen;
+}
+
+function raceClear() {
+  Object.values(race.lists).forEach(L => L.nodes.forEach(row => row.remove()));
+  race.lists = {};
 }
 
 function raceDraw() {
@@ -373,51 +430,37 @@ function raceDraw() {
   const src = raceSource();
   if (!box || !src || !race.frames.length) return;
   const snap = race.frames[race.idx];
-  const list = box.querySelector('.rc-list');
-  const minute = Math.max(1, Math.min(270, snap.m));
-  const frac = src.U.profile[minute] || 1;
-  const top = raceTop(src, snap, raceScopeIdx(src));
-  const prev = new Set(race.prevTop);
   box.querySelector('.rc-time').textContent = snap.t || core.hhmm(snap.m).replace(/^(..)/, '$1:');
   box.querySelector('.rc-slider').value = String(race.idx);
-  list.style.height = (Math.max(top.length, 1) * RACE_ROW) + 'px';
-  const seen = new Set();
-  top.forEach(([i, chg], k) => {
-    seen.add(i);
-    let row = race.nodes.get(i);
-    if (!row) {
-      row = el('button', 'rc-row');
-      row.type = 'button';
-      row.innerHTML = '<span class="rc-rank"></span><span class="rc-name"><b></b><small></small></span>' +
-                      '<span class="rc-bar"><i></i></span><span class="rc-chg"></span>';
-      row.style.transform = 'translateY(' + (RACE_N * RACE_ROW) + 'px)';
-      row.addEventListener('click', () => UI.openStock && UI.openStock(src.U.codes[i]));
-      list.appendChild(row);
-      race.nodes.set(i, row);
-      void row.offsetWidth;                               // 先停在底下，下一步才滑上來
-    }
-    const tv = snap.p[i] != null && snap.v[i] != null ? snap.v[i] * snap.p[i] * 1000 / 1e8 : null;
-    const vr = tv != null && src.U.avg[i] ? tv / (src.U.avg[i] * frac) : null;
-    const lim = !!(src.ref.u[i] && snap.p[i] >= src.ref.u[i]);
-    row.hidden = false;
-    row.className = 'rc-row ' + dir(chg) + (lim ? ' is-lim' : '') + (race.prevTop.length && !prev.has(i) ? ' is-new' : '');
-    row.style.transform = 'translateY(' + (k * RACE_ROW) + 'px)';
-    row.style.opacity = '1';
-    row.querySelector('.rc-rank').textContent = String(k + 1);
-    row.querySelector('.rc-name b').textContent = src.U.names[i] || src.U.codes[i];
-    row.querySelector('.rc-name small').textContent = [race.groupOf[i], vr == null ? '' : '量比 ' + vr.toFixed(1)]
-      .filter(Boolean).join('・');
-    row.querySelector('.rc-bar i').style.width = Math.min(Math.abs(chg), 10) * 10 + '%';
-    row.querySelector('.rc-chg').textContent = signed(chg, 1, '%') + (lim ? ' 漲停' : '');
-  });
-  race.nodes.forEach((row, i) => {
-    if (seen.has(i)) return;
-    row.style.transform = 'translateY(' + (RACE_N * RACE_ROW) + 'px)';
-    row.style.opacity = '0';
-  });
-  race.prevTop = top.map(x => x[0]);
-  const empty = box.querySelector('.rc-empty');
-  empty.hidden = top.length > 0;
+  const byStock = race.mode === 'stock';
+  box.querySelector('.rc-stock').hidden = !byStock;
+  box.querySelector('.rc-group').hidden = byStock;
+  box.querySelector('.rc-scope').hidden = !byStock;
+  if (byStock) {
+    const items = raceStocks(src, snap, raceScopeIdx(src), RACE_N, true);
+    racePaint(box.querySelector('.rc-stock .rc-list'), items);
+    box.querySelector('.rc-stock .rc-empty').hidden = items.length > 0;
+    return;
+  }
+  // 族群：上層強度排行，下層選定族群的成員
+  const rows = core.dedupe(src.U, core.groupStats(src.U, src.ref, snap), RACE_G);
+  const sel = race.pin || (rows[0] && rows[0].name);
+  racePaint(box.querySelector('.rc-glist'), rows.map(r => ({
+    key: 'g' + r.name, name: r.name, chg: r.chg,
+    sel: r.name === sel || (r.alias || []).indexOf(sel) >= 0,
+    sub: '上漲 ' + r.up + '/' + r.n + '・強勢 ' + r.strong + (r.vr != null ? '・量比 ' + r.vr.toFixed(1) : ''),
+    onClick: () => { race.pin = race.pin === r.name ? null : r.name; raceClearList('m'); raceDraw(); }})));
+  const g = src.U.groups.find(x => x[0] === sel);
+  box.querySelector('.rc-mhead').textContent = !sel ? '' :
+    sel + ' 內部排名' + (race.pin ? '（已固定，點同一個族群取消）' : '（跟著第 1 名，點上面的族群可以固定）');
+  racePaint(box.querySelector('.rc-mlist'), g ? raceStocks(src, snap, g[2], RACE_M, false) : []);
+}
+
+function raceClearList(name) {
+  const L = race.lists[name];
+  if (!L) return;
+  L.nodes.forEach(row => row.remove());
+  delete race.lists[name];
 }
 
 function raceStop() {
@@ -428,7 +471,7 @@ function raceStop() {
 }
 
 function racePlay() {
-  if (race.idx >= race.frames.length - 1) { race.idx = 0; race.prevTop = []; }
+  if (race.idx >= race.frames.length - 1) { race.idx = 0; raceClear(); }
   race.playing = true;
   document.querySelector('.lv-race .rc-play').textContent = '⏸ 暫停';
   const step = () => {
@@ -441,7 +484,7 @@ function racePlay() {
   step();
 }
 
-// 換日期、換範圍、資料更新後：重算格子與族群；正在看最新一格又沒在播放，就跟到新的最新一格
+// 換日期、資料更新後：重算格子與族群；正在看最新一格又沒在播放，就跟到新的最新一格
 function raceReset(keepIdx) {
   const src = raceSource();
   const box = document.querySelector('.lv-race');
@@ -451,8 +494,7 @@ function raceReset(keepIdx) {
   const wasEnd = race.idx < 0 || race.idx >= race.frames.length - 1;
   race.frames = raceFrames(src.series);
   race.groupOf = raceGroups(src);
-  const slider = box.querySelector('.rc-slider');
-  slider.max = String(race.frames.length - 1);
+  box.querySelector('.rc-slider').max = String(race.frames.length - 1);
   if (!keepIdx || wasEnd && !race.playing) race.idx = race.frames.length - 1;
   race.idx = Math.min(race.idx, race.frames.length - 1);
   box.style.setProperty('--rc-dur', Math.min(race.speed * 0.85, 450) + 'ms');
@@ -475,9 +517,9 @@ function raceScopes(src) {
   });
 }
 
-// 最近 5 個平日（含今天）；點了才讀那天的資料
 const mdOf = d => Number(d.slice(4, 6)) + '/' + Number(d.slice(6));      // 20261006 → 10/6
 
+// 最近 5 個平日（含今天）；點了才讀那天的資料
 function raceDays() {
   const out = [];
   for (let k = 0; out.length < 5 && k < 10; k++) {
@@ -495,13 +537,11 @@ async function raceDate(date) {
   if (!date || date === st.date) {
     race.date = null; race.data = null;
   } else {
-    race.loading = true;
     msg.textContent = '載入中…';
     try {
       const d = await api('/day?date=' + date + '&step=3&u=1');
       if (!d.universe || !d.snaps || !d.snaps.length) {
         msg.textContent = mdOf(date) + ' 沒有資料（休市，或已超過 5 天）';
-        race.loading = false;
         return;
       }
       race.date = date;
@@ -509,17 +549,27 @@ async function raceDate(date) {
       msg.textContent = '';
     } catch (e) {
       msg.textContent = e.message || '讀取失敗';
-      race.loading = false;
       return;
     }
-    race.loading = false;
   }
-  race.nodes.forEach(row => row.remove());
-  race.nodes.clear();
-  race.prevTop = [];
+  raceClear();
+  race.pin = null;
   raceReset(false);
   document.querySelectorAll('.lv-race .rc-day').forEach(b => {
     b.setAttribute('aria-pressed', String(b.dataset.date === (race.date || st.date)));
+  });
+}
+
+function chipGroup(box, items, isOn, onPick) {
+  items.forEach(([label, value]) => {
+    const b = el('button', 'chip', label);
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(isOn(value)));
+    b.addEventListener('click', () => {
+      box.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      onPick(value);
+    });
+    box.appendChild(b);
   });
 }
 
@@ -528,15 +578,21 @@ function setupRace() {
   if (!pane || pane.querySelector('.lv-race')) return;
   const box = el('section', 'lv-race ov-card');
   box.hidden = true;
+  const list = (name, max) => '<div class="rc-list" data-list="' + name + '" data-max="' + max + '"></div>';
   box.innerHTML =
     '<div class="rc-head"><h3>強勢股動畫</h3><span class="rc-time num"></span></div>' +
     '<div class="rc-days"></div>' +
-    '<div class="rc-ctrl"><button type="button" class="rc-play chip">▶ 播放</button>' +
+    '<div class="rc-ctrl"><span class="rc-mode"></span><button type="button" class="rc-play chip">▶ 播放</button>' +
     '<span class="rc-speed"></span><select class="rc-scope" aria-label="範圍"></select></div>' +
     '<input type="range" class="rc-slider" min="0" max="0" value="0" aria-label="時間">' +
-    '<p class="rc-msg sd-note"></p><p class="rc-empty ov-empty" hidden>這個範圍沒有股票。</p>' +
-    '<div class="rc-list"></div>' +
-    '<p class="sd-note">每格 3 分鐘，依當下漲幅排前 ' + RACE_N + ' 名；名字下面是所屬族群（今天排名最前的那個）與量比。點股票看個股頁。</p>';
+    '<p class="rc-msg sd-note"></p>' +
+    '<div class="rc-stock"><p class="rc-empty ov-empty" hidden>這個範圍沒有股票。</p>' + list('s', RACE_N) +
+    '<p class="sd-note">依當下漲幅排前 ' + RACE_N + ' 名；名字下面是所屬族群（今天排名最前的那個）與量比。點股票看個股頁。</p></div>' +
+    '<div class="rc-group" hidden><h4 class="rc-sub">族群強度</h4>' + list('g', RACE_G).replace('rc-list', 'rc-list rc-glist') +
+    '<h4 class="rc-sub rc-mhead"></h4>' + list('m', RACE_M).replace('rc-list', 'rc-list rc-mlist') +
+    '<p class="sd-note">族群依強度排名（漲幅、上漲比例、強勢成員數、量比，和下面的盤中排行一樣，重疊太多的只留一個）；' +
+    '條形是族群的加權漲幅。點族群固定看它的內部排名，點個股看個股頁。</p></div>' +
+    '<p class="sd-note">每格 3 分鐘。</p>';
   pane.insertBefore(box, pane.querySelector('.lv-body'));
   const days = box.querySelector('.rc-days');
   raceDays().forEach((d, k) => {
@@ -546,17 +602,14 @@ function setupRace() {
     b.addEventListener('click', () => raceDate(d));
     days.appendChild(b);
   });
+  chipGroup(box.querySelector('.rc-mode'), [['個股', 'stock'], ['族群', 'group']], v => v === race.mode, v => {
+    race.mode = v;
+    raceDraw();
+  });
   const sp = box.querySelector('.rc-speed');
-  RACE_SPEEDS.forEach(([t, ms]) => {
-    const b = el('button', 'chip', t);
-    b.type = 'button';
-    b.setAttribute('aria-pressed', String(ms === race.speed));
-    b.addEventListener('click', () => {
-      race.speed = ms;
-      box.style.setProperty('--rc-dur', Math.min(ms * 0.85, 450) + 'ms');
-      sp.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-    });
-    sp.appendChild(b);
+  chipGroup(sp, RACE_SPEEDS, v => v === race.speed, v => {
+    race.speed = v;
+    box.style.setProperty('--rc-dur', Math.min(v * 0.85, 450) + 'ms');
   });
   box.querySelector('.rc-play').addEventListener('click', () => (race.playing ? raceStop() : racePlay()));
   box.querySelector('.rc-slider').addEventListener('input', e => {
@@ -566,7 +619,7 @@ function setupRace() {
   });
   box.querySelector('.rc-scope').addEventListener('change', e => {
     race.scope = e.target.value;
-    race.prevTop = [];
+    raceClearList('s');
     raceDraw();
   });
 }

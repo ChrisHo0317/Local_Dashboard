@@ -263,7 +263,7 @@ python -m pytest -q            # 測試
 | `intraday/core.js` | 族群強度、連動、領漲的計算（Worker 與網站共用；網站版是 site/intraday_core.js）|
 | `intraday/archive.js` | 收盤後把當天的族群排行存進 data/intraday/（之後校正量能曲線、回測用）|
 | `intraday/dispatch.js` | 準時觸發 GitHub 的資料排程（見下方「自動更新」）|
-| `web/intraday.js` | 網站的盤中卡與盤中子分頁，每 60 秒讀一次；盤中子分頁上方的強勢股動畫（每 3 分鐘一格的漲幅前 15 名排行賽跑，可選全部／自選股／族群、最近 5 天）|
+| `web/intraday.js` | 網站的盤中卡與盤中子分頁，每 60 秒讀一次；盤中子分頁上方的強勢股動畫（每 3 分鐘一格的排行賽跑；「個股」看漲幅前 15 名，可選全部／自選股／族群；「族群」上層看前 8 個族群的強度、下層看選定族群的內部排名；最近 5 天）|
 | `.github/workflows/intraday.yml` | 測試並部署 Worker（自動建立 KV 空間、設定存取碼） |
 
 證交所即時行情不能公開轉載，所以盤中資料要存取碼，網址與存取碼只存在自己裝置的瀏覽器裡。
