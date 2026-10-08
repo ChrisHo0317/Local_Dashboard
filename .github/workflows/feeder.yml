@@ -78,7 +78,13 @@ jobs:
           INTRADAY_URL: ${{ secrets.INTRADAY_URL }}
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$VM_SSH_KEY" > ~/.ssh/vm && chmod 600 ~/.ssh/vm
+          printf '%s\n' "$VM_SSH_KEY" | tr -d '\r' > ~/.ssh/vm && chmod 600 ~/.ssh/vm
+          # 私鑰檢查：貼錯檔案（.pub）、少了 BEGIN／END 那兩行就直接說；指紋（不是秘密）印出來和主機上的公鑰對照
+          if ! ssh-keygen -y -f ~/.ssh/vm > ~/.ssh/vm.pub 2>/dev/null; then
+            echo "::error::VM_SSH_KEY 不是有效的私鑰：要貼 vm_deploy（沒有副檔名的那個，不是 .pub）的全文，含 BEGIN／END 兩行"
+            exit 1
+          fi
+          echo "::notice::部署用金鑰指紋 $(ssh-keygen -lf ~/.ssh/vm.pub | awk '{print $2}')；主機上要有同一把公鑰"
           # 主機身分：有 VM_KNOWN_HOSTS 就只認它；沒有的話第一次照收，並把主機金鑰印出來讓你存成 Secret
           if [ -n "$VM_KNOWN_HOSTS" ]; then
             printf '%s\n' "$VM_KNOWN_HOSTS" > ~/.ssh/known_hosts
@@ -94,7 +100,20 @@ jobs:
           # 轉播站網址：有 INTRADAY_URL 就用它（https → wss），沒有就用預設的 workers.dev 網址
           base="${INTRADAY_URL:-https://local-dash-intraday.chrisdashboard.workers.dev}"
           feed_url="$(printf '%s' "${base%/}" | sed 's#^https://#wss://#; s#^http://#ws://#')/feed"
-          $SSH "$target" 'mkdir -p ~/local-dash-feeder'
+          # 第一次連線：失敗就依錯誤訊息說是哪一種問題（ssh 的錯誤訊息不含金鑰；IP 在紀錄裡會被遮成 ***）
+          if ! $SSH "$target" 'mkdir -p ~/local-dash-feeder' 2> ~/.ssh/err; then
+            cat ~/.ssh/err
+            if grep -q 'Permission denied' ~/.ssh/err; then
+              echo "::error::SSH 登入被拒：主機上沒有這把公鑰，或 VM_USER 和公鑰最後那段名字不一樣（GCP 若開了 OS Login，主機設定裡貼的金鑰會被忽略）"
+            elif grep -q 'Host key verification failed' ~/.ssh/err; then
+              echo "::error::主機金鑰和 VM_KNOWN_HOSTS 不符：主機重建或換了 IP，請更新 VM_KNOWN_HOSTS"
+            elif grep -Eq 'timed out|No route|Connection refused' ~/.ssh/err; then
+              echo "::error::連不上主機：VM_HOST 不對、主機沒開機，或防火牆沒開 22 埠"
+            else
+              echo "::error::SSH 失敗：$(tail -1 ~/.ssh/err)"
+            fi
+            exit 1
+          fi
           scp -i ~/.ssh/vm -o StrictHostKeyChecking=yes feeder/feeder.py feeder/requirements.txt feeder/install.sh \
               "$target:local-dash-feeder/"
           # 設定檔從標準輸入寫入（umask 077 → 權限 600），金鑰不進指令列
@@ -114,4 +133,4 @@ jobs:
 
       - name: Clean up
         if: always()
-        run: rm -f ~/.ssh/vm ~/.ssh/known_hosts
+        run: rm -f ~/.ssh/vm ~/.ssh/vm.pub ~/.ssh/err ~/.ssh/known_hosts
