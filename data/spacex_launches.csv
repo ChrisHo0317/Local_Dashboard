@@ -629,7 +629,7 @@ launch_time,title,vehicle,launch_site,return_site,mission_type,status,return_tim
 2026-02-02T07:47:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,,sl-17-32
 2026-02-07T15:58:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,,sl-17-33
 2026-02-11T09:11:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,,sl-17-34
-2026-02-13T05:15:00Z,Crew-12 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,hsf,in-progress,October 2026,crew12
+2026-02-13T05:15:00Z,Crew-12 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,hsf,final,October 2026,crew12
 2026-02-14T17:59:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,,sl-17-13
 2026-02-16T02:59:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,,sl-6-103
 2026-02-19T20:41:00Z,Starlink Mission,Falcon 9,"SLC-40, Florida",Droneship,starlink,final,,sl-10-36
@@ -729,5 +729,6 @@ launch_time,title,vehicle,launch_site,return_site,mission_type,status,return_tim
 2026-10-01T11:10:00Z,Crew-13 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,hsf,in-progress,April 2027,crew13
 2026-10-01T14:32:00Z,Transporter-18 Mission,Falcon 9,"SLC-4E, California",Landing Zone,rideshare,final,,transporter18
 2026-10-01T23:53:00Z,NROL-97 Mission,Falcon Heavy,"LC-39A, Florida",Landing Zone / Expended,nssl,final,,nrol97
-2026-10-11T23:00:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,upcoming,,sl-15-25
+2026-10-12T23:00:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,upcoming,,sl-15-25
 2026-10-13T10:33:00Z,CRS-35 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,resupply,upcoming,,crs35
+2026-10-15T23:44:00Z,USSF-481 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,upcoming,,ussf481
