@@ -1,5 +1,4 @@
 launch_time,title,vehicle,launch_site,return_site,mission_type,status,return_time,link
-,SDA’s Fourth Tranche 1 Mission,Falcon 9,"SLC-4E, California",Landing Zone,nssl,upcoming,,sda-t1tl-a
 2006-03-24T02:00:00Z,FalconSAT-2 Mission,Falcon 1,Omelek Island,Expended,,final,,falconsat2
 2007-03-21T13:10:00Z,DemoSat Mission,Falcon 1,Omelek Island,Expended,,final,,demosat
 2008-08-03T15:34:00Z,Trailblazer Mission,Falcon 1,Omelek Island,Expended,,final,,trailblazer
@@ -729,6 +728,7 @@ launch_time,title,vehicle,launch_site,return_site,mission_type,status,return_tim
 2026-10-01T11:10:00Z,Crew-13 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,hsf,in-progress,April 2027,crew13
 2026-10-01T14:32:00Z,Transporter-18 Mission,Falcon 9,"SLC-4E, California",Landing Zone,rideshare,final,,transporter18
 2026-10-01T23:53:00Z,NROL-97 Mission,Falcon Heavy,"LC-39A, Florida",Landing Zone / Expended,nssl,final,,nrol97
+2026-10-10T00:39:00Z,SDA’s Fourth Tranche 1 Mission,Falcon 9,"SLC-4E, California",Landing Zone,nssl,upcoming,,sda-t1tl-a
 2026-10-12T23:00:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,upcoming,,sl-15-25
 2026-10-13T10:33:00Z,CRS-35 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,resupply,upcoming,,crs35
 2026-10-15T23:44:00Z,USSF-481 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,upcoming,,ussf481
