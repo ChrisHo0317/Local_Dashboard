@@ -652,11 +652,18 @@ event_time,country,title,impact,forecast,previous,actual,better
 2026-10-13T18:00:00Z,US,Monthly Budget Statement,Medium,-28,-166.8,,
 2026-10-13T18:00:00Z,US,Fed's Williams speech,Medium,,,,
 2026-10-13T18:30:00Z,EMU,ECB's Lane speech,Medium,,,,
+2026-10-13T20:00:00Z,US,Fed's Collins speech,Medium,,,,
 2026-10-14T00:00:00Z,US,IMF Meeting,Medium,,,,
-2026-10-14T01:30:00Z,CN,Consumer Price Index (YoY),High,1.1,0.8,,
-2026-10-14T01:30:00Z,CN,Producer Price Index (YoY),Medium,4.4,3.8,,
-2026-10-14T01:30:00Z,CN,Consumer Price Index (MoM),Medium,0.3,0.4,,
+2026-10-14T01:30:00Z,CN,Consumer Price Index (YoY),High,1.1,0.8,0.9,0
+2026-10-14T01:30:00Z,CN,Producer Price Index (YoY),Medium,4.4,3.8,5,1
+2026-10-14T01:30:00Z,CN,Consumer Price Index (MoM),Medium,0.3,0.4,0.2,0
 2026-10-14T02:10:00Z,EMU,ECB's President Lagarde speech,High,,,,
+2026-10-14T02:40:00Z,CN,Exports (YoY),Medium,25.5,25,36.3,1
+2026-10-14T02:40:00Z,CN,Exports (YoY) CNY,Medium,,18.6,29.6,
+2026-10-14T02:40:00Z,CN,Imports (YoY),Medium,24.5,28.2,31,1
+2026-10-14T02:40:00Z,CN,Imports (YoY) CNY,Medium,,21.7,24.6,
+2026-10-14T02:40:00Z,CN,Trade Balance CNY,Medium,805,809.3,905.97,1
+2026-10-14T02:40:00Z,CN,Trade Balance USD,Medium,118.1,119.09,133.53,1
 2026-10-14T03:00:00Z,CN,Exports (YoY),Medium,25.3,25,,
 2026-10-14T03:00:00Z,CN,Imports (YoY) CNY,Medium,,21.7,,
 2026-10-14T03:00:00Z,CN,Trade Balance USD,Medium,114.5,119.09,,
@@ -1017,15 +1024,15 @@ event_time,country,title,impact,forecast,previous,actual,better
 2026-11-06T14:00:00Z,US,Michigan Consumer Sentiment Index,High,,,,
 2026-11-06T14:00:00Z,US,UoM 1-year Consumer Inflation Expectations,Medium,,,,
 2026-11-06T14:00:00Z,US,UoM 5-year Consumer Inflation Expectation,Medium,,,,
-2026-11-07T03:00:00Z,CN,Exports (YoY),Medium,,,,
-2026-11-07T03:00:00Z,CN,Exports (YoY) CNY,Medium,,,,
-2026-11-07T03:00:00Z,CN,Imports (YoY),Medium,,,,
-2026-11-07T03:00:00Z,CN,Imports (YoY) CNY,Medium,,,,
-2026-11-07T03:00:00Z,CN,Trade Balance CNY,Medium,,,,
-2026-11-07T03:00:00Z,CN,Trade Balance USD,Medium,,,,
-2026-11-09T01:30:00Z,CN,Consumer Price Index (MoM),Medium,,,,
-2026-11-09T01:30:00Z,CN,Consumer Price Index (YoY),High,,,,
-2026-11-09T01:30:00Z,CN,Producer Price Index (YoY),Medium,,,,
+2026-11-07T03:00:00Z,CN,Exports (YoY),Medium,,36.3,,
+2026-11-07T03:00:00Z,CN,Exports (YoY) CNY,Medium,,29.6,,
+2026-11-07T03:00:00Z,CN,Imports (YoY),Medium,,31,,
+2026-11-07T03:00:00Z,CN,Imports (YoY) CNY,Medium,,24.6,,
+2026-11-07T03:00:00Z,CN,Trade Balance CNY,Medium,,905.97,,
+2026-11-07T03:00:00Z,CN,Trade Balance USD,Medium,,133.53,,
+2026-11-09T01:30:00Z,CN,Consumer Price Index (MoM),Medium,,0.2,,
+2026-11-09T01:30:00Z,CN,Consumer Price Index (YoY),High,,0.9,,
+2026-11-09T01:30:00Z,CN,Producer Price Index (YoY),Medium,,5,,
 2026-11-09T09:30:00Z,EMU,Sentix Investor Confidence,Medium,,2.7,,
 2026-11-09T12:00:00Z,MX,Headline Inflation,Medium,,0.42,,
 2026-11-09T19:00:00Z,US,Loan Officer Survey,Medium,,,,
