@@ -1431,7 +1431,9 @@ date,signal,code
 2026-10-16,value_yield,1608
 2026-10-16,value_yield,1720
 2026-10-16,value_yield,1730
+2026-10-16,value_yield,1731
 2026-10-16,value_yield,1783
+2026-10-16,value_yield,1788
 2026-10-16,value_yield,1817
 2026-10-16,value_yield,2442
 2026-10-16,value_yield,2536
@@ -1455,9 +1457,9 @@ date,signal,code
 2026-10-16,value_yield,4205
 2026-10-16,value_yield,4305
 2026-10-16,value_yield,4527
-2026-10-16,value_yield,4554
 2026-10-16,value_yield,4702
 2026-10-16,value_yield,4754
+2026-10-16,value_yield,5203
 2026-10-16,value_yield,5212
 2026-10-16,value_yield,5287
 2026-10-16,value_yield,5312
@@ -1471,14 +1473,12 @@ date,signal,code
 2026-10-16,value_yield,6023
 2026-10-16,value_yield,6024
 2026-10-16,value_yield,6143
-2026-10-16,value_yield,6556
 2026-10-16,value_yield,6577
 2026-10-16,value_yield,6592
 2026-10-16,value_yield,6596
 2026-10-16,value_yield,6625
 2026-10-16,value_yield,6669
 2026-10-16,value_yield,6803
-2026-10-16,value_yield,8083
 2026-10-16,value_yield,8341
 2026-10-16,value_yield,8410
 2026-10-16,value_yield,8424

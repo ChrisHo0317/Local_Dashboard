@@ -1,13 +1,7 @@
 {
- "generated": "2026-10-16 22:10",
+ "generated": "2026-10-17 01:41",
  "status": "warn",
  "checks": [
-  {
-   "id": "coverage",
-   "level": "warn",
-   "title": "最新一天有市場資料不完整",
-   "detail": "上櫃 0 檔（平常 986）"
-  },
   {
    "id": "zero",
    "level": "warn",
@@ -36,6 +30,12 @@
    "id": "stale",
    "level": "ok",
    "title": "行情最新到 2026-10-16",
+   "detail": ""
+  },
+  {
+   "id": "coverage",
+   "level": "ok",
+   "title": "最新一天兩個市場的檔數正常",
    "detail": ""
   },
   {
