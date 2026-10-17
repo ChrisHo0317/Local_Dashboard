@@ -742,7 +742,7 @@ event_time,country,title,impact,forecast,previous,actual,better
 2026-10-16T12:00:00Z,JP,BoJ Governor Ueda speech,High,,,,
 2026-10-16T12:30:00Z,US,NY Empire State Manufacturing Index,Medium,,7.6,,
 2026-10-16T13:15:00Z,US,Industrial Production (MoM),Medium,0.3,0,0.7,1
-2026-10-16T18:00:00Z,US,Monthly Budget Statement,Medium,-29,-166.8,,
+2026-10-16T18:00:00Z,US,Monthly Budget Statement,Medium,-29,-166.8,-27,1
 2026-10-17T00:00:00Z,US,IMF Meeting,Medium,,,,
 2026-10-18T00:00:00Z,US,IMF Meeting,Medium,,,,
 2026-10-18T21:30:00Z,NZ,Business NZ PSI,Medium,,51.2,,
@@ -1065,7 +1065,7 @@ event_time,country,title,impact,forecast,previous,actual,better
 2026-11-10T18:30:00Z,CA,BoC Summary of Deliberations,Medium,,,,
 2026-11-11T07:00:00Z,DE,Harmonized Index of Consumer Prices (MoM),Medium,,,,
 2026-11-11T07:00:00Z,DE,Harmonized Index of Consumer Prices (YoY),High,,,,
-2026-11-11T19:00:00Z,US,Monthly Budget Statement,Medium,,,,
+2026-11-11T19:00:00Z,US,Monthly Budget Statement,Medium,,-27,,
 2026-11-12T00:00:00Z,AU,Consumer Inflation Expectations,Medium,,5.3,,
 2026-11-12T02:00:00Z,NZ,RBNZ Inflation Expectations (QoQ),High,,2.34,,
 2026-11-12T07:00:00Z,UK,Gross Domestic Product (MoM),Medium,,0.1,,

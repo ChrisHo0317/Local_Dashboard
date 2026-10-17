@@ -733,5 +733,5 @@ launch_time,title,vehicle,launch_site,return_site,mission_type,status,return_tim
 2026-10-13T06:33:00Z,CRS-35 Mission,Falcon 9,"SLC-40, Florida",Landing Zone,resupply,in-progress,November 2026,crs35
 2026-10-15T20:01:00Z,USSF-481 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,final,,ussf481
 2026-10-19T10:30:00Z,Bandwagon-5 Mission,Falcon 9,"SLC-40, Florida",Droneship,rideshare,upcoming,,bandwagon5
-2026-10-20T22:14:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,upcoming,,sl-15-15
+2026-10-20T23:09:23Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,upcoming,,sl-15-15
 2026-10-24T05:29:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,upcoming,,sl-15-16
