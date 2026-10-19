@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-17 01:41",
+ "generated": "2026-10-20 00:38",
  "status": "warn",
  "checks": [
   {
@@ -29,7 +29,7 @@
   {
    "id": "stale",
    "level": "ok",
-   "title": "行情最新到 2026-10-16",
+   "title": "行情最新到 2026-10-19",
    "detail": ""
   },
   {
