@@ -763,7 +763,7 @@ event_time,country,title,impact,forecast,previous,actual,better
 2026-10-19T12:30:00Z,CA,Consumer Price Index (MoM),Medium,0.2,-0.1,0.1,0
 2026-10-19T12:30:00Z,CA,BoC Consumer Price Index Core (YoY),High,,2.4,2.2,
 2026-10-19T14:30:00Z,CA,Bank of Canada Business Outlook Survey,Medium,,,,
-2026-10-20T01:15:00Z,CN,PBoC Interest Rate Decision,Medium,3,3,,
+2026-10-20T01:15:00Z,CN,PBoC Interest Rate Decision,Medium,3,3,3,
 2026-10-20T06:00:00Z,UK,Employment Change (3M),High,,67,,
 2026-10-20T06:00:00Z,UK,Average Earnings Excluding Bonus (3Mo/Yr),Medium,3.6,3.5,,
 2026-10-20T06:00:00Z,UK,Average Earnings Including Bonus (3Mo/Yr),Medium,3.8,3.9,,
@@ -1189,7 +1189,7 @@ event_time,country,title,impact,forecast,previous,actual,better
 2026-11-19T23:30:00Z,JP,"National CPI ex Food, Energy (YoY)",Medium,,,,
 2026-11-19T23:30:00Z,JP,National CPI ex Fresh Food (YoY),Medium,,,,
 2026-11-20T00:01:00Z,UK,GfK Consumer Confidence,Medium,,,,
-2026-11-20T01:15:00Z,CN,PBoC Interest Rate Decision,Medium,,,,
+2026-11-20T01:15:00Z,CN,PBoC Interest Rate Decision,Medium,,3,,
 2026-11-20T07:00:00Z,DE,Producer Price Index (MoM),Medium,,,,
 2026-11-20T07:00:00Z,DE,Producer Price Index (YoY),Medium,,,,
 2026-11-20T07:00:00Z,UK,Retail Sales (MoM),High,,,,
