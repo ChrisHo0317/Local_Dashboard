@@ -12,6 +12,7 @@ code,name,market,industry
 00410A,主動永豐科技趨勢,twse,
 00411A,主動統一前沿科技,tpex,
 00412A,主動安聯亞半導體,twse,
+00415A,主動群益核心50,twse,
 0050,元大台灣50,twse,ETF
 0051,元大中型100,twse,ETF
 0052,富邦科技,twse,ETF
@@ -1799,6 +1800,7 @@ code,name,market,industry
 6462,神盾,tpex,半導體業
 6464,台數科,twse,其他業
 6465,威潤,tpex,通信網路業
+6467,泰合,twse,
 6469,大樹,tpex,生技醫療業
 6470,宇智,tpex,通信網路業
 6472,保瑞,twse,生技醫療業
