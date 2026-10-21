@@ -782,12 +782,13 @@ event_time,country,title,impact,forecast,previous,actual,better
 2026-10-20T12:30:00Z,US,Building Permits (MoM),Medium,1.4,1.394,1.4,1
 2026-10-20T14:00:00Z,US,Pending Home Sales (MoM),Medium,0,0.3,-7.3,0
 2026-10-20T17:00:00Z,UK,BoE's Greene speech,Medium,,,,
-2026-10-20T23:50:00Z,JP,Merchandise Trade Balance Total,Medium,-250,-1105.6,,
-2026-10-20T23:50:00Z,JP,Exports (YoY),Medium,20.1,19.3,,
-2026-10-20T23:50:00Z,JP,Imports (YoY),Medium,19.6,28,,
-2026-10-20T23:50:00Z,JP,Adjusted Merchandise Trade Balance,Medium,,-840.6,,
+2026-10-20T23:50:00Z,JP,Merchandise Trade Balance Total,Medium,-250,-1105.6,-536.6,0
+2026-10-20T23:50:00Z,JP,Exports (YoY),Medium,20.1,19.3,16.7,0
+2026-10-20T23:50:00Z,JP,Imports (YoY),Medium,19.6,28,18.9,0
+2026-10-20T23:50:00Z,JP,Adjusted Merchandise Trade Balance,Medium,,-840.6,-704,
 2026-10-21T01:15:00Z,CN,PBoC Interest Rate Decision,Medium,,3,,
 2026-10-21T04:15:00Z,EMU,ECB's Lane speech,Medium,,,,
+2026-10-21T04:35:00Z,JP,BoJ's Himino speech,Medium,,,,
 2026-10-21T06:00:00Z,UK,Retail Price Index (MoM),Medium,,0.6,,
 2026-10-21T06:00:00Z,UK,Producer Price Index - Output (MoM) n.s.a,Medium,0.7,0.7,,
 2026-10-21T06:00:00Z,UK,Retail Price Index (YoY),Medium,3.9,3.4,,
@@ -1173,10 +1174,10 @@ event_time,country,title,impact,forecast,previous,actual,better
 2026-11-18T21:45:00Z,NZ,Imports,Medium,,8.44,,
 2026-11-18T21:45:00Z,NZ,Producer Price Index - Output (QoQ),Medium,,1.6,,
 2026-11-18T21:45:00Z,NZ,Trade Balance NZD (YoY),Medium,,-6.18,,
-2026-11-18T23:50:00Z,JP,Adjusted Merchandise Trade Balance,Medium,,,,
-2026-11-18T23:50:00Z,JP,Exports (YoY),Medium,,,,
-2026-11-18T23:50:00Z,JP,Imports (YoY),Medium,,,,
-2026-11-18T23:50:00Z,JP,Merchandise Trade Balance Total,Medium,,,,
+2026-11-18T23:50:00Z,JP,Adjusted Merchandise Trade Balance,Medium,,-704,,
+2026-11-18T23:50:00Z,JP,Exports (YoY),Medium,,16.7,,
+2026-11-18T23:50:00Z,JP,Imports (YoY),Medium,,18.9,,
+2026-11-18T23:50:00Z,JP,Merchandise Trade Balance Total,Medium,,-536.6,,
 2026-11-19T00:30:00Z,AU,Employment Change s.a.,High,,-39.3,,
 2026-11-19T00:30:00Z,AU,Full-Time Employment,Medium,,34.4,,
 2026-11-19T00:30:00Z,AU,Part-Time Employment,Medium,,-73.7,,
