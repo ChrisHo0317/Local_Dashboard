@@ -1,7 +1,13 @@
 {
- "generated": "2026-10-22 22:39",
+ "generated": "2026-10-23 22:24",
  "status": "warn",
  "checks": [
+  {
+   "id": "stale",
+   "level": "warn",
+   "title": "今天的收盤行情還沒進來（最新 2026-10-22）",
+   "detail": "官方通常 17:30 前公布；排程晚一點會再補"
+  },
   {
    "id": "zero",
    "level": "warn",
@@ -25,12 +31,6 @@
    "level": "info",
    "title": "還沒設定：ANTHROPIC_API_KEY",
    "detail": "GitHub → Settings → Secrets and variables → Actions"
-  },
-  {
-   "id": "stale",
-   "level": "ok",
-   "title": "行情最新到 2026-10-22",
-   "detail": ""
   },
   {
    "id": "coverage",
