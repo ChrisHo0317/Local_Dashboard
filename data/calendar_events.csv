@@ -861,7 +861,7 @@ event_time,country,title,impact,forecast,previous,actual,better
 2026-10-26T09:00:00Z,DE,IFO – Business Climate,Medium,89.8,89.9,90.2,1
 2026-10-26T09:00:00Z,DE,IFO – Current Assessment,Medium,,89.5,88.8,
 2026-10-26T09:00:00Z,DE,IFO – Expectations,Medium,,90.4,91.6,
-2026-10-26T23:00:00Z,KR,Gross Domestic Product Growth (QoQ),Medium,0.7,0.6,,
+2026-10-26T23:00:00Z,KR,Gross Domestic Product Growth (QoQ),Medium,0.7,0.6,1,1
 2026-10-27T09:00:00Z,DE,IFO – Business Climate,Medium,,89.9,,
 2026-10-27T09:00:00Z,DE,IFO – Expectations,Medium,,90.4,,
 2026-10-27T09:00:00Z,EMU,ECB Bank Lending Survey,High,,,,
