@@ -735,6 +735,6 @@ launch_time,title,vehicle,launch_site,return_site,mission_type,status,return_tim
 2026-10-20T07:04:00Z,Bandwagon-5 Mission,Falcon 9,"SLC-40, Florida",Droneship,rideshare,final,,bandwagon5
 2026-10-23T18:48:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,,sl-15-15
 2026-10-27T00:25:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,final,,sl-15-16
-2026-10-30T04:02:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,upcoming,,sl-15-18
-2026-11-02T01:56:00Z,USSF-432 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,upcoming,,ussf432
-2026-11-05T02:35:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,upcoming,,sl-15-21
+2026-10-31T03:48:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,upcoming,,sl-15-18
+2026-11-03T01:42:00Z,USSF-432 Mission,Falcon 9,"SLC-4E, California",Droneship,nssl,upcoming,,ussf432
+2026-11-06T02:21:00Z,Starlink Mission,Falcon 9,"SLC-4E, California",Droneship,starlink,upcoming,,sl-15-21
